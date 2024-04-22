@@ -26,9 +26,6 @@ add_library(FASTST-UTILS
     communicat.cpp
 )
 
-
-
-
 target_link_libraries(FASTST-UTILS
     PUBLIC
     SEAL::seal

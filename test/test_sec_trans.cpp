@@ -290,9 +290,11 @@ public:
         std::vector<double> Z(inp_seq * d_k);
         for (i = 0; i < inp_seq * d_k; i++)
             Z[i] = Za[i] * Zb[i];
-        std::cout << "result:\n";
+        std::cout << GREEN << "result:\n"
+                  << std::endl;
         print_mat(result, inp_seq, d_k);
-        std::cout << "protocol:\n";
+        std::cout << RED << "protocol:\n"
+                  << std::endl;
         print_mat(Z, inp_seq, d_k);
 #endif
     }
