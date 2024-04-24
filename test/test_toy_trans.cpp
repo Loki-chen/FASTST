@@ -293,9 +293,10 @@ public:
         std::cout << GREEN << "result:\n"
                   << std::endl;
         print_mat(result, inp_seq, d_k);
-        std::cout << RED << "protocol:\n"
-                  << std::endl;
+        std::cout << RED << "protocol:\n";
         print_mat(Z, inp_seq, d_k);
+        std::cout << std::endl;
+
 #endif
     }
 };

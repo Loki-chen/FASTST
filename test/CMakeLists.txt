@@ -1,11 +1,10 @@
 
 
 
-macro(add_test_att _name)
-    add_executable(${_name}-att "test_sec_${_name}.cpp")
-    target_link_libraries(${_name}-att PUBLIC FASTST-SRC)
+macro(add_test_protocols _name)
+    add_executable(test-${_name} "test_${_name}.cpp")
+    target_link_libraries(test-${_name} PUBLIC FASTST-SRC)
 endmacro()
 
-add_test_att(trans)
-
+add_test_protocols(attn)
 

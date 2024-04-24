@@ -23,10 +23,11 @@ endif()
 add_library(FASTST-UTILS
     he_tools.cpp
     mat_tools.cpp
-    communicat.cpp
+    netio.cpp
 )
 
 target_link_libraries(FASTST-UTILS
     PUBLIC
     SEAL::seal
+    
 )

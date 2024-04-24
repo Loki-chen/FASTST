@@ -1,16 +1,17 @@
 
 
 
-add_library(FASTST-protocols
-    he_tools.cpp
-    mat_tools.cpp
-    communicat.cpp
+add_library(FASTST-PROTOCOLS
+    attention.cpp
+    layer_norm1.cpp
+    ffn.cpp
+    layer_norm2.cpp
 )
 
 
 
 
-target_link_libraries(FASTST-protocols
+target_link_libraries(FASTST-PROTOCOLS
     PUBLIC
-    # 
+    FASTST-SRC
 )

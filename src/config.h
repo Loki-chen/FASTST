@@ -1,6 +1,12 @@
+#ifndef FASTST_CONFIG_H__
+#define FASTST_CONFIG_H__
+//  Party config
+#define ALICE 1
+#define BOB 2
+#define ALICE_SEND_PORT 23456
+#define BOB_SEND_PORT 34926
 
-
-// the following are UBUNTU/LINUX, and MacOS ONLY terminal color codes.
+// the following are UBUNTU/LINUX, and MacOS ONLY terminal color codes.(from EzPC)
 #define RESET "\033[0m"
 #define BLACK "\033[30m"              /* Black */
 #define RED "\033[31m"                /* Red */
@@ -18,3 +24,5 @@
 #define BOLDMAGENTA "\033[1m\033[35m" /* Bold Magenta */
 #define BOLDCYAN "\033[1m\033[36m"    /* Bold Cyan */
 #define BOLDWHITE "\033[1m\033[37m"   /* Bold White */
+
+#endif // CONFIG

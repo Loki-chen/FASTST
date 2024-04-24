@@ -1,30 +1,24 @@
 include_directories(${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(utils)
-
+add_subdirectory(protocols)
 add_library(FASTST-SRC
-  INTERFACE
+  transformer.cpp
 )
 
 
 target_link_libraries(FASTST-SRC
-    INTERFACE
+    PUBLIC
 
     FASTST-UTILS
-    
+    FASTST-PROTOCOLS
 )
 
 target_include_directories(FASTST-SRC
-    INTERFACE
+    PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:./>
 )
-
-
-
-# install(FILES
-#         "utils.h"
-#         DESTINATION include)
 
 install(DIRECTORY
         FASTST-SRC
