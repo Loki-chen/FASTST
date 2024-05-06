@@ -16,8 +16,8 @@ set(BUILD_DIR "${PROJECT_SOURCE_DIR}/build")
 
 
 add_subdirectory(src)
-option(FASTST_test "Build tests" ON)
-if(FASTST_test)
+option(FASTST-test "Build tests" ON)
+if(FASTST-test)
   message(STATUS "Tests enabled")
   enable_testing()
   add_subdirectory(test)

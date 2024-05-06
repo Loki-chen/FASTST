@@ -29,5 +29,5 @@ add_library(FASTST-UTILS
 target_link_libraries(FASTST-UTILS
     PUBLIC
     SEAL::seal
-    
+    FASTST-SRC  
 )

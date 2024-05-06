@@ -14,5 +14,5 @@ add_library(FASTST-PROTOCOLS
 
 target_link_libraries(FASTST-PROTOCOLS
     PUBLIC
-    FASTST-SRC
+    FASTST-UTILS
 )
