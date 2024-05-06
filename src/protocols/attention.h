@@ -1,6 +1,7 @@
 #ifndef FAST_ATTENTION_H__
 #define FAST_ATTENTION_H__
 #include <utils.h>
+#include <config.h>
 #define SOFTMAX_TIME_TEST
 class Multi_Head_Attention;
 

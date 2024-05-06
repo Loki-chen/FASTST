@@ -21,9 +21,9 @@ endif()
 
 
 add_library(FASTST-UTILS
-    he_tools.cpp
-    mat_tools.cpp
-    netio.cpp
+    he-tools.cpp
+    mat-tools.cpp
+    io.cpp
 )
 
 target_link_libraries(FASTST-UTILS

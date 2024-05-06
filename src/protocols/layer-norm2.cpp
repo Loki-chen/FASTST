@@ -1,6 +1,6 @@
-#include "ffn.h"
+#include "layer-norm2.h"
 
-void FFN::forward(const LongCiphertext &ln1)
+void LayerNorm2::forward()
 {
     if (party->party == ALICE)
     {
@@ -10,7 +10,7 @@ void FFN::forward(const LongCiphertext &ln1)
 #endif
 
 #ifdef LOG
-        STOP_TIMER("Feed Forward")
+        STOP_TIMER("Layer Norm2 ")
 #endif
     }
     else
@@ -21,7 +21,7 @@ void FFN::forward(const LongCiphertext &ln1)
 #endif
 
 #ifdef LOG
-        STOP_TIMER("Feed Forward")
+        STOP_TIMER("Layer Norm2 ")
 #endif
     }
 }
