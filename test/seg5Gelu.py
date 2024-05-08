@@ -88,12 +88,13 @@ def sectionTest():
 
         
     
-    print(error1)
-    print(error3)
-    print(error5)
-    print(error2)
-    print(error4)
-    print(error6)
+    print('seg1(gelu&our):',error1)
+    # print('seg2(gelu&our):',error3)
+    # print('seg3(gelu&our):',error5)
+
+    print('seg1(gelu&bumblebee):',error2)
+    # print('seg2(gelu&bumblebee):', error4)
+    # print('seg3(gelu&bumblebee):', error6)
     
 
      
