@@ -1,9 +1,9 @@
 #include "attention.h"
-std::vector<double> Attention::forward(const std::vector<double> &input) const
+matrix Attention::forward(const matrix &input) const
 {
     size_t i, j;
     size_t d_k = d_module / n_heads;
-    std::vector<double> WQ(d_module * d_k), WK(d_module * d_k), WV(d_module * d_k);
+    matrix WQ(d_module * d_k), WK(d_module * d_k), WV(d_module * d_k);
     load_mat(WQ, "WQa-${party}");
     load_mat(WK, "WKa-${party}");
     load_mat(WV, "WVa-${party}");
@@ -18,7 +18,7 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
 #endif
         // alice: possess: x_a, W_a
         double ra = dist(gen);
-        std::vector<double> ra_xa(batch_size * d_module);
+        matrix ra_xa(batch_size * d_module);
         for (i = 0; i < batch_size * d_k; i++)
         {
             ra_xa[i] = ra * input[i];
@@ -54,11 +54,11 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         LongCiphertext::recv(io_pack, &rb1_square_secret_b, party->context);
         LongPlaintext raQ_div_rb1_plain = raQ_sec_a.decrypt(party);
         LongPlaintext raK_div_rb1_plain = raK_sec_a.decrypt(party);
-        std::vector<double> Q_div_rb1 = raQ_div_rb1_plain.decode(encoder);
-        std::vector<double> K_div_rb1 = raK_div_rb1_plain.decode(encoder);
-        std::vector<double> eScore_a(batch_size * batch_size);
+        matrix Q_div_rb1 = raQ_div_rb1_plain.decode(encoder);
+        matrix K_div_rb1 = raK_div_rb1_plain.decode(encoder);
+        matrix eScore_a(batch_size * batch_size);
         random_mat(eScore_a, -10, 0);
-        std::vector<double> negScore_a(eScore_a);
+        matrix negScore_a(eScore_a);
         auto sqrt_d_k = sqrt(d_k);
         for (size_t i = 0; i < batch_size * d_k; i++)
         {
@@ -82,9 +82,9 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         catch (std::exception &e)
         {
 #ifdef WARNING
-            std::cout << "Zero warning" << std::endl;
+            cout << "Zero warning\n";
 #endif
-            std::vector<double> temp(Score_plain.len);
+            matrix temp(Score_plain.len);
             random_mat(temp, -1e-7, 1e-7);
             Score_b_secret_b = LongCiphertext(LongPlaintext(temp, encoder), party);
         }
@@ -109,7 +109,7 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
                softmax(QK^T) .* V * (Db ./Rb^T) / rb = output
         */
         LongCiphertext eScore_a_secret_a, raV_sec_a;
-        std::vector<double> eScore_b(batch_size * batch_size);
+        matrix eScore_b(batch_size * batch_size);
         LongCiphertext::recv(io_pack, &eScore_a_secret_a, party->context);
         recv_mat(io_pack, &eScore_b);
         LongCiphertext::recv(io_pack, &raV_sec_a, party->context);
@@ -122,7 +122,7 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         for (size_t i = 0; i < batch_size * d_k; i++)
             Rb_V[i] /= ra;
 
-        std::vector<double> exp_sum(batch_size);
+        matrix exp_sum(batch_size);
         for (size_t i = 0; i < batch_size; i++)
         {
             for (j = 0; j < batch_size; j++)
@@ -161,7 +161,9 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         1. compute: rxw_a + rx_a * w_b + rW_a * x_b + [r_a]_a * xw_b = [r_aI]_a , where I stands for  Q,K,V
         2. genereat random num r_b, compute [r_aQ/r_b]_a, [r_aK/r_b]_a, [(r_b)^2]_b
     */
-        std::vector<double> ra_xa_WQa(batch_size * d_k),
+
+        // 1. computate r_aQ /r_aK/r_aV
+        matrix ra_xa_WQa(batch_size * d_k),
             ra_xa_WKa(batch_size * d_k),
             ra_xa_WVa(batch_size * d_k),
             ra_xa(batch_size * d_module),
@@ -177,17 +179,17 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         recv_mat(io_pack, &ra_WKa);
         recv_mat(io_pack, &ra_WVa);
         LongCiphertext::recv(io_pack, &ra_secret_a, party->context);
-        auto cal_raI_A = [](std::vector<double> input_b, std::vector<double> WIb,
-                            std::vector<double> ra_xa, std::vector<double> ra_WIa, std::vector<double> ra_xa_WIa,
+        auto cal_raI_A = [](matrix input_b, matrix WIb,
+                            matrix ra_xa, matrix ra_WIa, matrix ra_xa_WIa,
                             LongCiphertext ra_secret_a,
                             CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator,
                             double scale, size_t d_k)
         {
             auto xbWI_b = matmul(input_b, WIb, batch_size, d_module, d_k);
             LongPlaintext xbWI_b_plain(xbWI_b, encoder);
-            LongCiphertext raI_secret_a = ra_secret_a.multiply_plain(xbWI_b_plain, evaluator);
+            LongCiphertext raI_secret_a = ra_secret_a.multiply_plain(xbWI_b_plain, evaluator); // element-wise matmul
 
-            std::vector<double> temp_raI(batch_size * d_k);
+            matrix temp_raI(batch_size * d_k);
             auto temp_raI1 = matmul(ra_xa, WIb, batch_size, d_module, d_k);
             auto temp_raI2 = matmul(input_b, ra_WIa, batch_size, d_module, d_k);
             for (size_t i = 0; i < batch_size * d_k; i++)
@@ -206,12 +208,14 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         // [r_aV]_A
         LongCiphertext raV_sec_a = cal_raI_A(input, WV, ra_xa, ra_WVa, ra_xa_WVa, ra_secret_a,
                                              party, encoder, evaluator, scale, d_k);
+        // 2. generate 1 / rb1
         double rb1 = dist(gen);
         LongPlaintext div_rb1_plain(1. / rb1, encoder);
         LongCiphertext rb1_square_secret_b(rb1 * rb1, party, encoder);
         div_rb1_plain.mod_switch_to_inplace(raQ_sec_a.parms_id(), evaluator);
         raQ_sec_a.multiply_plain_inplace(div_rb1_plain, evaluator);
         raK_sec_a.multiply_plain_inplace(div_rb1_plain, evaluator);
+
         // send H2 = {raQ_sec_a, raK_sec_a, rb1_square_secret_b} to alice
         LongCiphertext::send(io_pack, &raQ_sec_a);
         LongCiphertext::send(io_pack, &raK_sec_a);
@@ -229,11 +233,11 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         LongCiphertext::recv(io_pack, &Score_b_secret_b, party->context);
         LongCiphertext::recv(io_pack, &eScore_a_secret_a, party->context);
         LongPlaintext eScore_b_plain = Score_b_secret_b.decrypt(party);
-        std::vector<double> eScore_b = eScore_b_plain.decode(encoder);
+        matrix eScore_b = eScore_b_plain.decode(encoder);
         double rb2 = dist(gen);
-        std::vector<double> Db(batch_size);
+        matrix Db(batch_size);
         random_mat(Db);
-        std::vector<double> O = zero_sum(batch_size, batch_size);
+        matrix O = zero_sum(batch_size, batch_size);
         for (size_t i = 0; i < batch_size * batch_size; i++)
         {
             eScore_b[i] = exp(eScore_b[i]) * rb2;
@@ -246,9 +250,9 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         catch (std::exception &e)
         {
 #ifdef WARNING
-            std::cout << "Zero warning" << std::endl;
+            cout << "Zero warning\n";
 #endif
-            std::vector<double> temp(eScore_a_secret_a.len);
+            matrix temp(eScore_a_secret_a.len);
             random_mat(temp, -1e-7, 1e-7);
             eScore_a_secret_a = LongCiphertext(LongPlaintext(temp, encoder), party);
         }
@@ -258,7 +262,7 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
 
         for (size_t i = 0; i < batch_size * batch_size; i++)
             eScore_b[i] = eScore_b[i] * Db[i / batch_size] / rb2;
-        std::vector<double> Rb(batch_size * d_k);
+        matrix Rb(batch_size * d_k);
         random_mat(Rb);
         for (i = 1; i < batch_size; i++)
             for (j = 0; j < d_k; j++)
@@ -267,7 +271,7 @@ std::vector<double> Attention::forward(const std::vector<double> &input) const
         Rb_plain.mod_switch_to_inplace(raV_sec_a.parms_id(), evaluator);
         raV_sec_a.multiply_plain_inplace(Rb_plain, evaluator);
 
-        std::vector<double> output(batch_size * d_k);
+        matrix output(batch_size * d_k);
         for (i = 0; i < batch_size; i++)
             for (j = 0; j < d_k; j++)
                 output[i * d_k + j] = rb2 / (Db[i] * Rb[j]);
@@ -304,10 +308,11 @@ Multi_Head_Attention::~Multi_Head_Attention()
     delete[] attns;
 }
 
-LongCiphertext Multi_Head_Attention::forward(const std::vector<double> &input) const
+LongCiphertext Multi_Head_Attention::forward(const matrix &input) const
 {
-    std::vector<double> output(input.size());
+    matrix output(input.size());
     size_t d_k = d_module / n_heads;
+
     size_t i, j;
     for (int h = 0; h < n_heads; h++)
     {
@@ -320,6 +325,7 @@ LongCiphertext Multi_Head_Attention::forward(const std::vector<double> &input) c
             }
         }
     }
+
     LongCiphertext output_secret;
     if (party->party == ALICE)
     {
@@ -332,6 +338,6 @@ LongCiphertext Multi_Head_Attention::forward(const std::vector<double> &input) c
             party);
         LongCiphertext::send(io_pack, &output_secret_b);
     }
-    io_pack->io->num_rounds /= 12;
+    // io_pack->io->num_rounds /= 12;
     return output_secret;
 }

@@ -1,7 +1,9 @@
 #ifndef FAST_PROTOCOL_H
 #define FAST_PROTOCOL_H
-#include <module.h>
-class Protocol {
+#pragma once
+#include <model.h>
+class Protocol
+{
 protected:
     CKKSKey *party;
     CKKSEncoder *encoder;

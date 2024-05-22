@@ -1,27 +1,27 @@
 #include "ffn.h"
 
-void FFN::forward(const LongCiphertext &ln1)
+LongCiphertext FFN::forward(const LongCiphertext &ln1)
 {
-    if (party->party == ALICE)
-    {
+        if (party->party == ALICE)
+        {
 #ifdef LOG
-        INIT_TIMER
-        START_TIMER
+                INIT_TIMER
+                START_TIMER
 #endif
 
 #ifdef LOG
-        STOP_TIMER("Feed Forward")
+                STOP_TIMER("Feed Forward")
 #endif
-    }
-    else
-    {
+        }
+        else
+        {
 #ifdef LOG
-        INIT_TIMER
-        START_TIMER
+                INIT_TIMER
+                START_TIMER
 #endif
 
 #ifdef LOG
-        STOP_TIMER("Feed Forward")
+                STOP_TIMER("Feed Forward")
 #endif
-    }
+        }
 }

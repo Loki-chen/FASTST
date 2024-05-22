@@ -1,5 +1,6 @@
 #ifndef FAST_ATTENTION_H__
 #define FAST_ATTENTION_H__
+#pragma once
 #include "protocol.h"
 // #define SOFTMAX_TIME_TEST
 class Multi_Head_Attention;
@@ -13,7 +14,8 @@ public:
     Attention(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator, IOPack *io_pack,
               size_t head_) : Protocol(party, encoder, evaluator, io_pack), head(head_) {}
     ~Attention() {}
-    std::vector<double> forward(const std::vector<double> &input) const;
+    matrix forward(const matrix &input) const;
+    // std::vector<double> forward(const std::vector<double> &input) const;
 };
 
 class Multi_Head_Attention : public Protocol

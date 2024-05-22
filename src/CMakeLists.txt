@@ -9,7 +9,6 @@ add_library(FASTST-SRC
 
 target_link_libraries(FASTST-SRC
     PUBLIC
-
     FASTST-UTILS
     FASTST-PROTOCOLS
 )

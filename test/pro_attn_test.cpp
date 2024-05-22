@@ -23,37 +23,33 @@ int main(int argc, const char **argv)
 
     IOPack *io_pack = new IOPack(party_);
     printf("batch size:       %d\nd_module:         %d\nnumber of heads:  %d\n", batch_size, d_module, n_heads);
-    std::vector<double> input(batch_size * d_module);
+    matrix input(batch_size * d_module);
     random_mat(input, 0, 0.01);
     // Attention *attn = new Attention(party, context, io_pack, input, d_module, d_k, 0);
     Multi_Head_Attention *attn = new Multi_Head_Attention(party, encoder, evaluator, io_pack);
 
     LongCiphertext result;
-
-    size_t rounds_start = io_pack->get_rounds();
-
     INIT_TIMER;
     START_TIMER;
     attn->forward(input);
     STOP_TIMER("Multi-Head Attention");
     size_t comm = io_pack->get_comm();
-    // size_t rounds = io_pack->get_rounds() / n_heads;
-    size_t rounds = io_pack->get_rounds() - rounds_start;
+    size_t rounds = io_pack->get_rounds(); // / n_heads;
     if (comm < 1024)
     {
-        printf("Sent data size of communication: %ld B\n", comm);
+        printf("data size of communication: %ld B\n", comm);
     }
     else if (comm < 1024 * 1024)
     {
-        printf("Sent data size of communication: %.2lf KB\n", comm / 1024.);
+        printf("data size of communication: %.2lf KB\n", comm / 1024.);
     }
     else if (comm < 1024 * 1024 * 1024)
     {
-        printf("Sent data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
+        printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
     }
     else
     {
-        printf("Sent data size of communication: %.2lf GB\n", comm / (1024. * 1024. * 1024.));
+        printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024. * 1024.));
     }
     std::cout << "rounds of communication: " << rounds << "\n";
 

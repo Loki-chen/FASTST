@@ -1,5 +1,6 @@
 #ifndef FAST_IO_H__
 #define FAST_IO_H__
+#pragma once
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

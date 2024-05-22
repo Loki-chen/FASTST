@@ -1,54 +1,54 @@
 #include "mat-tools.h"
 
-std::vector<double> matmul(
-    const std::vector<double> &mat1,
-    const std::vector<double> &mat2, size_t dim1, size_t dim2, size_t dim3, bool trans)
+matrix matmul(const matrix &mat1, const matrix &mat2,
+              size_t dim1, size_t dim2, size_t dim3, bool trans)
 {
-    std::vector<double> result(dim1 * dim3);
-    size_t i, j, k;
+    matrix result(dim1 * dim3);
     if (!trans)
     {
-
-        for (i = 0; i < dim1; i++)
         {
-            const size_t base_idx1 = i * dim2;
-            const size_t base_idx2 = i * dim3;
-
-            for (k = 0; k < dim2; k++)
+#pragma omp parallel for
+            for (size_t i = 0; i < dim1; i++)
             {
-                const size_t base_idx3 = k * dim3;
-                const double tmp = mat1[base_idx1 + k];
-
-                for (j = 0; j < dim3; j++)
+                const size_t base_idx1 = i * dim2;
+                const size_t base_idx2 = i * dim3;
+                for (size_t k = 0; k < dim2; k++)
                 {
-                    result[base_idx2 + j] += tmp * mat2[base_idx3 + j];
+                    const size_t base_idx3 = k * dim3;
+                    const double tmp = mat1[base_idx1 + k];
+                    for (size_t j = 0; j < dim3; j++)
+                    {
+                        result[base_idx2 + j] += tmp * mat2[base_idx3 + j];
+                    }
                 }
             }
         }
     }
     else
     {
-
-        for (i = 0; i < dim1; i++)
         {
-            const size_t base_idx1 = i * dim2;
-            const size_t base_idx2 = i * dim3;
-            for (j = 0; j < dim3; j++)
+#pragma omp parallel for
+            for (size_t i = 0; i < dim1; i++)
             {
-                const size_t base_idx3 = j * dim3;
-                double sum = 0.;
-                for (k = 0; k < dim2; k++)
+                const size_t base_idx1 = i * dim2;
+                const size_t base_idx2 = i * dim3;
+                for (size_t j = 0; j < dim3; j++)
                 {
-                    sum += mat1[base_idx1 + k] * mat2[base_idx3 + k];
+                    const size_t base_idx3 = j * dim2;
+                    double sum = 0.;
+                    for (size_t k = 0; k < dim2; k++)
+                    {
+                        sum += mat1[base_idx1 + k] * mat2[base_idx3 + k];
+                    }
+                    result[base_idx2 + j] = sum;
                 }
-                result[base_idx2 + j] = sum;
             }
         }
     }
     return result;
 }
 
-void random_mat(std::vector<double> &mat, double min, double max)
+void random_mat(matrix &mat, double min, double max, bool binomial)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -58,12 +58,16 @@ void random_mat(std::vector<double> &mat, double min, double max)
     for (size_t i = 0; i < size; i++)
     {
         mat[i] = dist(gen);
+        if (binomial)
+        {
+            mat[i] = mat[i] > 0 ? max : min;
+        }
     }
 }
 
-std::vector<double> zero_sum(size_t row, size_t column)
+matrix zero_sum(size_t row, size_t column)
 {
-    std::vector<double> mat(row * column);
+    matrix mat(row * column);
     random_mat(mat);
     size_t i, j;
     for (i = 0; i < row; i++)
@@ -78,12 +82,12 @@ std::vector<double> zero_sum(size_t row, size_t column)
     return mat;
 }
 
-void load_mat(std::vector<double> &mat, const char *path)
+void load_mat(matrix &mat, const char *path)
 {
     random_mat(mat);
 }
 
-void normalization(std::vector<double> &A, size_t row, size_t column)
+void normalization(matrix &A, size_t row, size_t column)
 {
     size_t i, j;
     double max_value = 1ul << 20;
@@ -111,9 +115,9 @@ void normalization(std::vector<double> &A, size_t row, size_t column)
     }
 }
 
-std::vector<double> mean(const std::vector<double> &input, size_t row, size_t column)
+matrix mean(const matrix &input, size_t row, size_t column)
 {
-    std::vector<double> result(row);
+    matrix result(row);
     size_t i, j;
     for (i = 0; i < row; i++)
     {
@@ -126,9 +130,9 @@ std::vector<double> mean(const std::vector<double> &input, size_t row, size_t co
     return result;
 }
 
-std::vector<double> standard_deviation(const std::vector<double> &input, const std::vector<double> means, size_t row, size_t column)
+matrix standard_deviation(const matrix &input, const matrix means, size_t row, size_t column)
 {
-    std::vector<double> result(row);
+    matrix result(row);
     size_t i, j;
     for (i = 0; i < row; i++)
     {
@@ -142,7 +146,7 @@ std::vector<double> standard_deviation(const std::vector<double> &input, const s
     return result;
 }
 
-void print_mat(const std::vector<double> &A, size_t row, size_t column)
+void print_mat(const matrix &A, size_t row, size_t column)
 {
     size_t i, j;
     bool flag1, flag2 = false;
@@ -155,7 +159,15 @@ void print_mat(const std::vector<double> &A, size_t row, size_t column)
             {
                 if (j < 5 || column - j < 5)
                 {
-                    printf("%-14lf", A[i * column + j]);
+                    const double elem = A[i * column + j];
+                    if (elem >= 0)
+                    {
+                        printf(" %-14lf", elem);
+                    }
+                    else
+                    {
+                        printf("%-15lf", elem);
+                    }
                 }
                 else if (!flag1)
                 {
@@ -167,22 +179,76 @@ void print_mat(const std::vector<double> &A, size_t row, size_t column)
         }
         else if (!flag2)
         {
-            printf("...   \n");
+            printf(" ...   \n");
             flag2 = true;
         }
     }
-    std::cout << row << " x " << column << std::endl;
+    cout << row << " x " << column << "\n";
 }
 
-void print_all_mat(const std::vector<double> &A, size_t row, size_t column)
+void print_all_mat(const matrix &A, size_t row, size_t column)
 {
     size_t i, j;
     for (i = 0; i < row; i++)
     {
         for (j = 0; j < column; j++)
         {
-            std::cout << A[i * column + j] << " ";
+            cout << A[i * column + j] << " ";
         }
-        std::cout << "\n";
+        cout << "\n";
     }
+}
+
+LongCiphertext *RFCP_encodeA(const matrix &A, CKKSKey *party, CKKSEncoder *encoder,
+                             size_t dim1, size_t dim2, size_t dim3)
+{
+    matrix Ae(dim1 * dim2 * dim3);
+#pragma omp parallal for
+    for (size_t i = 0; i < dim2; i++)
+    {
+        for (size_t j = 0; j < dim1 * dim3; j++)
+        {
+            Ae[i * dim1 * dim3 + j] = A[j / dim3 * dim2 + i];
+        }
+    }
+
+    LongCiphertext *lct = new LongCiphertext[dim2];
+#pragma omp parallel for
+    for (size_t i = 0; i < dim2; i++)
+    {
+        LongPlaintext lpt(matrix(Ae.begin() + dim1 * dim3 * i, Ae.begin() + dim1 * dim3 * (i + 1)), encoder);
+        lct[i] = LongCiphertext(lpt, party);
+    }
+    return lct;
+}
+
+LongCiphertext RFCP_matmul(const LongCiphertext *A_secret,
+                           const matrix &B,
+                           size_t dim1, size_t dim2, size_t dim3,
+                           CKKSEncoder *encoder, Evaluator *evaluator)
+{
+    // we assume that A_secret has encoded
+    matrix Be(dim1 * dim2 * dim3);
+#pragma omp parallel for
+    for (size_t i = 0; i < dim2; i++)
+    {
+        for (size_t j = 0; j < dim1 * dim3; j++)
+        {
+            Be[i * dim1 * dim3 + j] = B[i * dim3 + j % dim3];
+        }
+    }
+
+    LongPlaintext lpt(matrix(Be.begin(), Be.begin() + dim1 * dim3), encoder);
+    LongCiphertext result = A_secret[0].multiply_plain(lpt, evaluator);
+#pragma omp parallel for
+    for (size_t i = 1; i < dim2; i++)
+    {
+        LongPlaintext tmp_lpt(matrix(Be.begin() + dim1 * dim3 * i, Be.begin() + dim1 * dim3 * (i + 1)), encoder);
+        LongCiphertext tmp_lct = A_secret[i].multiply_plain(tmp_lpt, evaluator);
+#pragma omp critical
+        {
+            result.add_inplace(tmp_lct, evaluator);
+        }
+    }
+    return result;
 }

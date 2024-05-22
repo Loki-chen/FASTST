@@ -1,7 +1,8 @@
-#include <module.h>
+#include <model.h>
 #define TEST
 
-class SecureLayerNorm1 {
+class SecureLayerNorm1
+{
     CKKSKey *alice;
     CKKSKey *bob;
     CKKSEncoder *encoder;
@@ -14,15 +15,17 @@ public:
                                                                      encoder(encoder_),
                                                                      evaluator(evaluator_) {}
 
-    void forward(LongCiphertext &attn_s, const std::vector<double> &input_a, const std::vector<double> &input_b) {
+    void forward(LongCiphertext &attn_s, const matrix &input_a, const matrix &input_b)
+    {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<> dist(-1, 1);
         size_t i, j;
 
         double ha1 = dist(gen), ha2 = dist(gen);
-        std::vector<double> ha1_xa(input_a.size());
-        for (i = 0; i < batch_size * d_module; i++) {
+        matrix ha1_xa(input_a.size());
+        for (i = 0; i < batch_size * d_module; i++)
+        {
             ha1_xa[i] = ha1 * input_a[i];
         }
         LongCiphertext ha2_div_ha1_secret_a(ha2 / ha1, alice, encoder);
@@ -53,16 +56,19 @@ public:
         // alice receive H2, and get x * gb
         auto xgb_plain = xha1_secret_a.decrypt(alice);
         auto xgb = xgb_plain.decode(encoder);
-        for (i = 0; i < batch_size * d_module; i++) {
+        for (i = 0; i < batch_size * d_module; i++)
+        {
             xgb[i] /= ha2;
         }
         double ka = dist(gen);
         auto mu_gb = mean(xgb, batch_size, d_module);
         auto sigma_gb = standard_deviation(xgb, mu_gb, batch_size, d_module);
-        std::vector<double> div_sigma_gb(batch_size * d_module);
-        std::vector<double> tmp1(batch_size * d_module);
-        for (i = 0; i < batch_size; i++) {
-            for (j = 0; j < d_module; j++) {
+        matrix div_sigma_gb(batch_size * d_module);
+        matrix tmp1(batch_size * d_module);
+        for (i = 0; i < batch_size; i++)
+        {
+            for (j = 0; j < d_module; j++)
+            {
                 tmp1[i * d_module + j] = (xgb[i * d_module + j] - mu_gb[i]) * ka;
                 div_sigma_gb[i * d_module + j] = 1 / (sigma_gb[i] * ka);
             }
@@ -72,11 +78,12 @@ public:
         // send H3 = {tmp1, tmp2_secret_a} to bob
 
         // bob receive H3
-        std::vector<double> gamma(batch_size * d_module);
-        std::vector<double> beta(batch_size * d_module);
+        matrix gamma(batch_size * d_module);
+        matrix beta(batch_size * d_module);
         random_mat(gamma);
         random_mat(beta);
-        for (i = 0; i < batch_size * d_module; i++) {
+        for (i = 0; i < batch_size * d_module; i++)
+        {
             tmp1[i] *= gamma[i];
         }
         LongPlaintext gamma_tmp1_plain(tmp1, encoder), beta_plain(beta, encoder);
@@ -91,13 +98,16 @@ public:
 
         auto attn_plain = attn_s.decrypt(bob);
         auto attn = attn_plain.decode(encoder);
-        for (i = 0; i < batch_size * d_module; i++) {
+        for (i = 0; i < batch_size * d_module; i++)
+        {
             attn[i] += (input_a[i] + input_b[i]);
         }
         auto mu = mean(attn, batch_size, d_module);
         auto sigma = standard_deviation(attn, mu, batch_size, d_module);
-        for (i = 0; i < batch_size; i++) {
-            for (j = 0; j < d_module; j++) {
+        for (i = 0; i < batch_size; i++)
+        {
+            for (j = 0; j < d_module; j++)
+            {
                 attn[i * d_module + j] -= mu[i];
                 attn[i * d_module + j] /= sigma[i];
                 attn[i * d_module + j] *= gamma[i * d_module + j];
@@ -112,7 +122,8 @@ public:
     }
 };
 
-int main() {
+int main()
+{
     EncryptionParameters parms(scheme_type::ckks);
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 60}));
@@ -122,7 +133,7 @@ int main() {
     CKKSKey *alice = new CKKSKey(1, context);
     CKKSKey *bob = new CKKSKey(2, context);
 
-    std::vector<double> attn(batch_size * d_module), input_a(batch_size * d_module), input_b(batch_size * d_module);
+    matrix attn(batch_size * d_module), input_a(batch_size * d_module), input_b(batch_size * d_module);
     random_mat(attn);
     random_mat(input_a);
     random_mat(input_b);
