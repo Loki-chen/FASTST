@@ -10,6 +10,7 @@ Transformer::Transformer(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evalua
 Transformer::~Transformer()
 {
     delete multi_head_attn;
+    // add dense layer: ref BOLT Linear2
     delete ln1;
     delete ffn;
     delete ln2;

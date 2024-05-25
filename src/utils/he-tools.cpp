@@ -5,6 +5,7 @@ CKKSKey::CKKSKey(int party_, SEALContext *context_) : party(party_), context(con
     assert(party == ALICE || party == BOB);
     keygen = new KeyGenerator(*context);
     keygen->create_public_key(public_key);
+    keygen->create_relin_keys(relin_keys);
     encryptor = new Encryptor(*context, public_key);
     decryptor = new Decryptor(*context, keygen->secret_key());
 }
@@ -274,7 +275,7 @@ LongCiphertext LongCiphertext::add(LongCiphertext &lct, Evaluator *evaluator) co
     return lcct;
 }
 
-void LongCiphertext::multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evaluator)
+void LongCiphertext::multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys)
 {
     if (len == 1)
     {
@@ -285,6 +286,10 @@ void LongCiphertext::multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evalu
         {
             Ciphertext ctemp;
             evaluator->multiply_plain(ct, pt, ctemp);
+            if (relin_keys != nullptr)
+            {
+                evaluator->relinearize_inplace(ctemp, *relin_keys);
+            }
             evaluator->rescale_to_next_inplace(ctemp);
             ctemp.scale() = scale;
             cipher_data.push_back(ctemp);
@@ -295,6 +300,10 @@ void LongCiphertext::multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evalu
         for (size_t i = 0; i < cipher_data.size(); i++)
         {
             evaluator->multiply_plain_inplace(cipher_data[i], lpt.plain_data[0]);
+            if (relin_keys != nullptr)
+            {
+                evaluator->relinearize_inplace(cipher_data[i], *relin_keys);
+            }
             evaluator->rescale_to_next_inplace(cipher_data[i]);
             cipher_data[i].scale() = scale;
         }
@@ -304,6 +313,10 @@ void LongCiphertext::multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evalu
         for (size_t i = 0; i < cipher_data.size(); i++)
         {
             evaluator->multiply_plain_inplace(cipher_data[i], lpt.plain_data[i]);
+            if (relin_keys != nullptr)
+            {
+                evaluator->relinearize_inplace(cipher_data[i], *relin_keys);
+            }
             evaluator->rescale_to_next_inplace(cipher_data[i]);
             cipher_data[i].scale() = scale;
         }
@@ -316,7 +329,7 @@ void LongCiphertext::multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evalu
     }
 }
 
-LongCiphertext LongCiphertext::multiply_plain(LongPlaintext &lpt, Evaluator *evaluator) const
+LongCiphertext LongCiphertext::multiply_plain(LongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys) const
 {
     LongCiphertext lct;
     lct.len = 0;
@@ -327,6 +340,10 @@ LongCiphertext LongCiphertext::multiply_plain(LongPlaintext &lpt, Evaluator *eva
         {
             Ciphertext ct;
             evaluator->multiply_plain(cipher_data[0], lpt.plain_data[i], ct);
+            if (relin_keys != nullptr)
+            {
+                evaluator->relinearize_inplace(ct, *relin_keys);
+            }
             evaluator->rescale_to_next_inplace(ct);
             ct.scale() = scale;
             lct.cipher_data.push_back(ct);
@@ -339,6 +356,10 @@ LongCiphertext LongCiphertext::multiply_plain(LongPlaintext &lpt, Evaluator *eva
         {
             Ciphertext ct;
             evaluator->multiply_plain(cipher_data[i], lpt.plain_data[0], ct);
+            if (relin_keys != nullptr)
+            {
+                evaluator->relinearize_inplace(ct, *relin_keys);
+            }
             evaluator->rescale_to_next_inplace(ct);
             ct.scale() = scale;
             lct.cipher_data.push_back(ct);
@@ -351,6 +372,10 @@ LongCiphertext LongCiphertext::multiply_plain(LongPlaintext &lpt, Evaluator *eva
         {
             Ciphertext ct;
             evaluator->multiply_plain(cipher_data[i], lpt.plain_data[i], ct);
+            if (relin_keys != nullptr)
+            {
+                evaluator->relinearize_inplace(ct, *relin_keys);
+            }
             evaluator->rescale_to_next_inplace(ct);
             ct.scale() = scale;
             lct.cipher_data.push_back(ct);

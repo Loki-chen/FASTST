@@ -1,18 +1,10 @@
 import numpy as np
 import math
-def testgeluerr(x):
-    gelu = 0.5000*x*(1+ math.tanh(math.sqrt(2/math.pi)* (x+ 0.04471* x**3) ))
-    seg5gelu = None
-    if x <= -5.075:
-        seg5gelu = 0
-    if -5.075 < x and x <= -1.414: # poor
-        seg5gelu = -0.568686678 -  0.529288810 * x  - 0.183509590* x**2 - 0.028070202 * x ** 3  -0.001597741 * x ** 4
-    if -1.414 < x and x < 1.414: # good! 
-        seg5gelu = 0.001193207 +  0.5 * x  + 0.385858026* x**2 + .0 * x ** 3  -0.045101361 * x ** 4
-    if 1.414 <= x and x < 5.075: # bad
-        seg5gelu = -0.438406187 + 1.340789252 * x - 0.087184212 * x ** 2 + 0.007334718 * x ** 3
-    if x >= 5.075:
-        seg5gelu =x 
+import time
+def gelu(x):
+    res = 0.5000*x*(1+ math.tanh(math.sqrt(2/math.pi)* (x+ 0.04471* x**3) ))
+    return res
+def bumbble_gelu(x):   
 
     seg4gelu = None
     if x <= -5.:
@@ -24,7 +16,22 @@ def testgeluerr(x):
     if x > 3:
         seg4gelu = x - 10e-5
 
-    return gelu, seg5gelu, seg4gelu
+    return seg4gelu
+
+def our_gelu(x):
+    seg5gelu = None
+    if x <= -5.075:
+        seg5gelu = 0
+    if -5.075 < x and x <= -1.414: # poor
+        seg5gelu = -0.568686678 -  0.529288810 * x  - 0.183509590* x**2 - 0.028070202 * x ** 3  -0.001597741 * x ** 4
+    if -1.414 < x and x < 1.414: # good! 
+        seg5gelu = 0.001193207 +  0.5 * x  + 0.385858026* x**2 + .0 * x ** 3  -0.045101361 * x ** 4
+    if 1.414 <= x and x < 5.075: # bad
+        seg5gelu = -0.438406187 + 1.340789252 * x - 0.087184212 * x ** 2 + 0.007334718 * x ** 3
+    if x >= 5.075:
+        seg5gelu =x 
+    return seg5gelu
+
 
 def Bolt_gelu(x):
     # x = truncate(x)
@@ -60,46 +67,56 @@ def Bolt_gelu(x):
     res[x < np.floor(-2.7 * 2**11)] = 0
     return res
 
-def sectionTest():
-    error1 = []
-    error2 = []
-    error3 = []
-    error4 = []
-    error5 = []
-    error6 = []
 
 
-    for i in np.arange(-5.076, -1.414):
-        gelu, seg5gelu, seg4gelu = testgeluerr(i)
-        error1.append(math.fabs(gelu - seg5gelu))
-        error2.append(math.fabs(gelu - seg4gelu))
+def truncate(x, bits=12):
+    return np.floor(x * 2 ** bits) / 2 ** bits
 
-    for i in np.arange(-1.414, 1.414):
+def ULP_error(x, y, scale):
+    fixed_x = x * 2 ** scale
+    fixed_y = y * 2 ** scale
+    
+    return int((fixed_x - fixed_y) if (fixed_x - fixed_y)  > 0 else (fixed_y - fixed_x) )
 
-        gelu, seg5gelu, seg4gelu = testgeluerr(i)
-        error3.append(math.fabs(gelu - seg5gelu))
-        error4.append(math.fabs(gelu - seg4gelu)) 
+def main():
 
-    for i in np.arange(1.414, 5.075):
-
-        gelu, seg5gelu, seg4gelu = testgeluerr(i)
-        error5.append(math.fabs(gelu - seg5gelu))
-        error6.append(math.fabs(gelu - seg4gelu))   
-
+    
+    MAX_error = 0
+    AVE_error = 0
+    total_err = 0
+    DIM = 128 * 3072
+    
+    time_a = 0
+    time_b = 0
+    
+    random_vector = np.random.uniform(-6, 6, size=DIM)
+    start = time.time()
+    for i in random_vector:
+        a= our_gelu(i)
+    temp_a = time.time() - start
+    
+    start_1 = time.time()
+    for i in random_vector:
+        b = gelu(i), 12
+    temp_b = time.time() - start_1
+    
+    for i in random_vector:
+        a= our_gelu(i)
+        b = gelu(i)
+        err = ULP_error(a, b, 12)
+        total_err += err
+        MAX_error = max(MAX_error, err)
         
-    
-    print('seg1(gelu&our):',error1)
-    # print('seg2(gelu&our):',error3)
-    # print('seg3(gelu&our):',error5)
+    AVE_error = total_err / DIM  
+      
 
-    print('seg1(gelu&bumblebee):',error2)
-    # print('seg2(gelu&bumblebee):', error4)
-    # print('seg3(gelu&bumblebee):', error6)
+    print('average ULP error',  AVE_error)
+    print('Max ULP error', MAX_error)
+    print('Number of test', DIM)
+    print('time_our', temp_a)
+    print('time_gelu', temp_b)
     
+main()
 
-     
-    
-    return error1, error2, error3, error4
-    
 
-sectionTest()
+
