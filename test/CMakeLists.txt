@@ -33,3 +33,7 @@ endmacro()
 
 add_test(mat)
 
+add_test(seal_parm)
+
+add_test(bfv_add)
+

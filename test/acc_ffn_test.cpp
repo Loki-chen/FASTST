@@ -10,7 +10,7 @@ typedef double (*activate_function)(double);
 
 inline double gelu_erf(double x) { return x / (1 + exp(NEG_SQRT_8_DIV_PI * (x + 0.047715 * x * x * x))); }
 
-inline double gelu_tanh(double dbl_x) { 0.5 * dbl_x * (1 + tanh(sqrt(2 / M_PI) * (dbl_x + 0.044715 * dbl_x * dbl_x * dbl_x))); }
+inline double gelu_tanh(double dbl_x) { return 0.5 * dbl_x * (1 + tanh(sqrt(2 / M_PI) * (dbl_x + 0.044715 * dbl_x * dbl_x * dbl_x))); }
 
 // if x <= -5.075 : seg5gelu = 0
 // if - 5.075 < x and x <= -1.414 : #poor
@@ -440,12 +440,12 @@ int main()
         // GELU function for verification
         double gelu_y = 0.5 * x1[i] * (1 + tanh(sqrt(2 / M_PI) * (x1[i] + 0.044715 * x1[i] * x1[i] * x1[i])));
     }
-    STOP_TIMER('gelu')
+    STOP_TIMER("gelu")
     START_TIMER
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int i = 0; i < dim; ++i)
     {
-        omp_set_num_threads(24);
+        // omp_set_num_threads(24);
         x1[i] = dist(gen);
         // GELU function for verification
         double approx_gelu_y = approx_gelu(x1[i]);

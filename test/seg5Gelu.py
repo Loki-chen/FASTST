@@ -101,6 +101,10 @@ def main():
     temp_b = time.time() - start_1
     
     for i in random_vector:
+        c = Bolt_gelu(i)
+    
+    
+    for i in random_vector:
         a= our_gelu(i)
         b = gelu(i)
         err = ULP_error(a, b, 12)
