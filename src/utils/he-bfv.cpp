@@ -27,11 +27,12 @@ BFVLongPlaintext::BFVLongPlaintext(const Plaintext &pt)
 BFVLongPlaintext::BFVLongPlaintext(uint64_t data, BatchEncoder *encoder)
 {
     // TODO value len =1, use the BFV batchencoder to encode the palaintext
-    // make each bfv_slot_count be the number,
     len = 1;
+    Plaintext pt;
+    vector<uint64_t> temp = {data};
+    encoder->encode(temp, pt);
+    plain_data.push_back(pt);
 }
-
-// BFVLongPlaintext::BFVLongPlaintext(IEnumerable<long> values, BatchEncoder *encoder)
 
 BFVLongPlaintext::BFVLongPlaintext(bfv_matrix data, BatchEncoder *encoder)
 {
@@ -96,12 +97,13 @@ BFVLongCiphertext::BFVLongCiphertext(const Ciphertext &ct)
 BFVLongCiphertext::BFVLongCiphertext(uint64_t data, BFVKey *party, BatchEncoder *encoder)
 {
     // TODO:
-    // len = 1;
-    // Plaintext pt;
-    // encoder->encode(data, pt);
-    // Ciphertext ct;
-    // party->encryptor->encrypt(pt, ct);
-    // cipher_data.push_back(ct);
+    len = 1;
+    Plaintext pt;
+    vector<uint64_t> temp = {data};
+    encoder->encode(temp, pt);
+    Ciphertext ct;
+    party->encryptor->encrypt(pt, ct);
+    cipher_data.push_back(ct);
 }
 
 BFVLongCiphertext::BFVLongCiphertext(const BFVLongPlaintext &lpt, BFVKey *party)
@@ -161,4 +163,50 @@ void BFVLongCiphertext::add_plain_inplace(BFVLongPlaintext &lpt, Evaluator *eval
         sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
         throw bfv_lenth_error(buf);
     }
+}
+
+
+
+BFVLongCiphertext add_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const {
+    {
+    LongCiphertext lct;
+    lct.len = 0;
+    if (len == 1)
+    {
+        lct.len = lpt.len;
+        for (size_t i = 0; i < lpt.plain_data.size(); i++)
+        {
+            Ciphertext ct;
+            evaluator->add_plain(cipher_data[0], lpt.plain_data[i], ct);
+            lct.cipher_data.push_back(ct);
+        }
+    }
+    else if (lpt.len == 1)
+    {
+        lct.len = len;
+        for (size_t i = 0; i < cipher_data.size(); i++)
+        {
+            Ciphertext ct;
+            evaluator->add_plain(cipher_data[i], lpt.plain_data[0], ct);
+            lct.cipher_data.push_back(ct);
+        }
+    }
+    else if (len == lpt.len)
+    {
+        lct.len = len;
+        for (size_t i = 0; i < cipher_data.size(); i++)
+        {
+            Ciphertext ct;
+            evaluator->add_plain(cipher_data[i], lpt.plain_data[i], ct);
+            lct.cipher_data.push_back(ct);
+        }
+    }
+    else
+    {
+        char buf[100];
+        sprintf(buf, "Length of LongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
+        throw lenth_error(buf);
+    }
+    return lct;
+}
 }

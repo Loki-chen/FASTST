@@ -10,4 +10,8 @@
 #define n_heads 12     // 影响不大
 #define ffn_dim 3072   // 影响不大
 
+
+
+
+
 #endif

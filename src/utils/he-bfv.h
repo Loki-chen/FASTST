@@ -91,7 +91,7 @@ public:
     BFVLongPlaintext decrypt(BFVKey *party) const;
 
     void add_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator);
-    // BFVLongCiphertext add_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
+    BFVLongCiphertext add_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
     // void add_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     // BFVLongCiphertext add(BFVLongCiphertext &lct, Evaluator *evaluator) const;
     // void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
