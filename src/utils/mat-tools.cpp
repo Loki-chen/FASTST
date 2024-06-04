@@ -65,6 +65,13 @@ void random_mat(matrix &mat, double min, double max, bool binomial)
     }
 }
 
+void random_bfv_mat(bfv_matrix &mat, size_t prime_mod)
+{
+    PRG128 prg;
+    // uint64_t *secret_share = new uint64_t[input_dim * output_dim];
+    prg.random_mod_p<uint64_t>(mat, mat.size(), prime_mod);
+}
+
 matrix zero_sum(size_t row, size_t column)
 {
     matrix mat(row * column);

@@ -2,11 +2,12 @@
 
 int main(int argc, const char **argv)
 {
-    EncryptionParameters parms(scheme_type::ckks);
-    parms.set_poly_modulus_degree(poly_modulus_degree);
-    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 60}));
+    EncryptionParameters parms(scheme_type::bfv);
+    parms.set_poly_modulus_degree(bfv_poly_modulus_degree);
+    parms.set_coeff_modulus(CoeffModulus::Create(bfv_poly_modulus_degree, bfv_coeff_bit_sizes));
+    parms.set_plain_modulus(bfv_plain_mod);
     SEALContext *context = new SEALContext(parms);
-    CKKSEncoder *encoder = new CKKSEncoder(*context);
+    BatchEncoder *encoder = new BatchEncoder(*context);
     Evaluator *evaluator = new Evaluator(*context);
     int party_ = argc > 1 ? 1 : 2;
     if (party_ == ALICE)
@@ -19,11 +20,11 @@ int main(int argc, const char **argv)
         std::cout << "Party: BOB"
                   << "\n";
     }
-    CKKSKey *party = new CKKSKey(party_, context);
+    BFVKey *party = new BFVKey(party_, context);
 
     IOPack *io_pack = new IOPack(party_);
     printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
-    matrix input(batch_size * d_module);
+    bfv_matrix input(batch_size * d_module);
     random_mat(input);
     LayerNorm *ln = new LayerNorm(party, encoder, evaluator, io_pack);
 
