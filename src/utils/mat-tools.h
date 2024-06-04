@@ -5,6 +5,7 @@
 #include <random>
 #include <vector>
 #include "he-tools.h"
+#include "prg.h"
 #include "io.h"
 #include "omp.h"
 
@@ -12,6 +13,7 @@ using std::cout;
 using std::vector;
 
 typedef vector<double> matrix;
+typedef vector<uint64_t> bfv_matrix;
 
 matrix matmul(const matrix &mat1, const matrix &mat2,
               size_t dim1, size_t dim2, size_t dim3, bool trans = false);

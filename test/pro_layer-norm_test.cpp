@@ -25,27 +25,31 @@ int main(int argc, const char **argv)
     IOPack *io_pack = new IOPack(party_);
     printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
     bfv_matrix input(batch_size * d_module);
-    random_mat(input);
-    LayerNorm *ln = new LayerNorm(party, encoder, evaluator, io_pack);
 
-    LongCiphertext attn_secret_b;
+    random_bfv_mat(input, bfv_plain_mod);
+
+    // TODO
+    // LayerNorm *ln = new LayerNorm(party, encoder, evaluator, io_pack);
+    INIT_TIMER;
+    START_TIMER;
+    io_pack->io->num_rounds = 0;
+    io_pack->io_rev->num_rounds = 0;
+
+    BFVLongCiphertext attn_secret_b;
     if (party_ == ALICE)
     {
-        LongCiphertext::recv(io_pack, &attn_secret_b, context);
+        BFVLongCiphertext::recv(io_pack, &attn_secret_b, context);
     }
     else if (party_ == BOB)
     {
-        matrix attn(batch_size * d_module);
-        random_mat(attn);
-        LongPlaintext attn_plain(attn, encoder);
-        LongCiphertext attn_s_b(attn_plain, party);
-        LongCiphertext::send(io_pack, &attn_s_b);
+        bfv_matrix attn(batch_size * d_module);
+        random_bfv_mat(attn, bfv_plain_mod);
+        BFVLongPlaintext attn_plain(attn, encoder);
+        BFVLongCiphertext attn_s_b(attn_plain, party);
+        BFVLongCiphertext::send(io_pack, &attn_s_b);
     }
-    io_pack->io->num_rounds = 0;
-    io_pack->io_rev->num_rounds = 0;
-    INIT_TIMER;
-    START_TIMER;
-    LongCiphertext result = ln->forward(attn_secret_b, input);
+    // TODO
+    // BFVLongCiphertext result = ln->forward(attn_secret_b, input);
     STOP_TIMER("LayerNorm");
     size_t comm = io_pack->get_comm();
     size_t rounds = io_pack->get_rounds();
@@ -67,7 +71,7 @@ int main(int argc, const char **argv)
     }
     std::cout << "rounds of communication: " << rounds << "\n";
 
-    delete ln;
+    // delete ln;
     delete io_pack;
     delete party;
     delete evaluator;

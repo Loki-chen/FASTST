@@ -3,6 +3,7 @@
 #define FAST_LAYER_NROM1_H__
 #include "protocol.h"
 #pragma once
+
 class LayerNorm : public Protocol
 {
 public:
@@ -11,4 +12,5 @@ public:
     ~LayerNorm() {}
     LongCiphertext forward(const LongCiphertext &attn, const matrix &input) const;
 };
+
 #endif

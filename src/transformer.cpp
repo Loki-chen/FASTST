@@ -22,4 +22,5 @@ LongCiphertext Transformer::forward(const matrix &input)
     LongCiphertext output2 = ln1->forward(output1, input);
     LongCiphertext output3 = ffn->forward(output2);
     return ln2->forward(output3, input);
+    return output1;
 }
