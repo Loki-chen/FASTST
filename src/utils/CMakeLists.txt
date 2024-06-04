@@ -1,3 +1,6 @@
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(cmake/source_of_randomness.cmake)
+
 
 
 find_package(SEAL 4.1.1 EXACT QUIET PATHS "${PROJECT_SOURCE_DIR}/build/" NO_DEFAULT_PATH)
@@ -18,6 +21,7 @@ if (NOT SEAL_FOUND)
     find_package(SEAL 4.1.1 EXACT REQUIRED PATHS "${PROJECT_SOURCE_DIR}/build/" NO_DEFAULT_PATH)
 endif()
 
+FIND_PACKAGE(GMP REQUIRED)
 
 
 FIND_PACKAGE( OpenMP REQUIRED)
@@ -32,8 +36,21 @@ add_library(FASTST-UTILS
     he-tools.cpp
     he-bfv.cpp
     mat-tools.cpp
-    io.cpp
-    
+    io.cpp 
+)
+
+target_compile_options(FASTST-UTILS
+PUBLIC
+    "-pthread;-maes;-msse4.1;-mavx;-mavx2;-faligned-new;-std=c++17;-O3;-Wno-parentheses-equality;-Wno-deprecated-declarations;-Wno-macro-redefined")
+
+if(USE_RANDOM_DEVICE)
+    target_compile_definitions(FASTST-UTILS PUBLIC EMP_USE_RANDOM_DEVICE=1)
+else(USE_RANDOM_DEVICE)
+    target_compile_options(FASTST-UTILS  PUBLIC "-mrdseed")
+endif(USE_RANDOM_DEVICE)
+
+target_include_directories(FASTST-UTILS
+     PUBLIC ${GMP_INCLUDE_DIR}
 )
 
 target_link_libraries(FASTST-UTILS
@@ -41,4 +58,5 @@ target_link_libraries(FASTST-UTILS
     SEAL::seal
     FASTST-SRC  
     OpenMP::OpenMP_CXX
+    ${GMP_LIBRARIES}
 )

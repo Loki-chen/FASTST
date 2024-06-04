@@ -7,5 +7,5 @@
 #include "utils/io.h"
 #include "utils/mat-tools.h"
 #include "utils/time-count.h"
-#include "utils/color_config.h"
+#include "utils/prg.h"
 #endif

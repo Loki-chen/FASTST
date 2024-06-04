@@ -92,12 +92,12 @@ public:
 
     void add_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator);
     BFVLongCiphertext add_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
-    // void add_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
-    // BFVLongCiphertext add(BFVLongCiphertext &lct, Evaluator *evaluator) const;
-    // void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
-    // BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
-    // static void send(IOPack *io_pack, BFVLongCiphertext *lct);
-    // static void recv(IOPack *io_pack, BFVLongCiphertext *lct, SEALContext *context);
+    void add_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
+    BFVLongCiphertext add(BFVLongCiphertext &lct, Evaluator *evaluator) const;
+    void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
+    BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
+    static void send(IOPack *io_pack, BFVLongCiphertext *lct);
+    static void recv(IOPack *io_pack, BFVLongCiphertext *lct, SEALContext *context);
 
     inline const parms_id_type parms_id() const noexcept
     {

@@ -1,5 +1,6 @@
 #include <model.h>
 #define TEST
+
 int main()
 {
 
@@ -14,37 +15,20 @@ int main()
     BFVKey *alice = new BFVKey(1, context);
     BFVKey *bob = new BFVKey(2, context);
 
-
-    // Batch test: matrix len <= slot count
-    vector<uint64_t> plain_vec;
+    bfv_matrix plain_vec;
     for (size_t i = 0; i < encoder->slot_count(); i++)
     {
         plain_vec.push_back(i);
     }
-    BFVLongPlaintext pt(plain_vec, encoder);  //encode
-    auto res = pt.decode(encoder);  //decode
-    BFVLongCiphertext ct(pt, alice);  // encrypt
-    BFVLongPlaintext pt_dec = ct.decrypt(alice); // decrypt
-    bfv_matrix res_dec = pt_dec.decode(encoder); 
-    for (size_t i = 0; i < 10; i++)
+
+    BFVLongPlaintext pt(plain_vec, encoder);
+    BFVLongCiphertext ct(pt, alice);
+    BFVLongCiphertext res = ct.multiply_plain(pt, evaluator);
+    BFVLongPlaintext dec_res = res.decrypt(alice);
+    bfv_matrix s = dec_res.decode(encoder);
+
+    for (size_t i = 0; i < encoder->slot_count(); i++)
     {
-        cout << res[i] << " ";
-        cout << res_dec[i] << " ";
+        std::cout << s[i] << " ";
     }
-
-    // How to enc and dec for a single data?  
-    // use a matrix with len = n. we just use the first slot.
-    uint64_t sing_data = 6 ;
-    BFVLongPlaintext single_pt(sing_data, encoder);
-    auto sing_res = single_pt.decode(encoder);
-
-    BFVLongCiphertext sing_ct(single_pt, bob);
-    BFVLongPlaintext sing_ct_dec = sing_ct.decrypt(bob);
-    bfv_matrix sing_ct_plain = sing_ct_dec.decode(encoder);
-    cout << sing_res[0] << " ";
-    cout << sing_ct_plain[0] << " ";
-
-
-
-    cout << "" << std::endl;
 }
