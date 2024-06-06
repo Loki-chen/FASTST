@@ -24,6 +24,8 @@ cmake --build  --config Debug --target all --
 
 This repository includes code from the following external repositories:
 
-[Microsoft/SEAL](https://github.com/microsoft/SEAL) for cryptographic tools.
+[Microsoft/SEAL](https://github.com/microsoft/SEAL) for cryptographic tools,
 
-[emp-toolkit/emp-tool](https://github.com/emp-toolkit/emp-tool) for Network IO
+[emp-toolkit/emp-tool](https://github.com/emp-toolkit/emp-tool) for Network IO,
+
+[Microsoft/EzPC/SCI](https://github.com/Loki-chen/EzPC/tree/master/SCI) for fixed-point basic operation.
