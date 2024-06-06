@@ -77,6 +77,14 @@ public:
     BFVLongPlaintext(uint64_t data, BatchEncoder *encoder); // TODO: len=1
     BFVLongPlaintext(bfv_matrix data, BatchEncoder *encoder);
     bfv_matrix decode(BatchEncoder *encoder) const;
+
+    inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
+    {
+        for (size_t i = 0; i < plain_data.size(); i++)
+        {
+            evaluator->mod_switch_to_inplace(plain_data[i], parms_id);
+        }
+    }
 };
 
 class BFVLongCiphertext
@@ -98,6 +106,14 @@ public:
     BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
     static void send(IOPack *io_pack, BFVLongCiphertext *lct);
     static void recv(IOPack *io_pack, BFVLongCiphertext *lct, SEALContext *context);
+
+    inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
+    {
+        for (size_t i = 0; i < cipher_data.size(); i++)
+        {
+            evaluator->mod_switch_to_inplace(cipher_data[i], parms_id);
+        }
+    }
 
     inline const parms_id_type parms_id() const noexcept
     {

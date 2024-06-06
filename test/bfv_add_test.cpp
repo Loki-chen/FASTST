@@ -1,103 +1,67 @@
 #include <model.h>
-
+#include "fixed_lib/fixed_lib.h"
 #define TEST
+
+inline uint64_t Saturate(uint32_t inp) { return (uint64_t)inp; }
+
+void cleartext_MatSub(uint64_t *A, const uint64_t *B, u_int64_t *C, uint32_t I,
+                      uint32_t J, uint32_t shrA, uint32_t shrB, uint32_t shrC,
+                      int32_t demote)
+{
+    uint32_t shiftA = log2(shrA);
+    uint32_t shiftB = log2(shrB);
+    uint32_t shiftC = log2(shrC);
+    uint32_t shift_demote = log2(demote);
+    for (int i = 0; i < I; i++)
+    {
+        for (int j = 0; j < J; j++)
+        {
+            uint64_t a = (uint64_t)A[i * J + j];
+            uint64_t b = (uint64_t)B[i * J + j];
+
+#ifdef DIV_RESCALING
+            a = a / (shrA * shrC);
+            b = b / (shrB * shrC);
+#else
+            a = a >> (shiftA + shiftC);
+            b = b >> (shiftB + shiftC);
+#endif
+
+            uint64_t c = a - b;
+
+#ifdef DIV_RESCALING
+            C[i * J + j] = Saturate(c / demote);
+#else
+            C[i * J + j] = Saturate(c >> shift_demote);
+#endif
+        }
+    }
+    return;
+}
 
 int main()
 {
+    int NL_ELL = 37;
+    uint64_t mask_x = (NL_ELL == 64 ? -1 : ((1ULL << NL_ELL) - 1));
+    // uint64_t ell_mask = (1ULL << 37) - 1; // 2 ** 37 -1
 
-    EncryptionParameters parms(scheme_type::bfv);
-    parms.set_poly_modulus_degree(bfv_poly_modulus_degree);
-    parms.set_coeff_modulus(CoeffModulus::Create(bfv_poly_modulus_degree, bfv_coeff_bit_sizes));
-    parms.set_plain_modulus(bfv_plain_mod);
-
-    SEALContext *context = new SEALContext(parms);
-    BatchEncoder *encoder = new BatchEncoder(*context);
-    Evaluator *evaluator = new Evaluator(*context);
-    BFVKey *alice = new BFVKey(1, context);
-    BFVKey *bob = new BFVKey(2, context);
-
-    bfv_matrix plain_vec;
-    for (size_t i = 0; i < encoder->slot_count(); i++)
-    {
-        plain_vec.push_back(i);
-    }
-
-    BFVLongPlaintext pt(plain_vec, encoder);
-    BFVLongCiphertext ct(pt, alice);
-    BFVLongCiphertext res = ct.multiply_plain(pt, evaluator);
-    BFVLongPlaintext dec_res = res.decrypt(alice);
-    bfv_matrix s = dec_res.decode(encoder);
-
-    // for (size_t i = 0; i < encoder->slot_count(); i++)
-    // {
-    //     std::cout << s[i] << " ";
-    // }
-
-    // sci::PRG128 prg;
-    // uint64_t *secret_share = new uint64_t[2 * 2];
-    // prg.random_mod_p<uint64_t>(secret_share, 4, 536903681);
-    // for (size_t i = 0; i < 4; i++)
-    // {
-    //     std::cout << secret_share[i] << " ";
-    // }
-
-    // bfv_matrix mat(2 * 2);
-
-    // size_t size = mat.size();
-    // uint64_t *rand_mod_P_num = new uint64_t[size];
-    // prg.random_mod_p<uint64_t>(rand_mod_P_num, size, 536903681);
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     mat[i] = rand_mod_P_num[i];
-    // }
-    // for (size_t i = 0; i < 4; i++)
-    // {
-    //     std::cout << mat[i] << " ";
-    // }
+    int length = 2 * 50;
+    uint64_t *random_share = new uint64_t[length];
     sci::PRG128 prg;
-    // size_t dim = 1;
-    // uint64_t *ha1 = new uint64_t[dim];
-    // prg2.random_mod_p<uint64_t>(ha1, dim * sizeof(uint64_t), 536903681);
-    // for (size_t i = 0; i < dim; i++)
-    // {
-    //     std::cout << " data: " << ha1[i] << " !";
-    // }
-
-    bfv_matrix input(batch_size * d_module);
-//     uint64_t bfv_plain_mod1 = 536903681;
-#pragma omp parallel for
-    for (size_t i = 0; i < batch_size * d_module; i++)
+    prg.random_data(random_share, length * sizeof(uint64_t));
+    for (int i = 0; i < 10; i++)
     {
-        input[i] = i * 1025 % bfv_plain_mod;
+        std::cout << random_share[i] << " ";
     }
 
-    //     uint64_t *ha11 = new uint64_t[16];
-    //     prg.random_mod_p<uint64_t>(ha11, 16, bfv_plain_mod1);
-
-    //     uint64_t *ha2 = new uint64_t[16];
-    //     prg.random_mod_p<uint64_t>(ha11, 16, bfv_plain_mod1);
-
-    //     bfv_matrix ha11_xa(input.size());
-    // #pragma omp parallel for
-    //     for (size_t i = 0; i < 16; i++)
-    //     {
-    //         ha11_xa[i] = (ha11[i] * input[i]) % bfv_plain_mod1;
-    //     }
-
-    uint64_t *ha1 = new uint64_t[batch_size * d_module];
-    uint64_t *ha2 = new uint64_t[batch_size * d_module];
-    prg.random_mod_p<uint64_t>(ha1, batch_size * d_module, bfv_plain_mod);
-    prg.random_mod_p<uint64_t>(ha2, batch_size * d_module, bfv_plain_mod);
-
-    bfv_matrix ha1_xa(input.size());
-
-    for (size_t i = 0; i < batch_size * d_module; i++)
-    {
-        ha1_xa[i] = ModMult(ha1[i], input[i], bfv_plain_mod);
-    }
-    for (size_t i = 0; i < 16; i++)
-    {
-        std::cout << ha1_xa[i] << " ";
-    }
     std::cout << "\n";
+    std::cout << "mask_x:" << mask_x << " \n";
+    for (int i = 0; i < length; i++)
+    {
+        random_share[i] &= mask_x;
+    }
+    for (int i = 0; i < 10; i++)
+    {
+        std::cout << random_share[i] << " ";
+    }
 }

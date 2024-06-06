@@ -1,8 +1,8 @@
 
 
 add_library(FASTST-FIXED
-    fixed_lib.cpp
-
+    fixed-point.cpp
+    bool-data.cpp
 )
 
 

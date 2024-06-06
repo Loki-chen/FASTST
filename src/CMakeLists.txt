@@ -2,6 +2,7 @@ include_directories(${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(utils)
 add_subdirectory(protocols)
+add_subdirectory(ezpclib)
 add_library(FASTST-SRC
   transformer.cpp
 )
@@ -11,6 +12,7 @@ target_link_libraries(FASTST-SRC
     PUBLIC
     FASTST-UTILS
     FASTST-PROTOCOLS
+    FASTST-FIXED
 )
 
 target_include_directories(FASTST-SRC
