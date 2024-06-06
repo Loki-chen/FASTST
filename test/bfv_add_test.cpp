@@ -1,5 +1,5 @@
 #include <model.h>
-#include "fixed_lib/fixed_lib.h"
+#include "ezpc_scilib/fixed-point.h"
 #define TEST
 
 inline uint64_t Saturate(uint32_t inp) { return (uint64_t)inp; }

@@ -27,9 +27,9 @@
 #ifndef LIBGARBLE_AES_NI_H
 #define LIBGARBLE_AES_NI_H
 
-#if !defined(__AES__)
-#error "AES-NI instructions not enabled"
-#endif
+// #if !defined(__AES__)
+// #error "AES-NI instructions not enabled"
+// #endif
 
 #include <immintrin.h>
 #include <stdlib.h>

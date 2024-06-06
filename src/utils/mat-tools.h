@@ -5,7 +5,7 @@
 #include <random>
 #include <vector>
 #include "he-tools.h"
-#include "prg.h"
+#include "ezpc_scilib/prg.h"
 #include "io.h"
 #include "omp.h"
 

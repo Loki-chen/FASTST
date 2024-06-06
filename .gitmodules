@@ -2,5 +2,6 @@
 	path = extern/SEAL
 	url = https://github.com/Microsoft/SEAL
 
-
-# https://github.com/emp-toolkit/emp-tool.git
+[submodule "extern/EMP-TOOL"]
+	path = extern/EMP-TOOL
+	url = https://github.com/emp-toolkit/emp-tool.git
