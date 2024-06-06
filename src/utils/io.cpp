@@ -70,7 +70,7 @@ NetIO::NetIO(const char *address, int port, bool full_buffer, bool quiet)
     }
     this->FBF_mode = full_buffer;
     if (!quiet)
-        std::cout << "connected\n";
+        cout << "connected\n";
 }
 
 NetIO::~NetIO()
@@ -96,14 +96,17 @@ void NetIO::sync()
     }
 }
 
-void NetIO::send_data(const void *data, int len)
+void NetIO::send_data(const void *data, int len, bool count_comm)
 {
-    if (last_call != LastCall::Send)
+    if (count_comm)
     {
-        num_rounds++;
-        last_call = LastCall::Send;
+        if (last_call != LastCall::Send)
+        {
+            num_rounds++;
+            last_call = LastCall::Send;
+        }
+        counter += len;
     }
-    counter += len;
     int sent = 0;
     while (sent < len)
     {
@@ -120,12 +123,15 @@ void NetIO::send_data(const void *data, int len)
     has_sent = true;
 }
 
-void NetIO::recv_data(void *data, int len)
+void NetIO::recv_data(void *data, int len, bool count_comm)
 {
-    if (last_call != LastCall::Recv)
+    if (count_comm)
     {
-        num_rounds++;
-        last_call = LastCall::Recv;
+        if (last_call != LastCall::Recv)
+        {
+            num_rounds++;
+            last_call = LastCall::Recv;
+        }
     }
     if (has_sent)
     {
@@ -147,7 +153,7 @@ void NetIO::recv_data(void *data, int len)
     }
 }
 
-IOPack::IOPack(int party, std::string address)
+IOPack::IOPack(int party, string address)
 {
     if (party == ALICE)
     {
@@ -167,14 +173,14 @@ IOPack::~IOPack()
     delete io_rev;
 }
 
-void IOPack::send_data(const void *data, int len)
+void IOPack::send_data(const void *data, int len, bool count_comm)
 {
     io->send_data(data, len);
     io->last_call = LastCall::Send;
     io->last_call = LastCall::Send;
 }
 
-void IOPack::recv_data(void *data, int len)
+void IOPack::recv_data(void *data, int len, bool count_comm)
 {
     io_rev->recv_data(data, len);
     io->last_call = LastCall::Recv;

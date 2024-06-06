@@ -1,12 +1,10 @@
 #ifndef FAST_IO_H__
 #define FAST_IO_H__
-#pragma once
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <string>
-using std::string;
 
 #include <arpa/inet.h>
 #include <emmintrin.h>
@@ -16,6 +14,10 @@ using std::string;
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+using std::cout;
+using std::string;
+
 typedef __m128i block128;
 typedef __m256i block256;
 
@@ -85,8 +87,8 @@ public:
     NetIO(const char *address, int port, bool full_buffer = false, bool quiet = false);
     ~NetIO();
     void sync();
-    void send_data(const void *data, int len);
-    void recv_data(void *data, int len);
+    void send_data(const void *data, int len, bool count_comm = true);
+    void recv_data(void *data, int len, bool count_comm = true);
 
     inline void set_FBF()
     {
@@ -126,8 +128,8 @@ public:
 
     IOPack(int party, std::string address = "127.0.0.1");
     ~IOPack();
-    void send_data(const void *data, int len);
-    void recv_data(void *data, int len);
+    void send_data(const void *data, int len, bool count_comm = true);
+    void recv_data(void *data, int len, bool count_comm = true);
 
     inline uint64_t get_rounds()
     {
@@ -136,11 +138,9 @@ public:
         return io->num_rounds;
     }
 
-    inline uint64_t
-    get_comm()
+    inline uint64_t get_comm()
     {
         return io->counter + io_rev->counter;
     }
 };
-
 #endif

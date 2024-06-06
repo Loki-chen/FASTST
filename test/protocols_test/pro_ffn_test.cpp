@@ -8,7 +8,7 @@ int main(int argc, const char **argv)
     SEALContext *context = new SEALContext(parms);
     CKKSEncoder *encoder = new CKKSEncoder(*context);
     Evaluator *evaluator = new Evaluator(*context);
-    int party_ = argc > 1 ? 1 : 2;
+    int party_ = argc > 1 ? 2 : 1;
     if (party_ == ALICE)
     {
         std::cout << "Party: ALICE"
@@ -44,8 +44,9 @@ int main(int argc, const char **argv)
     START_TIMER;
     ffn->forward(ln1_secret_a);
     STOP_TIMER("Feed Forward");
+
     size_t comm = io_pack->get_comm();
-    size_t rounds = io_pack->get_rounds() / n_heads;
+    size_t rounds = io_pack->get_rounds(); // / n_heads;
     if (comm < 1024)
     {
         printf("data size of communication: %ld B\n", comm);
