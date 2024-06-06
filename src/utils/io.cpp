@@ -153,36 +153,22 @@ void NetIO::recv_data(void *data, int len, bool count_comm)
     }
 }
 
-IOPack::IOPack(int party, string address)
+IOPack::IOPack(int party, int port, std::string address = "127.0.0.1")
 {
-    if (party == ALICE)
-    {
-        this->io = new NetIO(nullptr, ALICE_SEND_PORT, false, true);
-        this->io_rev = new NetIO(nullptr, BOB_SEND_PORT);
-    }
-    else
-    {
-        this->io_rev = new NetIO(address.c_str(), ALICE_SEND_PORT, false, true);
-        this->io = new NetIO(address.c_str(), BOB_SEND_PORT);
-    }
+    this->party = party;
+    this->port = port;
+    this->io =
+        new NetIO(party == 1 ? nullptr : address.c_str(), port, false, false);
+    this->io_rev = new NetIO(party == 1 ? nullptr : address.c_str(),
+                             port + REV_PORT_OFFSET, false, true);
+    this->io_GC = new NetIO(party == 1 ? nullptr : address.c_str(),
+                            port + GC_PORT_OFFSET, true, true);
+    this->io_GC->flush();
 }
 
 IOPack::~IOPack()
 {
     delete io;
     delete io_rev;
-}
-
-void IOPack::send_data(const void *data, int len, bool count_comm)
-{
-    io->send_data(data, len);
-    io->last_call = LastCall::Send;
-    io->last_call = LastCall::Send;
-}
-
-void IOPack::recv_data(void *data, int len, bool count_comm)
-{
-    io_rev->recv_data(data, len);
-    io->last_call = LastCall::Recv;
-    io->last_call = LastCall::Recv;
+    delete io_GC;
 }

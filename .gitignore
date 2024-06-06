@@ -1,6 +1,6 @@
 .vscode
 build
-extern/
+# extern/
 data/
 Protocols.md
 Problem.md

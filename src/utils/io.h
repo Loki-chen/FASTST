@@ -15,6 +15,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define GC_PORT_OFFSET 100
+#define REV_PORT_OFFSET 50
+
 using std::cout;
 using std::string;
 
@@ -22,7 +25,6 @@ typedef __m128i block128;
 typedef __m256i block256;
 
 #include <party.h>
-
 const static int NETWORK_BUFFER_SIZE = 1024 * 16; // Should change depending on the network
 
 template <typename T>
@@ -87,15 +89,12 @@ public:
     NetIO(const char *address, int port, bool full_buffer = false, bool quiet = false);
     ~NetIO();
     void sync();
-    void send_data(const void *data, int len, bool count_comm = true);
-    void recv_data(void *data, int len, bool count_comm = true);
 
     inline void set_FBF()
     {
         flush();
         setvbuf(stream, buffer, _IOFBF, NETWORK_BUFFER_SIZE);
     }
-
     inline void set_NBF()
     {
         flush();
@@ -118,6 +117,9 @@ public:
     {
         fflush(stream);
     }
+
+    void send_data(const void *data, int len, bool count_comm = true);
+    void recv_data(void *data, int len, bool count_comm = true);
 };
 
 class IOPack
@@ -125,22 +127,28 @@ class IOPack
 public:
     NetIO *io;
     NetIO *io_rev;
+    NetIO *io_GC;
+    std::string address;
+    int party, port;
 
-    IOPack(int party, std::string address = "127.0.0.1");
+    IOPack(int party, int port, std::string address = "127.0.0.1");
     ~IOPack();
-    void send_data(const void *data, int len, bool count_comm = true);
-    void recv_data(void *data, int len, bool count_comm = true);
 
     inline uint64_t get_rounds()
     {
         // no need to count io_rev->num_rounds
         // as io_rev is only used in parallelwith io
-        return io->num_rounds;
+        return io->num_rounds + io_GC->num_rounds;
     }
 
     inline uint64_t get_comm()
     {
-        return io->counter + io_rev->counter;
+        return io->counter + io_rev->counter + io_GC->counter;
     }
 };
+
+class OTPack
+{
+};
+
 #endif

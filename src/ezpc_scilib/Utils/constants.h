@@ -34,8 +34,7 @@ namespace sci
     const static int AES_BATCH_SIZE = 2048;
     // const static int AES_BATCH_SIZE = 256;
     const static int HASH_BUFFER_SIZE = 1024 * 8;
-    const static int NETWORK_BUFFER_SIZE =
-        1024 * 16; // Should change depending on the network
+
     const static int FILE_BUFFER_SIZE = 1024 * 16;
     const static int CHECK_BUFFER_SIZE = 1024 * 8;
 
@@ -43,21 +42,6 @@ namespace sci
     // const static int PUBLIC = 0;
     // const static int ALICE = 1;
     // const static int BOB = 2;
-
-#ifdef SCI_HE
-    const std::map<int32_t, uint64_t> default_prime_mod{
-        {32, 4293918721},
-        {33, 8585084929},
-        {34, 17171218433},
-        {35, 34359214081},
-        {36, 68686184449},
-        {37, 137352314881},
-        {38, 274824036353},
-        {39, 549753716737},
-        {40, 1099480956929},
-        {41, 2198100901889},
-    };
-#endif
 
     const static uint64_t WH_Code[256][4] = {
         {0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
