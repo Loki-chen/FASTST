@@ -11,7 +11,7 @@ class FFN : public Protocol
 
 public:
     FFN(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator,
-        IOPack *io_pack) : Protocol(party, encoder, evaluator, io_pack) {}
+        sci::NetIO *io) : Protocol(party, encoder, evaluator, io) {}
     ~FFN() {}
     LongCiphertext forward(const LongCiphertext &ln1);
 };

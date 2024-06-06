@@ -10,7 +10,7 @@ matrix Attention::forward(const matrix &input) const
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(-1, 1);
-    if (party->party == ALICE)
+    if (party->party == sci::ALICE)
     {
 #ifdef LOG
         INIT_TIMER
@@ -34,14 +34,14 @@ matrix Attention::forward(const matrix &input) const
         auto ra_xa_WVa = matmul(input, WV, batch_size, d_module, d_k);
         LongCiphertext ra_secret_a(ra, party, encoder);
         // send H1 = {ra_xa_WIa, ra_xa, ra_WIa, [ra]_a} to bob, where I = Q, K, V
-        send_mat(io_pack, &ra_xa_WQa);
-        send_mat(io_pack, &ra_xa_WKa);
-        send_mat(io_pack, &ra_xa_WVa);
-        send_mat(io_pack, &ra_xa);
-        send_mat(io_pack, &WQ);
-        send_mat(io_pack, &WK);
-        send_mat(io_pack, &WV);
-        LongCiphertext::send(io_pack, &ra_secret_a);
+        send_mat(io, &ra_xa_WQa);
+        send_mat(io, &ra_xa_WKa);
+        send_mat(io, &ra_xa_WVa);
+        send_mat(io, &ra_xa);
+        send_mat(io, &WQ);
+        send_mat(io, &WK);
+        send_mat(io, &WV);
+        LongCiphertext::send(io, &ra_secret_a);
 
         /*
             alice receive H2 = {raQ_sec_a, raK_sec_a, rb1_square_secret_b}, and get Q/rs1, K/rs1, [rb1]_s
@@ -49,9 +49,9 @@ matrix Attention::forward(const matrix &input) const
             2. generate Zc, compute [Zs]_s = [Z]_s - Zc, exp(Zc)
         */
         LongCiphertext raQ_sec_a, raK_sec_a, rb1_square_secret_b;
-        LongCiphertext::recv(io_pack, &raQ_sec_a, party->context);
-        LongCiphertext::recv(io_pack, &raK_sec_a, party->context);
-        LongCiphertext::recv(io_pack, &rb1_square_secret_b, party->context);
+        LongCiphertext::recv(io, &raQ_sec_a, party->context);
+        LongCiphertext::recv(io, &raK_sec_a, party->context);
+        LongCiphertext::recv(io, &rb1_square_secret_b, party->context);
         LongPlaintext raQ_div_rb1_plain = raQ_sec_a.decrypt(party);
         LongPlaintext raK_div_rb1_plain = raK_sec_a.decrypt(party);
         matrix Q_div_rb1 = raQ_div_rb1_plain.decode(encoder);
@@ -98,8 +98,8 @@ matrix Attention::forward(const matrix &input) const
         LongPlaintext eScore_a_plain(eScore_a, encoder);
         LongCiphertext eScore_a_secret_a_(eScore_a_plain, party);
         // send H3 = {Score_b_secret_b, eScore_a_secret_a} to bob
-        LongCiphertext::send(io_pack, &Score_b_secret_b);
-        LongCiphertext::send(io_pack, &eScore_a_secret_a_);
+        LongCiphertext::send(io, &Score_b_secret_b);
+        LongCiphertext::send(io, &eScore_a_secret_a_);
 
         /*
             alice receive H4 = {eScore_a_secret_a, eScore_b, raV_sec_a}, and get rb2 * exp(Score) + O,
@@ -110,9 +110,9 @@ matrix Attention::forward(const matrix &input) const
         */
         LongCiphertext eScore_a_secret_a, raV_sec_a;
         matrix eScore_b(batch_size * batch_size);
-        LongCiphertext::recv(io_pack, &eScore_a_secret_a, party->context);
-        recv_mat(io_pack, &eScore_b);
-        LongCiphertext::recv(io_pack, &raV_sec_a, party->context);
+        LongCiphertext::recv(io, &eScore_a_secret_a, party->context);
+        recv_mat(io, &eScore_b);
+        LongCiphertext::recv(io, &raV_sec_a, party->context);
 
         LongPlaintext rs2_expScore_plain = eScore_a_secret_a.decrypt(party);
         auto rs2_expScore = rs2_expScore_plain.decode(encoder);
@@ -171,14 +171,14 @@ matrix Attention::forward(const matrix &input) const
             ra_WKa(d_module * d_k),
             ra_WVa(d_module * d_k);
         LongCiphertext ra_secret_a;
-        recv_mat(io_pack, &ra_xa_WQa);
-        recv_mat(io_pack, &ra_xa_WKa);
-        recv_mat(io_pack, &ra_xa_WVa);
-        recv_mat(io_pack, &ra_xa);
-        recv_mat(io_pack, &ra_WQa);
-        recv_mat(io_pack, &ra_WKa);
-        recv_mat(io_pack, &ra_WVa);
-        LongCiphertext::recv(io_pack, &ra_secret_a, party->context);
+        recv_mat(io, &ra_xa_WQa);
+        recv_mat(io, &ra_xa_WKa);
+        recv_mat(io, &ra_xa_WVa);
+        recv_mat(io, &ra_xa);
+        recv_mat(io, &ra_WQa);
+        recv_mat(io, &ra_WKa);
+        recv_mat(io, &ra_WVa);
+        LongCiphertext::recv(io, &ra_secret_a, party->context);
         auto cal_raI_A = [](matrix input_b, matrix WIb,
                             matrix ra_xa, matrix ra_WIa, matrix ra_xa_WIa,
                             LongCiphertext ra_secret_a,
@@ -217,9 +217,9 @@ matrix Attention::forward(const matrix &input) const
         raK_sec_a.multiply_plain_inplace(div_rb1_plain, evaluator);
 
         // send H2 = {raQ_sec_a, raK_sec_a, rb1_square_secret_b} to alice
-        LongCiphertext::send(io_pack, &raQ_sec_a);
-        LongCiphertext::send(io_pack, &raK_sec_a);
-        LongCiphertext::send(io_pack, &rb1_square_secret_b);
+        LongCiphertext::send(io, &raQ_sec_a);
+        LongCiphertext::send(io, &raK_sec_a);
+        LongCiphertext::send(io, &rb1_square_secret_b);
 
         /*
             bob receive H3, and get Score_b, [exp(Score_c)]_a
@@ -230,8 +230,8 @@ matrix Attention::forward(const matrix &input) const
             3. output = r / (Db * Rb^T)
         */
         LongCiphertext Score_b_secret_b, eScore_a_secret_a;
-        LongCiphertext::recv(io_pack, &Score_b_secret_b, party->context);
-        LongCiphertext::recv(io_pack, &eScore_a_secret_a, party->context);
+        LongCiphertext::recv(io, &Score_b_secret_b, party->context);
+        LongCiphertext::recv(io, &eScore_a_secret_a, party->context);
         LongPlaintext eScore_b_plain = Score_b_secret_b.decrypt(party);
         matrix eScore_b = eScore_b_plain.decode(encoder);
         double rb2 = dist(gen);
@@ -276,9 +276,9 @@ matrix Attention::forward(const matrix &input) const
             for (j = 0; j < d_k; j++)
                 output[i * d_k + j] = rb2 / (Db[i] * Rb[j]);
         // send H4 = {eScore_a_secret_a, eScore_b, raV_sec_a} to alice
-        LongCiphertext::send(io_pack, &eScore_a_secret_a);
-        send_mat(io_pack, &eScore_b);
-        LongCiphertext::send(io_pack, &raV_sec_a);
+        LongCiphertext::send(io, &eScore_a_secret_a);
+        send_mat(io, &eScore_b);
+        LongCiphertext::send(io, &raV_sec_a);
 #ifdef LOG
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
@@ -290,12 +290,12 @@ matrix Attention::forward(const matrix &input) const
 }
 
 Multi_Head_Attention::Multi_Head_Attention(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator,
-                                           IOPack *io_pack) : Protocol(party, encoder, evaluator, io_pack)
+                                           sci::NetIO *io) : Protocol(party, encoder, evaluator, io)
 {
     attns = new Attention *[n_heads];
     for (int i = 0; i < n_heads; i++)
     {
-        attns[i] = new Attention(party, encoder, evaluator, io_pack, i);
+        attns[i] = new Attention(party, encoder, evaluator, io, i);
     }
 }
 
@@ -327,17 +327,17 @@ LongCiphertext Multi_Head_Attention::forward(const matrix &input) const
     }
 
     LongCiphertext output_secret;
-    if (party->party == ALICE)
+    if (party->party == sci::ALICE)
     {
-        LongCiphertext::recv(io_pack, &output_secret, party->context);
+        LongCiphertext::recv(io, &output_secret, party->context);
     }
     else
     {
         LongCiphertext output_secret_b(
             LongPlaintext(output, encoder),
             party);
-        LongCiphertext::send(io_pack, &output_secret_b);
+        LongCiphertext::send(io, &output_secret_b);
     }
-    // io_pack->io->num_rounds /= 12;
+    // io->io->num_rounds /= 12;
     return output_secret;
 }

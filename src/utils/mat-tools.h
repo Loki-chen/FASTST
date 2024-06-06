@@ -5,8 +5,8 @@
 #include <random>
 #include <vector>
 #include "he-tools.h"
-// #inc
-#include "io.h"
+#include "ezpc_scilib/ezpc_utils.h" // prg.h & io &
+
 #include "omp.h"
 
 using std::cout;
@@ -33,14 +33,14 @@ LongCiphertext RFCP_matmul(const LongCiphertext *A_secret, const matrix &B,
                            size_t dim1, size_t dim2, size_t dim3,
                            CKKSEncoder *encoder, Evaluator *evaluator);
 
-inline void send_mat(IOPack *io_pack, matrix *mat)
+inline void send_mat(sci::NetIO *io, matrix *mat, bool count_comm = true)
 {
-    io_pack->send_data(mat->data(), mat->size() * sizeof(double));
+    io->send_data(mat->data(), mat->size() * sizeof(double), count_comm);
 }
 
-inline void recv_mat(IOPack *io_pack, matrix *mat)
+inline void recv_mat(sci::NetIO *io, matrix *mat, bool count_comm = true)
 {
-    io_pack->recv_data(mat->data(), mat->size() * sizeof(double));
+    io->recv_data(mat->data(), mat->size() * sizeof(double), count_comm);
 }
 
 #endif

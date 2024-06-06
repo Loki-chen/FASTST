@@ -5,11 +5,8 @@
 #include <sstream>
 #include <string>
 
-#include <party.h>
 #include <seal/seal.h>
-
-#include "io.h"
-
+#include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
 using std::string;
 using std::vector;
 using namespace seal;
@@ -83,8 +80,8 @@ public:
     void multiply_plain_inplace(LongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
     LongCiphertext multiply_plain(LongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
 
-    static void send(IOPack *io_pack, LongCiphertext *lct, bool count_comm = true);
-    static void recv(IOPack *io_pack, LongCiphertext *lct, SEALContext *context, bool count_comm = true);
+    static void send(sci::NetIO *io, LongCiphertext *lct, bool count_comm = true);
+    static void recv(sci::NetIO *io, LongCiphertext *lct, SEALContext *context, bool count_comm = true);
 
     inline void rescale_to_next_inplace(Evaluator *evaluator)
     {

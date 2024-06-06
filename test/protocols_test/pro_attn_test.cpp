@@ -9,24 +9,29 @@ int main(int argc, const char **argv)
     CKKSEncoder *encoder = new CKKSEncoder(*context);
     Evaluator *evaluator = new Evaluator(*context);
     int party_ = argc > 1 ? 2 : 1;
-    if (party_ == ALICE)
+    if (party_ == sci::ALICE)
     {
         std::cout << "Party: ALICE"
                   << "\n";
     }
-    else if (party_ == BOB)
+    else if (party_ == sci::BOB)
     {
         std::cout << "Party: BOB"
                   << "\n";
     }
     CKKSKey *party = new CKKSKey(party_, context);
 
-    IOPack *io_pack = new IOPack(party_);
+    sci::IOPack *io_pack = new sci::IOPack(party_, 32000);
+    sci::NetIO *io = io_pack->io;
+    sci::NetIO *io_rev = io_pack->io_rev;
+
     printf("batch size:       %d\nd_module:         %d\nnumber of heads:  %d\n", batch_size, d_module, n_heads);
     matrix input(batch_size * d_module);
     random_mat(input, 0, 0.01);
+    io->num_rounds = 0;
+    io_rev->num_rounds = 0;
     // Attention *attn = new Attention(party, context, io_pack, input, d_module, d_k, 0);
-    Multi_Head_Attention *attn = new Multi_Head_Attention(party, encoder, evaluator, io_pack);
+    Multi_Head_Attention *attn = new Multi_Head_Attention(party, encoder, evaluator, io);
 
     LongCiphertext result;
     INIT_TIMER;
