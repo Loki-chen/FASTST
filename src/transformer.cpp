@@ -1,9 +1,13 @@
 #include "transformer.h"
 Transformer::Transformer(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator, sci::NetIO *io)
 {
+
     this->multi_head_attn = new Multi_Head_Attention(party, encoder, evaluator, io);
+
     this->ln1 = new LayerNorm(party, encoder, evaluator, io);
+
     this->ffn = new FFN(party, encoder, evaluator, io);
+
     this->ln2 = new LayerNorm(party, encoder, evaluator, io);
 }
 

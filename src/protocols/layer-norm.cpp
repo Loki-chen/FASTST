@@ -5,7 +5,7 @@ LongCiphertext LayerNorm::forward(const LongCiphertext &attn, const matrix &inpu
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(-1, 1);
     size_t i, j;
-
+    size_t total_comm = 0;
     if (party->party == sci::ALICE)
     {
         double ha1 = dist(gen), ha2 = dist(gen), ka = dist(gen);
@@ -59,6 +59,8 @@ LongCiphertext LayerNorm::forward(const LongCiphertext &attn, const matrix &inpu
         LongCiphertext::send(io, &tmp2_secret_a);
 #ifdef LOG
         STOP_TIMER("Layer Norm")
+        total_comm += io->counter;
+        std::cout << "Layer Norm Send data " << total_comm << " Bytes. \n";
 #endif
         return LongCiphertext();
     }
@@ -115,6 +117,8 @@ LongCiphertext LayerNorm::forward(const LongCiphertext &attn, const matrix &inpu
         ln_secret_a.add_plain_inplace(beta_plain, evaluator);
 #ifdef LOG
         STOP_TIMER("Layer Norm")
+        total_comm += io->counter;
+        std::cout << "Layer Norm Send data " << total_comm << " Bytes. \n";
 #endif
         return ln_secret_a;
     }

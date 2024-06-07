@@ -26,7 +26,6 @@ int main(int argc, const char **argv)
 
     sci::IOPack *io_pack = new sci::IOPack(party_, 32000);
     sci::NetIO *io = io_pack->io;
-    sci::NetIO *io_rev = io_pack->io_rev;
 
     printf("batch size:       %d\nd_module:         %d\nnumber of heads:  %d\n", batch_size, d_module, n_heads);
     matrix input(batch_size * d_module);

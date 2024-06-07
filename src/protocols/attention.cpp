@@ -1,7 +1,9 @@
 #include "attention.h"
 matrix Attention::forward(const matrix &input) const
 {
-    size_t i, j;
+    size_t total_comm = 0;
+    size_t i,
+        j;
     size_t d_k = d_module / n_heads;
     matrix WQ(d_module * d_k), WK(d_module * d_k), WV(d_module * d_k);
     load_mat(WQ, "WQa-${party}");
@@ -145,7 +147,10 @@ matrix Attention::forward(const matrix &input) const
 #ifdef LOG
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
+
         STOP_TIMER(buf)
+        total_comm += io->counter;
+        std::cout << buf << "Send data " << total_comm << " Bytes. \n";
         delete buf;
 #endif
         return output;
@@ -283,6 +288,8 @@ matrix Attention::forward(const matrix &input) const
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
         STOP_TIMER(buf)
+        total_comm += io->counter;
+        std::cout << buf << "Send data " << total_comm << " Bytes. \n";
         delete buf;
 #endif
         return output;

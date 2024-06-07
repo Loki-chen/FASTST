@@ -47,6 +47,7 @@ LongCiphertext FFN::f1(const LongCiphertext &x1, const LongCiphertext &x2, const
 LongCiphertext FFN::forward(const LongCiphertext &ln1)
 {
         size_t i, j;
+        size_t total_comm = 0;
         matrix W1(d_module * ffn_dim), B1(batch_size * ffn_dim), W2(ffn_dim * d_module), B2(batch_size * d_module);
         load_mat(W1, "WQa-${party}");
         load_mat(B1, "WKa-${party}");
@@ -192,6 +193,8 @@ LongCiphertext FFN::forward(const LongCiphertext &ln1)
                 vb_secert_b.add_plain_inplace(x2_plain, evaluator);
 #ifdef LOG
                 STOP_TIMER("Feed Forward")
+                total_comm += io->counter;
+                std::cout << "Feed Forward Send data " << total_comm << " Bytes. \n";
 #endif
                 return vb_secert_b;
         }
@@ -394,6 +397,8 @@ LongCiphertext FFN::forward(const LongCiphertext &ln1)
                 LongCiphertext::send(io, &vb_secret_b);
 #ifdef LOG
                 STOP_TIMER("Feed Forward")
+                total_comm += io->counter;
+                std::cout << "Feed Forward Send data " << total_comm << " Bytes. \n";
 #endif
                 return LongCiphertext();
         }
