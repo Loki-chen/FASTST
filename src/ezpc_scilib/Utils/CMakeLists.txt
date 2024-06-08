@@ -4,28 +4,6 @@ include(cmake/source_of_randomness.cmake)
 find_package(OpenSSL REQUIRED)
 FIND_PACKAGE(GMP REQUIRED)
 
-# find_package(emp-tool QUIET PATHS "${PROJECT_SOURCE_DIR}/build/" NO_DEFAULT_PATH)
-# if (NOT emp-tool_FOUND)
-#     message(STATUS "emptool was not found: clone and install emptool locally")
-#     if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/EMP-TOOL/CMakeLists.txt")
-#         find_package(Git REQUIRED)
-#         message(STATUS "initialize Git submodule: extern/EMP-TOOL")
-#         execute_process(COMMAND git submodule update --init --recursive extern/EMP-TOOL
-#                 WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-#         execute_process(COMMAND git apply "${PROJECT_SOURCE_DIR}/cmake/emp-tool.patch"
-#             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/extern/EMP-TOOL")    
-#     endif ()
-#     execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/build .
-#             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/extern/EMP-TOOL/")
-#     execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install
-#             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/extern/EMP-TOOL/")
-
-#     find_package(emp-tool REQUIRED PATHS "${PROJECT_SOURCE_DIR}/build/" NO_DEFAULT_PATH)
-
-# endif()
-
-
-
 add_library(FASTST-EZPCLIB-Utils INTERFACE)
 
 target_compile_options(FASTST-EZPCLIB-Utils
@@ -41,10 +19,10 @@ else(USE_RANDOM_DEVICE)
 endif(USE_RANDOM_DEVICE)
 
 target_include_directories(FASTST-EZPCLIB-Utils
-     INTERFACE ${GMP_INCLUDE_DIR}
+     INTERFACE ${OPENSSL_INCLUDE_DIR} ${GMP_INCLUDE_DIR}
 )
 
 target_link_libraries(FASTST-EZPCLIB-Utils
-    INTERFACE ${GMP_LIBRARIES}
-    # FASTST-UTILS
+    INTERFACE ${OPENSSL_LIBRARIES} ${GMP_LIBRARIES}
+
 )

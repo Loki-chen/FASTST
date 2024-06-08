@@ -27,7 +27,8 @@ Modified by Deevashwer Rathee, Nishant Kumar, Mayank Rathee
 
 #ifndef OT_H__
 #define OT_H__
-#include "emp-tool.h"
+
+#include "Utils/emp-tool.h"
 namespace sci
 {
   template <typename T>

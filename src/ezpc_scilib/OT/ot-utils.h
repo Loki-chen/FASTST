@@ -21,6 +21,7 @@ SOFTWARE.
 
 #ifndef OT_UTIL_H__
 #define OT_UTIL_H__
+
 #include "ot.h"
 
 namespace sci

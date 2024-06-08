@@ -21,6 +21,7 @@ SOFTWARE.
 
 #ifndef SPLIT_UTIL_H__
 #define SPLIT_UTIL_H__
+
 #include "ot.h"
 
 namespace sci

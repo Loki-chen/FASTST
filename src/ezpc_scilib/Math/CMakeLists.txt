@@ -1,12 +1,14 @@
 
 
 add_library(FASTST-EZPCLIB-Math
-    INTERFACE
+    math-functions.cpp
 )
 
 
 target_link_libraries(FASTST-EZPCLIB-Math
-    INTERFACE
+    PUBLIC 
+    FASTST-EZPCLIB-NonLinear
+    FASTST-EZPCLIB-BuildingBlocks
 )
 
 

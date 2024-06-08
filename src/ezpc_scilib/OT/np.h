@@ -27,6 +27,7 @@ Modified by Deevashwer Rathee
 
 #ifndef OT_NP_H__
 #define OT_NP_H__
+
 #include "ot.h"
 /** @addtogroup OT
         @{

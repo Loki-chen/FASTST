@@ -2,43 +2,6 @@
 #include "ezpc_scilib/ezpc_utils.h"
 #define TEST
 
-inline uint64_t Saturate(uint32_t inp) { return (uint64_t)inp; }
-
-void cleartext_MatSub(uint64_t *A, const uint64_t *B, u_int64_t *C, uint32_t I,
-                      uint32_t J, uint32_t shrA, uint32_t shrB, uint32_t shrC,
-                      int32_t demote)
-{
-    uint32_t shiftA = log2(shrA);
-    uint32_t shiftB = log2(shrB);
-    uint32_t shiftC = log2(shrC);
-    uint32_t shift_demote = log2(demote);
-    for (int i = 0; i < I; i++)
-    {
-        for (int j = 0; j < J; j++)
-        {
-            uint64_t a = (uint64_t)A[i * J + j];
-            uint64_t b = (uint64_t)B[i * J + j];
-
-#ifdef DIV_RESCALING
-            a = a / (shrA * shrC);
-            b = b / (shrB * shrC);
-#else
-            a = a >> (shiftA + shiftC);
-            b = b >> (shiftB + shiftC);
-#endif
-
-            uint64_t c = a - b;
-
-#ifdef DIV_RESCALING
-            C[i * J + j] = Saturate(c / demote);
-#else
-            C[i * J + j] = Saturate(c >> shift_demote);
-#endif
-        }
-    }
-    return;
-}
-
 int main()
 {
     int NL_ELL = 37;
@@ -64,4 +27,24 @@ int main()
     {
         std::cout << random_share[i] << " ";
     }
+
+    BFVparm *bfv_parm = new BFVparm(sci::ALICE, 8192, {54, 54, 55, 55}, default_prime_mod.at(29));
+
+    BFVKey *alice = new BFVKey(bfv_parm->party, bfv_parm->context);
+
+    sci::OTPack *otpack;
+
+    MillionaireProtocol *mill;
+
+    sci::PRG128 prg2;
+    uint64_t *x = new uint64_t[40];
+    prg2.random_mod_p<uint64_t>(x, 40 * sizeof(uint64_t), 64);
+
+    FixArray *fix;
 }
+
+// const size_t bfv_poly_modulus_degree = 8192;
+// const size_t bfv_slot_count = bfv_poly_modulus_degree;
+// const vector<int> bfv_coeff_bit_sizes = {54, 54, 55, 55};
+// const int32_t bitlength = 29;
+// const uint64_t bfv_plain_mod = default_prime_mod.at(bitlength);

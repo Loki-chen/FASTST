@@ -33,11 +33,27 @@ const map<int32_t, uint64_t> default_prime_mod{
     {41, 2198100901889},
 };
 
-const size_t bfv_poly_modulus_degree = 8192;
-const size_t bfv_slot_count = bfv_poly_modulus_degree;
-const vector<int> bfv_coeff_bit_sizes = {54, 54, 55, 55};
-const int32_t bitlength = 29;
-const uint64_t bfv_plain_mod = default_prime_mod.at(bitlength);
+// const size_t bfv_poly_modulus_degree = 8192;
+// const size_t bfv_slot_count = bfv_poly_modulus_degree;
+// const vector<int> bfv_coeff_bit_sizes = {54, 54, 55, 55};
+// const int32_t bitlength = 29;
+// const uint64_t bfv_plain_mod = default_prime_mod.at(bitlength);
+
+class BFVparm
+{
+public:
+    int party;
+    size_t bfv_poly_modulus_degree;
+    size_t bfv_slot_count = bfv_poly_modulus_degree;
+    // size_t bfv_slot_count;
+    vector<int> bfv_coeff_bit_sizes;
+    // int32_t bitlength;
+    uint64_t bfv_plain_mod;
+    SEALContext *context;
+    BFVparm(int party, size_t bfv_poly_modulus_degree, vector<int> bfv_coeff_bit_sizes, uint64_t bfv_plain_mod);
+    ~BFVparm();
+};
+
 class bfv_lenth_error : public std::exception
 {
     const char *message;
@@ -73,8 +89,8 @@ public:
     BFVLongPlaintext() {}
     BFVLongPlaintext(const Plaintext &pt);
     BFVLongPlaintext(uint64_t data, BatchEncoder *encoder); // TODO: len=1
-    BFVLongPlaintext(bfv_matrix data, BatchEncoder *encoder);
-    bfv_matrix decode(BatchEncoder *encoder) const;
+    BFVLongPlaintext(BFVparm *contex, bfv_matrix data, BatchEncoder *encoder);
+    bfv_matrix decode(BFVparm *contex, BatchEncoder *encoder) const;
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
     {

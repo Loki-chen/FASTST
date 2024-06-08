@@ -1,12 +1,9 @@
-
-
 add_library(FASTST-EZPCLIB-GC
-    INTERFACE
-)
-
-
+    emp-tool.cpp
+    halfgate_gen.cpp
+    halfgate_eva.cpp)
 target_link_libraries(FASTST-EZPCLIB-GC
-    INTERFACE
+    PUBLIC 
+    FASTST-EZPCLIB-Utils 
+    FASTST-EZPCLIB-OT
 )
-
-

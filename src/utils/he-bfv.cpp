@@ -1,8 +1,25 @@
 #include "he-bfv.h"
 
+BFVparm::BFVparm(int party, size_t bfv_poly_modulus_degree, vector<int> bfv_coeff_bit_sizes, uint64_t bfv_plain_mod)
+{
+    assert(party == sci::ALICE || party == sci::BOB);
+    this->party = party;
+    this->bfv_poly_modulus_degree = bfv_poly_modulus_degree;
+    this->bfv_plain_mod = bfv_plain_mod;
+    // Generate keys
+    EncryptionParameters parms(scheme_type::bfv);
+
+    parms.set_poly_modulus_degree(bfv_poly_modulus_degree);
+    parms.set_coeff_modulus(
+        CoeffModulus::Create(bfv_poly_modulus_degree, bfv_coeff_bit_sizes));
+    parms.set_plain_modulus(bfv_plain_mod);
+
+    this->context = new SEALContext(parms, true, seal::sec_level_type::tc128);
+}
+
 BFVKey::BFVKey(int party_, SEALContext *context_) : party(party_), context(context_)
 {
-    assert(party == ALICE || party == BOB);
+    assert(party == sci::ALICE || party == sci::BOB);
 
     keygen = new KeyGenerator(*context);
     keygen->create_public_key(public_key);
@@ -34,10 +51,10 @@ BFVLongPlaintext::BFVLongPlaintext(uint64_t data, BatchEncoder *encoder)
     plain_data.push_back(pt);
 }
 
-BFVLongPlaintext::BFVLongPlaintext(bfv_matrix data, BatchEncoder *encoder)
+BFVLongPlaintext::BFVLongPlaintext(BFVparm *contex, bfv_matrix data, BatchEncoder *encoder)
 {
     len = data.size();
-    size_t bfv_slot = bfv_slot_count;
+    size_t bfv_slot = contex->bfv_slot_count;
     size_t count = len / bfv_slot;
     if (len % bfv_slot)
     {
@@ -66,23 +83,24 @@ BFVLongPlaintext::BFVLongPlaintext(bfv_matrix data, BatchEncoder *encoder)
     }
 }
 
-bfv_matrix BFVLongPlaintext::decode(BatchEncoder *encoder) const
+bfv_matrix BFVLongPlaintext::decode(BFVparm *contex, BatchEncoder *encoder) const
 {
     bfv_matrix data(len);
     size_t size = plain_data.size();
+    size_t solut_cout = contex->bfv_slot_count;
     for (size_t i = 0; i < size; i++)
     {
         bfv_matrix temp;
         encoder->decode(plain_data[i], temp);
         if (i < size - 1)
         {
-            copy(temp.begin(), temp.end(), data.begin() + i * bfv_slot_count);
+            copy(temp.begin(), temp.end(), data.begin() + i * solut_cout);
         }
         else
         {
-            size_t tail_len = len % bfv_slot_count;
-            tail_len = tail_len ? tail_len : bfv_slot_count;
-            copy(temp.begin(), temp.begin() + tail_len + 1, data.begin() + i * bfv_slot_count);
+            size_t tail_len = len % solut_cout;
+            tail_len = tail_len ? tail_len : solut_cout;
+            copy(temp.begin(), temp.begin() + tail_len + 1, data.begin() + i * solut_cout);
         }
     }
     return data;

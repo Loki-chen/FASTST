@@ -26,7 +26,7 @@ SOFTWARE.
 // into offline and online phase.
 // The KKOT functions without
 // online offline split can
-// be found in OT/kkot.h
+// be found in kkot.h
 
 #include "np.h"
 #include "ot-utils.h"

@@ -7,6 +7,7 @@ add_library(FASTST-EZPCLIB-OT
 
 target_link_libraries(FASTST-EZPCLIB-OT
     INTERFACE
+    FASTST-EZPCLIB-Utils
 )
 
 
