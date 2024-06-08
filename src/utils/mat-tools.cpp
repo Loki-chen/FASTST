@@ -65,12 +65,12 @@ void random_mat(matrix &mat, double min, double max, bool binomial)
     }
 }
 
-void random_bfv_mat(bfv_matrix &mat, uint64_t prime_mod)
+void random_bfv_mat(bfv_matrix &mat)
 {
     sci::PRG128 prg;
     size_t size = mat.size();
     uint64_t *rand_mod_P_num = new uint64_t[size];
-    prg.random_mod_p<uint64_t>(rand_mod_P_num, size, prime_mod);
+    prg.random_data(rand_mod_P_num, size);
     for (size_t i = 0; i < size; i++)
     {
         mat[i] = rand_mod_P_num[i];

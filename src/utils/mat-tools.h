@@ -16,7 +16,7 @@ typedef vector<uint64_t> bfv_matrix;
 matrix matmul(const matrix &mat1, const matrix &mat2,
               size_t dim1, size_t dim2, size_t dim3, bool trans = false);
 void random_mat(matrix &mat, double min = -1., double max = 1., bool binomial = false);
-void random_bfv_mat(bfv_matrix &mat, size_t prime_mod);
+void random_bfv_mat(bfv_matrix &mat);
 
 matrix zero_sum(size_t row, size_t column);
 void load_mat(matrix &mat, const char *path);

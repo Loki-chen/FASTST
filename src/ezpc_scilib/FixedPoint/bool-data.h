@@ -28,8 +28,8 @@ SOFTWARE.
 #define J 8
 #define print_bool(vec)                              \
     {                                                \
-        auto tmp_pub = bool_op->output(PUBLIC, vec); \
-        cout << #vec << "_pub: " << tmp_pub << endl; \
+        auto tmp_pub = bool_op->output(sci::PUBLIC, vec); \
+        std::cout << #vec << "_pub: " << tmp_pub << std::endl; \
     }
 
 // A container to hold an array of boolean values
@@ -111,7 +111,6 @@ std::ostream &operator<<(std::ostream &os, BoolArray &other);
 class BoolOp
 {
     friend class FixOp;
-    friend class FPOp;
     friend class FPMath;
 
 public:

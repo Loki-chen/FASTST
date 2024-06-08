@@ -27,20 +27,29 @@ int main()
     {
         std::cout << random_share[i] << " ";
     }
+    std::cout << "\n";
 
     BFVparm *bfv_parm = new BFVparm(sci::ALICE, 8192, {54, 54, 55, 55}, default_prime_mod.at(29));
 
     BFVKey *alice = new BFVKey(bfv_parm->party, bfv_parm->context);
 
     sci::OTPack *otpack;
-
+    sci::IOPack *iopack;
     MillionaireProtocol *mill;
 
     sci::PRG128 prg2;
-    uint64_t *x = new uint64_t[40];
-    prg2.random_mod_p<uint64_t>(x, 40 * sizeof(uint64_t), 64);
+    size_t size = 5;
+    uint64_t *x = new uint64_t[size];
+    prg2.random_data(x, size * sizeof(uint64_t));
+    for (int i = 0; i < 10; i++)
+    {
+        std::cout << "no signed:" << x[i] << " ";
+    }
+    std::cout << "\n";
+    FixOp *fix = new FixOp(sci::PUBLIC, iopack, otpack);
+    FixArray input = fix->input(sci::PUBLIC, size, x, true, 64, 13);
 
-    FixArray *fix;
+    print_fix(input);
 }
 
 // const size_t bfv_poly_modulus_degree = 8192;
