@@ -69,11 +69,11 @@ void random_bfv_mat(bfv_matrix &mat)
 {
     sci::PRG128 prg;
     size_t size = mat.size();
-    uint64_t *rand_mod_P_num = new uint64_t[size];
-    prg.random_data(rand_mod_P_num, size);
+    uint64_t *rand_data = new uint64_t[size];
+    prg.random_data(rand_data, size * sizeof(uint64_t));
     for (size_t i = 0; i < size; i++)
     {
-        mat[i] = rand_mod_P_num[i];
+        mat[i] = rand_data[i];
     }
 }
 

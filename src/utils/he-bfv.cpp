@@ -5,6 +5,7 @@ BFVparm::BFVparm(int party, size_t bfv_poly_modulus_degree, vector<int> bfv_coef
     assert(party == sci::ALICE || party == sci::BOB);
     this->party = party;
     this->bfv_poly_modulus_degree = bfv_poly_modulus_degree;
+    this->bfv_slot_count = bfv_poly_modulus_degree;
     this->bfv_plain_mod = bfv_plain_mod;
     // Generate keys
     EncryptionParameters parms(scheme_type::bfv);
@@ -53,9 +54,11 @@ BFVLongPlaintext::BFVLongPlaintext(uint64_t data, BatchEncoder *encoder)
 
 BFVLongPlaintext::BFVLongPlaintext(BFVparm *contex, bfv_matrix data, BatchEncoder *encoder)
 {
+
     len = data.size();
-    size_t bfv_slot = contex->bfv_slot_count;
+    size_t bfv_slot = contex->bfv_slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / bfv_slot;
+
     if (len % bfv_slot)
     {
         count++;

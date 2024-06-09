@@ -44,7 +44,7 @@ class BFVparm
 public:
     int party;
     size_t bfv_poly_modulus_degree;
-    size_t bfv_slot_count = bfv_poly_modulus_degree;
+    size_t bfv_slot_count;
     // size_t bfv_slot_count;
     vector<int> bfv_coeff_bit_sizes;
     // int32_t bitlength;
