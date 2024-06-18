@@ -6,16 +6,5 @@ add_subdirectory(accuracy_test)
 
 add_subdirectory(protocols_test)
 
-
-
-macro(add_test _name)
-    add_executable(${_name}_test "${_name}_test.cpp")
-    target_link_libraries(${_name}_test PUBLIC FASTST-SRC)
-endmacro()
-
-add_test(mat)
-
-add_test(seal_parm)
-
-add_test(bfv_add)
+add_subdirectory(fixed_func_test)
 

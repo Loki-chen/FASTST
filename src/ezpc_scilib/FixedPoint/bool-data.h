@@ -24,11 +24,9 @@ SOFTWARE.
 
 #include "Math/math-functions.h"
 
-#define I 0
-#define J 8
-#define print_bool(vec)                              \
-    {                                                \
-        auto tmp_pub = bool_op->output(sci::PUBLIC, vec); \
+#define print_bool(vec)                                        \
+    {                                                          \
+        auto tmp_pub = bool_op->output(sci::PUBLIC, vec);      \
         std::cout << #vec << "_pub: " << tmp_pub << std::endl; \
     }
 

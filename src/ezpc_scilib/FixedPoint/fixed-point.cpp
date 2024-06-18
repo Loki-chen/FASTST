@@ -102,7 +102,7 @@ template vector<int64_t> FixArray::get_native_type();
 template vector<float> FixArray::get_native_type();
 template vector<double> FixArray::get_native_type();
 
-FixArray FixOp::input(int party_, int sz, uint64_t *data_, bool signed__, int ell_, int s_)
+FixArray FixOp::input(int party_, int sz, const uint64_t *data_, bool signed__, int ell_, int s_)
 {
     FixArray ret((party_ == PUBLIC ? party_ : this->party), sz, signed__, ell_, s_);
     uint64_t ell_mask_ = ret.ell_mask();
@@ -1574,4 +1574,36 @@ FixArray FixOp::abs(const FixArray &x)
     BoolArray msb_x = MSB(x);
     FixArray neg_x = mul(x, -1);
     return if_else(msb_x, neg_x, x);
+}
+
+void FixOp::send_fix_array(const FixArray &fix_array)
+{
+    iopack->io->send_data(&fix_array.party, sizeof(int));
+    if (fix_array.party == sci::PUBLIC)
+    {
+        iopack->io->send_data(&fix_array.size, sizeof(int));
+        iopack->io->send_data(fix_array.data, sizeof(uint64_t) * fix_array.size);
+        iopack->io->send_data(&fix_array.signed_, sizeof(bool));
+        iopack->io->send_data(&fix_array.ell, sizeof(int));
+        iopack->io->send_data(&fix_array.s, sizeof(int));
+    }
+    iopack->io->flush();
+}
+
+void FixOp::recv_fix_array(FixArray &fix_array)
+{
+    iopack->io->recv_data(&fix_array.party, sizeof(int));
+    if (fix_array.party == sci::PUBLIC)
+    {
+        iopack->io->recv_data(&fix_array.size, sizeof(int));
+        if (fix_array.data == nullptr)
+        {
+            fix_array.data = new uint64_t[fix_array.size];
+        }
+        iopack->io->recv_data(fix_array.data, sizeof(uint64_t) * fix_array.size);
+        iopack->io->recv_data(&fix_array.signed_, sizeof(bool));
+        iopack->io->recv_data(&fix_array.ell, sizeof(int));
+        iopack->io->recv_data(&fix_array.s, sizeof(int));
+    }
+    iopack->io->flush();
 }

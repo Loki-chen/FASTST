@@ -20,3 +20,13 @@ add_pro_test(ffn)
 add_pro_test(transformer)
 
 
+# fixed-point numebnr cost_tets
+
+macro(add_fixed_pro_test _name)
+    add_executable(fixed_pro_${_name} "fixed_pro_${_name}_test.cpp")
+    target_link_libraries(fixed_pro_${_name} PUBLIC FASTST-SRC)
+endmacro()
+
+add_fixed_pro_test(layer-norm)
+
+

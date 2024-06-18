@@ -6,8 +6,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 #     acc_ffn_test.cpp
 #     acc_layer-norm_test.cpp
 #     )
-
-
 # acc test
 macro(add_acc_test _name)
     add_executable(acc_${_name} "acc_${_name}_test.cpp")
@@ -19,14 +17,13 @@ add_acc_test(layer-norm)
 add_acc_test(ffn)
 
 
-# bfv_acc test
-macro(add_bfv_acc_test _name)
-    add_executable(bfv_acc_${_name} "bfv_acc_${_name}_test.cpp")
-    target_link_libraries(bfv_acc_${_name} PUBLIC FASTST-SRC)
+# fixed_acc test
+macro(add_fix_acc_test _name)
+    add_executable(fix_acc_${_name} "fixed_acc_${_name}_test.cpp")
+    target_link_libraries(fix_acc_${_name} PUBLIC FASTST-SRC)
 endmacro()
 
-
-add_bfv_acc_test(layer-norm)
+add_fix_acc_test(layer-norm)
 
 
 
