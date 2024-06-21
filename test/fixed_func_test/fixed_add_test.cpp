@@ -1,5 +1,6 @@
 #include "ezpc_scilib/ezpc_utils.h"
 #include <model.h>
+#include <cmath>
 #define TEST
 
 int main()
@@ -12,22 +13,22 @@ int main()
     uint64_t *random_share = new uint64_t[length];
     sci::PRG128 prg;
     prg.random_data(random_share, length * sizeof(uint64_t));
-    for (int i = 0; i < 10; i++)
-    {
-        std::cout << random_share[i] << " ";
-    }
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     std::cout << random_share[i] << " ";
+    // }
 
-    std::cout << "\n";
-    std::cout << "mask_x:" << mask_x << " \n";
-    for (int i = 0; i < length; i++)
-    {
-        random_share[i] &= mask_x;
-    }
-    for (int i = 0; i < 10; i++)
-    {
-        std::cout << random_share[i] << " ";
-    }
-    std::cout << "\n";
+    // std::cout << "\n";
+    // std::cout << "mask_x:" << mask_x << " \n";
+    // for (int i = 0; i < length; i++)
+    // {
+    //     random_share[i] &= mask_x;
+    // }
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     std::cout << random_share[i] << " ";
+    // }
+    // std::cout << "\n";
 
     BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
 
@@ -41,15 +42,35 @@ int main()
     size_t size = 5;
     uint64_t *x = new uint64_t[size];
     prg2.random_data(x, size * sizeof(uint64_t));
-    for (int i = 0; i < 10; i++)
-    {
-        std::cout << "no signed:" << x[i] << " ";
-    }
-    std::cout << "\n";
-    FixOp *fix = new FixOp(sci::PUBLIC, iopack, otpack);
-    FixArray input = fix->input(sci::PUBLIC, size, x, true, 64, 13);
 
-    print_fix(input);
+    // std::cout << "no signed:";
+    // for (int i = 0; i < size; i++)
+    // {
+    //     std::cout << x[i] << " ";
+    // }
+    // std::cout << "\n";
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dist(-1, 1);
+    double *input = new double(5);
+    int64_t *fix_input = new int64_t(5);
+    uint64_t *unsig_fix_input = new uint64_t(5);
+    for (size_t i = 0; i < 5; i++)
+    {
+        input[i] = dist(gen);
+        fix_input[i] = static_cast<int64_t>(input[i] * (1ULL << 13));  // (-5, 5)
+        unsig_fix_input[i] = sci::neg_mod(fix_input[i], (1ULL << 37)); // (0, 10)
+        std::cout << input[i] << " ";
+        std::cout << fix_input[i] << " ";
+        std::cout << unsig_fix_input[i] << " ";
+        // std::cout << "\n";
+    }
+
+    FixOp *fix = new FixOp(sci::PUBLIC, iopack, otpack);
+    FixArray input1 = fix->input(sci::PUBLIC, 5, unsig_fix_input, true, 37, 13);
+
+    print_fix(input1);
 
     delete random_share;
     delete bfv_parm;
@@ -58,6 +79,9 @@ int main()
     delete iopack;
     delete mill;
     delete x;
+    delete fix_input;
+    delete input;
+    delete unsig_fix_input;
     delete fix;
 }
 
