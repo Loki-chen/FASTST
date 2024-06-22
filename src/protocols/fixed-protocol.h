@@ -9,6 +9,12 @@ using sci::IOPack;
 using sci::OTPack;
 using sci::PUBLIC;
 
+#define DEFAULT_SCALE 12
+#define DEFAULT_ELL 37
+
+#define GELU_DEFAULT_SCALE 9
+#define GELU_DEFAULT_ELL 22
+
 class FixedProtocol
 {
 protected:

@@ -1,7 +1,8 @@
 #include <model.h>
 #include "ezpc_scilib/ezpc_utils.h"
 #define TEST
-
+#define DEFAULT_BITWIDTH 37
+#define DEFAULT_ELL 64
 bfv_matrix fixed_mean(bfv_matrix input, size_t row, size_t column, uint64_t mask)
 {
     bfv_matrix result(row);
@@ -93,8 +94,8 @@ public:
             intput_data_b[i] = input_b[i];
         }
 
-        FixArray fix_input_a = fix_alice->input(sci::ALICE, input_a.size(), intput_data_a);
-        FixArray fix_input_b = fix_bob->input(sci::BOB, input_b.size(), intput_data_b);
+        FixArray fix_input_a = fix_alice->input(sci::ALICE, input_a.size(), intput_data_a, true, 64, 12);
+        FixArray fix_input_b = fix_bob->input(sci::BOB, input_b.size(), intput_data_b, true, 64, 12);
         FixArray ha1_xa = fix_public->mul(fix_input_a, fix_ha1); // TODO:: Fixarry * Fixarry; Maby this is correct!
         BFVLongCiphertext ha2_div_ha1_secret_a(bfv_parm, ha2_div_ha1, alice);
         // TODO:: ha1_xa--ss_to_he  ell to plain_mod

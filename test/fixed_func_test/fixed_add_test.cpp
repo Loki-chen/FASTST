@@ -5,6 +5,7 @@
 
 int main()
 {
+
     int NL_ELL = 37;
     uint64_t mask_x = (NL_ELL == 64 ? -1 : ((1ULL << NL_ELL) - 1));
     // uint64_t ell_mask = (1ULL << 37) - 1; // 2 ** 37 -1
@@ -59,18 +60,47 @@ int main()
     for (size_t i = 0; i < 5; i++)
     {
         input[i] = dist(gen);
-        fix_input[i] = static_cast<int64_t>(input[i] * (1ULL << 13));  // (-5, 5)
+        fix_input[i] = static_cast<int64_t>(input[i] * (1ULL << 12));  // (-5, 5)
         unsig_fix_input[i] = sci::neg_mod(fix_input[i], (1ULL << 37)); // (0, 10)
         std::cout << input[i] << " ";
         std::cout << fix_input[i] << " ";
         std::cout << unsig_fix_input[i] << " ";
-        // std::cout << "\n";
+        std::cout << "\n";
     }
 
     FixOp *fix = new FixOp(sci::PUBLIC, iopack, otpack);
-    FixArray input1 = fix->input(sci::PUBLIC, 5, unsig_fix_input, true, 37, 13);
+    FixArray input1 = fix->input(sci::PUBLIC, 5, unsig_fix_input, true, 37, 12);
 
+    FixArray result(input1.party, 1, input1.signed_, input1.ell, input1.s);
+    double div_colum = 1.0 / 5.0;
+    std::cout << "div_colum : " << div_colum << "\n";
+    const uint64_t fix_column = sci::neg_mod(static_cast<int64_t>(div_colum * (1ULL << 12)), (1ULL << 37));
+    // FixArray div(sci::PUBLIC, 1, true, 37, 12);
+    std::cout << "fix_column : " << fix_column << "\n";
+    size_t i, j;
     print_fix(input1);
+
+    FixArray tmp_input(input1.party, 1, input1.signed_, input1.ell, input1.s);
+    FixArray tmp_output(input1.party, 1, input1.signed_, input1.ell, input1.s);
+    for (i = 0; i < 5; i++)
+    {
+        tmp_input.data[0] = input1.data[i];
+        // fix->add();
+    }
+
+    // #pragma omp parallel for
+    for (i = 0; i < 5; i++)
+    {
+        result.data[0] += input1.data[i];
+        std::cout << "input1 " << input1.data[i] << " \n";
+    }
+    result.data[0] = (result.data[0] & mask_x);
+    std::cout << "sum: " << result.data[0] << "\n";
+    print_fix(result);
+    result = fix->mul(result, fix_column);
+    // result = fix->div(result, div); // TODO: MathFunction::DIV
+
+    print_fix(result);
 
     delete random_share;
     delete bfv_parm;

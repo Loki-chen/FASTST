@@ -3,6 +3,7 @@
 add_library(FASTST-EZPCLIB-FixedPoint
     fixed-point.cpp
     bool-data.cpp
+    fixed-math.cpp
 )
 
 

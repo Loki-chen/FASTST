@@ -24,6 +24,7 @@ int main(int argc, const char **argv)
         FixOp *fix_public = new FixOp(sci::PUBLIC, iopack, otpack);
         bfv_matrix input(batch_size * d_module);
         random_bfv_mat(input);
+
         FixedLayerNorm *ln = new FixedLayerNorm(party, bfv_parm, fix_party, fix_public);
         BFVLongCiphertext attn_secret_b;
         if (party_ == sci::ALICE)

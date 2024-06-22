@@ -11,9 +11,6 @@
 #include "bool-data.h"
 #include "Math/math-functions.h"
 
-#define DEFAULT_BITWIDTH 37
-#define DEFAULT_ELL 64
-
 #define print_fix(vec)                                         \
     {                                                          \
         auto tmp_pub = fix->output(sci::PUBLIC, vec);          \
@@ -170,13 +167,9 @@ public:
     // party_ denotes which party provides the input data_ and the data_ provided by the other party is ignored. If party_ is PUBLIC, then the data_ provided by both parties must be identical.
     // sz is the size of the returned FixArray and the uint64_t array pointed by data_
     // signed__, ell_, and s_ are the signedness, bitlength and scale of the input, respectively
-    // FixArray input(int party_, int sz, uint64_t *data_, bool signed__, int ell_, int s_ = 0);
+    FixArray input(int party_, int sz, const uint64_t *data_, bool signed__, int ell_, int s_ = 0);
     // // same as the above function, except that it replicates data_ in all sz positions of the returned FixArray
-    // FixArray input(int party_, int sz, uint64_t data_, bool signed__, int ell_, int s_ = 0);
-
-    FixArray input(int party_, int sz, const uint64_t *data_, bool signed__ = true, int ell_ = DEFAULT_ELL, int s_ = DEFAULT_BITWIDTH);
-    // same as the above function, except that it replicates data_ in all sz positions of the returned FixArray
-    FixArray input(int party_, int sz, uint64_t data_, bool signed__ = true, int ell_ = DEFAULT_ELL, int s_ = DEFAULT_BITWIDTH);
+    FixArray input(int party_, int sz, uint64_t data_, bool signed__, int ell_, int s_ = 0);
 
     // output function: returns the secret array underlying x in the form of a PUBLIC FixArray
     // party_ denotes which party will receive the output. If party_ is PUBLIC, both parties receive the output.
@@ -435,5 +428,11 @@ public:
     void send_fix_array(const FixArray &fix_array);
 
     void recv_fix_array(FixArray &fix_array);
+
+    // Truncate and Reduce: returns x[i] >> s mod 2^{x.ell - s}
+    // Output bitlength and scale are x.ell-s and x.s-s; Output signedness is same as that of x
+    // x must be public FixArray
+    // s < bitlength of x (x.ell) and s >= 0
+    FixArray public_truncation(const FixArray &x, int scale);
 };
 #endif

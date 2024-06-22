@@ -343,11 +343,14 @@ FixArray FixOp::mul(const FixArray &x, const FixArray &y, int ell,
     FixArray ret(this->party, x.size, x.signed_, ell, x.s + y.s);
     if (x.party == PUBLIC || y.party == PUBLIC)
     {
+        std::cout << " test in 1 \n";
         FixArray x_ext = this->extend(x, ell, msb_x);
         FixArray y_ext = this->extend(y, ell, msb_y);
+        std::cout << " test in 2 \n";
         uint64_t ret_mask = ret.ell_mask();
         for (int i = 0; i < x.size; i++)
         {
+            std::cout << " test in 3 \n";
             ret.data[i] = (x_ext.data[i] * y_ext.data[i]) & ret_mask;
         }
     }
@@ -1606,4 +1609,18 @@ void FixOp::recv_fix_array(FixArray &fix_array)
         iopack->io->recv_data(&fix_array.s, sizeof(int));
     }
     iopack->io->flush();
+}
+
+FixArray FixOp::public_truncation(const FixArray &x, int scale)
+{
+    assert(x.party == sci::PUBLIC);
+    assert(scale <= x.ell && scale >= 0);
+    FixArray ret(x.party, x.size, x.signed_, x.ell, x.s);
+
+    uint64_t ret_mask = ((x.ell) == 64 ? -1 : ((1ULL << (x.ell)) - 1));
+    for (size_t i = 0; i < x.size; i++)
+    {
+        ret.data[i] = (x.data[i] >> scale) & ret_mask;
+    }
+    return ret;
 }
