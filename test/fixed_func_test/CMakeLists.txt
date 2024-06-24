@@ -15,9 +15,9 @@ macro(add_fix_func_test _name)
     target_link_libraries(fix_${_name} PUBLIC FASTST-SRC)
 endmacro()
 
-
+ 
 add_fix_func_test(comm)
 add_fix_func_test(add)
 add_fix_func_test(mul)
 add_fix_func_test(load-data)
-add_fix_func_test(fix_mean)
+add_fix_func_test(mean)

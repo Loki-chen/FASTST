@@ -20,15 +20,15 @@ class FixedProtocol
 protected:
     BFVKey *party;
     BFVParm *parm;
-    FixOp *fixop;
-    FixOp *fix_public;
+    FPMath *fpmath;
+    FPMath *fpmath_public;
 
 public:
     FixedProtocol(BFVKey *party_, BFVParm *parm_,
-                  FixOp *fixop_, FixOp *fix_public_) : party(party_), parm(parm_),
-                                                       fixop(fixop_), fix_public(fix_public_)
+                  FPMath *fpmath_, FPMath *fpmath_public_) : party(party_), parm(parm_),
+                                                             fpmath(fpmath_), fpmath_public(fpmath_public_)
     {
-        assert(party->party == fixop->party);
+        assert(party->party == fpmath->fix->party);
     }
     ~FixedProtocol() {}
 };

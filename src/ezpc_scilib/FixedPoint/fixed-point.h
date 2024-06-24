@@ -240,6 +240,10 @@ public:
     //// x can be PUBLIC or secret-shared
     //// y[i] = y (with same signedness as x; bitlength is ell and scale is 0)
     //// ell >= bitlength of x
+
+    // TODO::  support two public fixary
+    FixArray public_mul(const FixArray &x, const FixArray &y, int ell);
+
     FixArray mul(const FixArray &x, uint64_t y, int ell,
                  uint8_t *msb_x = nullptr);
     // same as above mul functions except ell is a constant depending on bitlengths of inputs
@@ -249,6 +253,7 @@ public:
     {
         return mul(x, y, x.ell + y.ell, msb_x, msb_y);
     }
+
     //// ell = bitlength of x (x.ell)
     inline FixArray mul(const FixArray &x, uint64_t y, uint8_t *msb_x = nullptr)
     {
@@ -336,6 +341,8 @@ public:
         assert(x.party != sci::PUBLIC);
         return fix->LT(x, 0);
     }
+
+    FixArray MSB(const FixArray &x, int ell);
 
     // Wrap Bit and Zero-test Bit: returns 1{ share(1, x[i]) + share(2, x[i]) >= 2^{x.ell} } and 1{ x[i] = 0 } in the form of BoolArrays
     // x must be secret-shared
@@ -434,5 +441,35 @@ public:
     // x must be public FixArray
     // s < bitlength of x (x.ell) and s >= 0
     FixArray public_truncation(const FixArray &x, int scale);
+
+    inline int64_t unsigned_val(uint64_t x, int bw_x)
+    {
+        uint64_t mask_x = (bw_x == 64 ? -1 : ((1ULL << bw_x) - 1));
+        return x & mask_x;
+    }
+
+    inline int64_t signed_val(uint64_t x, int bw_x)
+    {
+        uint64_t pow_x = (bw_x == 64 ? 0ULL : (1ULL << bw_x));
+        uint64_t mask_x = pow_x - 1;
+        x = x & mask_x;
+        return int64_t(x - ((x >= (pow_x / 2)) * pow_x));
+    }
+
+    inline int8_t msb(int64_t n)
+    {
+        int64_t mask = 1;
+        int msb = 0;
+        while (mask <= n)
+        {
+            if (n & mask)
+            {
+                return msb;
+            }
+            msb++;
+            mask <<= 1;
+        }
+        return -1; // n is zero
+    }
 };
 #endif

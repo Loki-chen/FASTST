@@ -14,17 +14,34 @@ int main()
     double *input = new double[array_size];
     int64_t *fix_input = new int64_t[array_size];
     uint64_t *unsig_fix_input = new uint64_t[array_size];
-    std::cout << "real int_input neg_mod \n";
+    // std::cout << "real int_input neg_mod \n";
+    double sum;
     for (size_t i = 0; i < array_size; i++)
     {
         input[i] = dist(gen);
         fix_input[i] = static_cast<int64_t>(input[i] * (1ULL << 12));           // (-5, 5)
         unsig_fix_input[i] = sci::neg_mod(fix_input[i], (int64_t)(1ULL << 37)); // (0, 10)
-        std::cout << input[i] << " ";
-        std::cout << fix_input[i] << " ";
-        std::cout << unsig_fix_input[i] << " ";
-        std::cout << "\n";
+        // std::cout << input[i] << " ";
+        // std::cout << fix_input[i] << " ";
+        // std::cout << unsig_fix_input[i] << " ";
+        // std::cout << "\n";
+        sum += input[i];
     }
+    // std::cout << "true: " << sum / 5 << " \n";
+    // std::cout << "true_ fixarry: " << sci::neg_mod(static_cast<int64_t>((sum / 5) * (1ULL << 12)), (int64_t)(1ULL << 37)) << " \n";
+
+    double *mu = new double[array_size];
+    double *mu2 = new double[array_size];
+    std::cout << "mu2: ";
+    std::cout << "true_ fixarry: ";
+    for (size_t i = 0; i < array_size; i++)
+    {
+        mu[i] = input[i] - sum / 5;
+        mu2[i] = mu[i] * mu[i];
+        std::cout << " " << mu2[i] << " ";
+        std::cout << sci::neg_mod(static_cast<int64_t>((mu2[i]) * (1ULL << 12)), (int64_t)(1ULL << 37));
+    }
+    std::cout << "\n";
     sci::OTPack *otpack;
     sci::IOPack *iopack;
 
@@ -36,8 +53,13 @@ int main()
         input_array.push_back(fix->input(sci::PUBLIC, array_size, &unsig_fix_input[i * array_size], true, 37, 12));
     }
 
-    vector<FixArray> out_array = fpmath->mean(input_array);
+    vector<FixArray> mean = fpmath->mean(input_array);
 
+    // unsigned_val();
+
+    vector<FixArray>
+        out_array = fpmath->standard_deviation(input_array, mean);
+    std::cout << "test end \n";
     for (size_t i = 0; i < len; i++)
     {
         out_array[i].party = sci::PUBLIC;

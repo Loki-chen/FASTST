@@ -52,6 +52,8 @@ public:
     void print(const FixArray &x);
 
     vector<FixArray> mean(const vector<FixArray> &x);
+
+    vector<FixArray> standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean);
 };
 
 #endif // FIXED_POINT_MATH_H__

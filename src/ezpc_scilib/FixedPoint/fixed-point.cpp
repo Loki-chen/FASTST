@@ -332,6 +332,26 @@ FixArray FixOp::B2A(const BoolArray &x, bool signed_, int ell)
     return ret;
 }
 
+FixArray FixOp::public_mul(const FixArray &x, const FixArray &y, int ell)
+{
+    assert(x.party == PUBLIC || y.party == PUBLIC);
+    assert(x.size == y.size);
+    assert(ell >= x.ell && ell >= y.ell && ell <= x.ell + y.ell);
+    assert(ell < 64);
+    FixArray ret(x.party, x.size, x.signed_, x.ell, x.s + y.s);
+    uint64_t ret_mask = ret.ell_mask();
+    FixArray x_ext(x.party, x.size, x.signed_, x.ell, x.s);
+    FixArray y_ext(y.party, y.size, y.signed_, y.ell, y.s);
+
+    for (size_t i = 0; i < x.size; i++)
+    {
+        x_ext.data[i] = uint64_t(signed_val(x.data[i], x.ell)) & ret_mask;
+        y_ext.data[i] = uint64_t(signed_val(y.data[i], y.ell)) & ret_mask;
+        ret.data[i] = (x_ext.data[i] * y_ext.data[i]) & ret_mask;
+    }
+    return ret;
+}
+
 FixArray FixOp::mul(const FixArray &x, const FixArray &y, int ell,
                     uint8_t *msb_x, uint8_t *msb_y)
 {
@@ -340,17 +360,15 @@ FixArray FixOp::mul(const FixArray &x, const FixArray &y, int ell,
     assert(x.signed_ || (x.signed_ == y.signed_));
     assert(ell >= x.ell && ell >= y.ell && ell <= x.ell + y.ell);
     assert(ell < 64);
+
     FixArray ret(this->party, x.size, x.signed_, ell, x.s + y.s);
     if (x.party == PUBLIC || y.party == PUBLIC)
     {
-        std::cout << " test in 1 \n";
         FixArray x_ext = this->extend(x, ell, msb_x);
         FixArray y_ext = this->extend(y, ell, msb_y);
-        std::cout << " test in 2 \n";
         uint64_t ret_mask = ret.ell_mask();
         for (int i = 0; i < x.size; i++)
         {
-            std::cout << " test in 3 \n";
             ret.data[i] = (x_ext.data[i] * y_ext.data[i]) & ret_mask;
         }
     }
@@ -1615,12 +1633,17 @@ FixArray FixOp::public_truncation(const FixArray &x, int scale)
 {
     assert(x.party == sci::PUBLIC);
     assert(scale <= x.ell && scale >= 0);
-    FixArray ret(x.party, x.size, x.signed_, x.ell, x.s);
 
+    FixArray sign_ret(x.party, x.size, x.signed_, x.ell, x.s);
     uint64_t ret_mask = ((x.ell) == 64 ? -1 : ((1ULL << (x.ell)) - 1));
+    uint64_t *sign_x = new uint64_t[x.size];
     for (size_t i = 0; i < x.size; i++)
     {
-        ret.data[i] = (x.data[i] >> scale) & ret_mask;
+        sign_x[i] = static_cast<uint64_t>((signed_val(x.data[i], x.ell)) >> scale) & ret_mask;
     }
-    return ret;
+    sign_ret = fix->input(x.party, x.size, sign_x, x.signed_, x.ell, x.s - scale);
+
+    delete[] sign_x;
+
+    return sign_ret;
 }

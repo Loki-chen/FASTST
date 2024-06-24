@@ -442,26 +442,58 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
 // math function for FASTLMPI
 vector<FixArray> FPMath::mean(const vector<FixArray> &x)
 {
+    int party_origin = x[0].party;
+    int N = x.size();
+    int n = x[0].size;
+    int ell = x[0].ell;
+
+    int s = x[0].s;
+    bool signed_ = x[0].signed_;
+
+    FixArray sum_res = fix->tree_sum(x);
+    uint64_t dn = static_cast<uint64_t>((1.0 / n) * (1ULL << 12));
+    FixArray fix_dn = fix->input(sci::PUBLIC, 1, dn, true, ell, s);
+    sum_res.party = sci::ALICE;
+    FixArray avg = fix->mul(sum_res, fix_dn, ell);
+
+    avg.party = sci::PUBLIC;
+    avg = fix->public_truncation(avg, s);
+    // print_fix(avg);
+    vector<FixArray> ret(N);
+    for (int i = 0; i < N; i++)
+    {
+        ret[i] = FixArray(sum_res.party, 1, signed_, ell, s);
+        ret[i].party = party_origin;
+        memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
+    }
+    return ret;
+}
+
+vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean)
+{
+    int party_origin = x[0].party;
     int N = x.size();
     int n = x[0].size;
     int ell = x[0].ell;
     int s = x[0].s;
     bool signed_ = x[0].signed_;
 
-    FixArray sum = fix->tree_sum(x);
     uint64_t dn = uint64_t(((1.0 / n) * pow(2, s)));
-    sum.party = sci::ALICE;
-    FixArray avg = fix->mul(sum, dn);
-
-    avg.party = sci::PUBLIC;
-    print_fix(avg);
-    avg = fix->public_truncation(avg, s);
-    print_fix(avg);
-    vector<FixArray> ret(N);
-    for (int i = 0; i < N; i++)
+    FixArray fix_dn = fix->input(sci::PUBLIC, 1, dn, true, ell, s);
+    vector<FixArray> tmp_ret(N);
+    vector<FixArray> tmp_y(N);
+    for (size_t i = 0; i < N; i++)
     {
-        ret[i] = FixArray(sum.party, 1, signed_, ell, s);
-        memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
+        tmp_ret[i] = fix->sub(x[i], mean[i].data[0]);
+        tmp_ret[i] = fix->public_mul(tmp_ret[i], tmp_ret[i], ell + 2 * s);
+        tmp_ret[i] = fix->public_truncation(tmp_ret[i], s);
     }
-    return ret;
+    FixArray sum_res = fix->tree_sum(tmp_ret); // obtain (((g)^s)^2delta)^2
+    sum_res.party = sci::ALICE;
+    FixArray avg = fix->mul(sum_res, fix_dn, ell);
+    avg.party = sci::PUBLIC;
+    avg = fix->public_truncation(avg, s);
+
+    // TODO: in order to get delta, we need to computw sqrt of avg.
+    return tmp_ret;
 }
