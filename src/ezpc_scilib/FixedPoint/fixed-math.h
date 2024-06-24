@@ -2,7 +2,7 @@
 #define FIXED_POINT_MATH_H__
 #include "fixed-point.h"
 #include "Math/math-functions.h"
-
+#include <cmath>
 class FPMath
 {
 public:
@@ -44,7 +44,7 @@ public:
 
     FixArray gt_p_sub(const FixArray &x, const FixArray &p);
 
-    FixArray sqrt(const FixArray &x, bool recp_sqrt);
+    FixArray sqrt_(const FixArray &x, bool recp_sqrt);
 
     std::tuple<FixArray, FixArray, FixArray> bitonic_sort_and_swap(
         const FixArray &x, FixArray softmax_v_, FixArray h1_, bool swap);
@@ -54,6 +54,8 @@ public:
     vector<FixArray> mean(const vector<FixArray> &x);
 
     vector<FixArray> standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean);
+
+    double sqrt_(float x);
 };
 
 #endif // FIXED_POINT_MATH_H__

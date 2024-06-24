@@ -256,7 +256,7 @@ FixArray FPMath::tanh_approx(const FixArray &x)
     return ret;
 }
 
-FixArray FPMath::sqrt(const FixArray &x, bool recp_sqrt)
+FixArray FPMath::sqrt_(const FixArray &x, bool recp_sqrt)
 {
     FixArray ret(party, x.size, x.signed_, x.ell, x.s);
     math->sqrt(x.size, x.data, ret.data, x.ell, x.ell, x.s, x.s, recp_sqrt);
@@ -439,6 +439,11 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
     return make_tuple(x, softmax_v, h1);
 }
 
+double FPMath::sqrt_(float x)
+{
+    return sqrt(x);
+}
+
 // math function for FASTLMPI
 vector<FixArray> FPMath::mean(const vector<FixArray> &x)
 {
@@ -446,25 +451,27 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     int N = x.size();
     int n = x[0].size;
     int ell = x[0].ell;
-
     int s = x[0].s;
     bool signed_ = x[0].signed_;
 
     FixArray sum_res = fix->tree_sum(x);
-    uint64_t dn = static_cast<uint64_t>((1.0 / n) * (1ULL << 12));
-    FixArray fix_dn = fix->input(sci::PUBLIC, 1, dn, true, ell, s);
+    uint64_t dn = static_cast<uint64_t>((1.0 / n) * (1ULL << 13));
+    FixArray fix_dn = fix->input(sci::PUBLIC, N, dn, true, ell, s);
     sum_res.party = sci::ALICE;
+    // FixArray avg(party_origin, n, signed_, ell, s);
+
     FixArray avg = fix->mul(sum_res, fix_dn, ell);
 
     avg.party = sci::PUBLIC;
     avg = fix->public_truncation(avg, s);
-    // print_fix(avg);
+
     vector<FixArray> ret(N);
     for (int i = 0; i < N; i++)
     {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);
         memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
     }
+
     return ret;
 }
 
@@ -478,7 +485,7 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     bool signed_ = x[0].signed_;
 
     uint64_t dn = uint64_t(((1.0 / n) * pow(2, s)));
-    FixArray fix_dn = fix->input(sci::PUBLIC, 1, dn, true, ell, s);
+    FixArray fix_dn = fix->input(sci::PUBLIC, N, dn, true, ell, s);
     vector<FixArray> tmp_ret(N);
     vector<FixArray> tmp_y(N);
     for (size_t i = 0; i < N; i++)
@@ -487,19 +494,22 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
         tmp_ret[i] = fix->public_mul(tmp_ret[i], tmp_ret[i], ell + 2 * s);
         tmp_ret[i] = fix->public_truncation(tmp_ret[i], s);
     }
+
     FixArray sum_res = fix->tree_sum(tmp_ret); // obtain (((g)^s)^2delta)^2
-    print_fix(sum_res);
     sum_res.party = sci::ALICE;
     FixArray avg = fix->mul(sum_res, fix_dn, ell);
     avg.party = sci::PUBLIC;
     avg = fix->public_truncation(avg, s);
-
+    uint64_t unsig_fix_delta;
     vector<FixArray> ret(N);
+
     for (size_t i = 0; i < N; i++)
     {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);
-        memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
+        double delta = double(avg.data[i]) / (1ULL << 13);
+        unsig_fix_delta = static_cast<int64_t>(1.0 / sqrt_(float(delta)) * (1ULL << 13)); // (-5, 5)
+        unsig_fix_delta = sci::neg_mod(unsig_fix_delta, (int64_t)(1ULL << 37));           // (0, 10)
+        ret[i].data[0] = unsig_fix_delta;
     }
-    // TODO: in order to get delta, we need to computw sqrt of avg.
     return ret;
 }

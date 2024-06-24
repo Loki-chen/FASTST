@@ -422,8 +422,6 @@ public:
     // Optimization:
     FixArray div_batch(const FixArray &nm, const FixArray &dn, int batch_dn_size, int l_out, int s_out, bool normalized_dn = false);
 
-    // FixArray sqrt(const FixArray& x, int l_y, int s_y, bool recp_sqrt = false);
-
     FixArray sigmoid(const FixArray &x, int l_y, int s_y);
 
     FixArray tanh(const FixArray &x, int l_y, int s_y);
