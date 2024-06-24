@@ -32,15 +32,18 @@ int main()
 
     double *mu = new double[array_size];
     double *mu2 = new double[array_size];
-    std::cout << "mu2: ";
-    std::cout << "true_ fixarry: ";
+    double sum_mu2;
+
     for (size_t i = 0; i < array_size; i++)
     {
         mu[i] = input[i] - sum / 5;
-        mu2[i] = mu[i] * mu[i];
-        std::cout << " " << mu2[i] << " ";
-        std::cout << sci::neg_mod(static_cast<int64_t>((mu2[i]) * (1ULL << 12)), (int64_t)(1ULL << 37));
+        mu2[i] += mu[i] * mu[i];
+        sum_mu2 += mu2[i];
     }
+    std::cout << "mu2: " << sum_mu2 << " ";
+    std::cout << "true_fixarry: " << sci::neg_mod(static_cast<int64_t>((sum_mu2) * (1ULL << 12)), (int64_t)(1ULL << 37));
+    std::cout << "avg_mu2: " << sum_mu2 / array_size << " ";
+    std::cout << "agv_true_fixarry: " << sci::neg_mod(static_cast<int64_t>((sum_mu2 / array_size) * (1ULL << 12)), (int64_t)(1ULL << 37));
     std::cout << "\n";
     sci::OTPack *otpack;
     sci::IOPack *iopack;

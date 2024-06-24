@@ -462,8 +462,7 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     vector<FixArray> ret(N);
     for (int i = 0; i < N; i++)
     {
-        ret[i] = FixArray(sum_res.party, 1, signed_, ell, s);
-        ret[i].party = party_origin;
+        ret[i] = FixArray(party_origin, 1, signed_, ell, s);
         memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
     }
     return ret;
@@ -489,11 +488,18 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
         tmp_ret[i] = fix->public_truncation(tmp_ret[i], s);
     }
     FixArray sum_res = fix->tree_sum(tmp_ret); // obtain (((g)^s)^2delta)^2
+    print_fix(sum_res);
     sum_res.party = sci::ALICE;
     FixArray avg = fix->mul(sum_res, fix_dn, ell);
     avg.party = sci::PUBLIC;
     avg = fix->public_truncation(avg, s);
 
+    vector<FixArray> ret(N);
+    for (size_t i = 0; i < N; i++)
+    {
+        ret[i] = FixArray(party_origin, 1, signed_, ell, s);
+        memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
+    }
     // TODO: in order to get delta, we need to computw sqrt of avg.
-    return tmp_ret;
+    return ret;
 }
