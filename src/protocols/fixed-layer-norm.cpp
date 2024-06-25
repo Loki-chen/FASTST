@@ -21,16 +21,16 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         const uint64_t uint_ha2_div_ha1 = sci::neg_mod(static_cast<int64_t>(ha2_div_ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
         const uint64_t uint_div_ha2 = sci::neg_mod(static_cast<int64_t>(div_ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
 
-        FixArray fix_ha1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray fix_ha2 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray fix_ha2_div_ha1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha2_div_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray fix_div_ha2 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_div_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_ha1 = fpmath->fix->input(sci::ALICE, input.size(), uint_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_ha2 = fpmath->fix->input(sci::ALICE, input.size(), uint_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_ha2_div_ha1 = fpmath->fix->input(sci::ALICE, input.size(), uint_ha2_div_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_div_ha2 = fpmath->fix->input(sci::ALICE, input.size(), uint_div_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
 
         FixArray fix_input = fpmath->fix->input(party->party, input.size(), input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         BFVLongPlaintext ha2_plain(parm, fix_ha2.data, fix_ha2.size);
         // Need fix BFVLongPlaintext encrypt for *data
         BFVLongCiphertext ha2_div_ha1_secret_a(parm, fix_ha2_div_ha1.data, fix_ha2_div_ha1.size, party), ha2_secret_a(ha2_plain, party), xha1_secret_a;
-        FixArray fixed_ha1_xa = fpmath->fix->public_mul(fix_input, fix_ha1);
+        FixArray fixed_ha1_xa = fpmath->fix->public_mul(fix_input, fix_ha1, DEFAULT_ELL + 2 * DEFAULT_SCALE);
         BFVLongCiphertext attn_ha2_b = attn.multiply_plain(ha2_plain, party->parm->evaluator);
 
         // send H5 = {ha1_xa, ha2_div_hc1_secret_a, ha2_secret_a, attn_ha2_b} to bob

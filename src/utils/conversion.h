@@ -14,14 +14,7 @@ public:
 
     ~Conversion() {}
 
-    void he_to_ss(BFVLongCiphertext &ciphertext, uint64_t *share, Evaluator *evaluator);
+    uint64_t *Prime_to_Ring(uint64_t *input, uint64_t *output, Evaluator *evaluator);
 
-    inline void he_to_ss(BFVLongCiphertext &ciphertext, bfv_matrix share, Evaluator *evaluator)
-    {
-        he_to_ss(ciphertext, share.data(), evaluator);
-    }
-
-    void ss_to_he(uint64_t *share, BFVLongCiphertext &ciphertext, int length, int bw);
-
-    void ss_to_he(BFVKey *bfvkey, uint64_t *share, BFVLongCiphertext &ciphertext, int length, int bw);
+    uint64_t *Ring_to_Prime(uint64_t *input, int length, int ell, int plain_prime);
 };
