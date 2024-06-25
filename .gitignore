@@ -1,6 +1,3 @@
 .vscode
 build
-extern/
 data/
-Protocols.md
-Problem.md
