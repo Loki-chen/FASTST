@@ -11,25 +11,29 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
 
     if (party->party == ALICE)
     {
+
+        // generate ha1, ha2, commpute ha1xa, ha2/ha1, [attn]_b * ha2, encrypt [ha2/ha1]_a, [ha2]_a
         const double ha1 = dist(gen), ha2 = dist(gen), ka = dist(gen);
         const double ha2_div_ha1 = ha2 / ha1, div_ha2 = 1 / ha2;
 
-        const uint64_t fix_ha1 = sci::neg_mod(static_cast<int64_t>(ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
-        const uint64_t fix_ha2 = sci::neg_mod(static_cast<int64_t>(ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
-        const uint64_t fix_h2_div_h1 = sci::neg_mod(static_cast<int64_t>(ha2_div_ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
-        const uint64_t fix_div_ha2 = sci::neg_mod(static_cast<int64_t>(div_ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        const uint64_t uint_ha1 = sci::neg_mod(static_cast<int64_t>(ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        const uint64_t uint_ha2 = sci::neg_mod(static_cast<int64_t>(ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        const uint64_t uint_ha2_div_ha1 = sci::neg_mod(static_cast<int64_t>(ha2_div_ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        const uint64_t uint_div_ha2 = sci::neg_mod(static_cast<int64_t>(div_ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+
+        FixArray fix_ha1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_ha2 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_ha2_div_ha1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha2_div_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_div_ha2 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_div_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
 
         FixArray fix_input = fpmath->fix->input(party->party, input.size(), input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-        BFVLongPlaintext ha2_plain(parm, fix_ha2);
-        BFVLongCiphertext ha2_div_ha1_secret_a(parm, fix_h2_div_h1, party), ha2_secret_a(ha2_plain, party), xha1_secret_a;
-        FixArray fixed_ha1_xa = fpmath->fix->mul(fix_input, fix_ha1);
-        fixed_ha1_xa.party = PUBLIC;
-        fixed_ha1_xa = fpmath->fix->public_truncation(fixed_ha1_xa, DEFAULT_SCALE);
-
-        fixed_ha1_xa.party = sci::PUBLIC;
+        BFVLongPlaintext ha2_plain(parm, fix_ha2.data, fix_ha2.size);
+        // Need fix BFVLongPlaintext encrypt for *data
+        BFVLongCiphertext ha2_div_ha1_secret_a(parm, fix_ha2_div_ha1.data, fix_ha2_div_ha1.size, party), ha2_secret_a(ha2_plain, party), xha1_secret_a;
+        FixArray fixed_ha1_xa = fpmath->fix->public_mul(fix_input, fix_ha1);
         BFVLongCiphertext attn_ha2_b = attn.multiply_plain(ha2_plain, party->parm->evaluator);
 
-        // send H1 = {ha1_xa, ha2_div_hc1_secret_a, ha2_secret_a, attn_ha2_b} to bob
+        // send H5 = {ha1_xa, ha2_div_hc1_secret_a, ha2_secret_a, attn_ha2_b} to bob
         fpmath_public->fix->send_fix_array(fixed_ha1_xa);
         BFVLongCiphertext::send(fpmath_public->fix->iopack->io, &ha2_div_ha1_secret_a);
         BFVLongCiphertext::send(fpmath_public->fix->iopack->io, &ha2_secret_a);

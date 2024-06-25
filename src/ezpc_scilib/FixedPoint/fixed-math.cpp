@@ -455,7 +455,7 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     bool signed_ = x[0].signed_;
 
     FixArray sum_res = fix->tree_sum(x);
-    uint64_t dn = static_cast<uint64_t>((1.0 / n) * (1ULL << 13));
+    uint64_t dn = static_cast<uint64_t>((1.0 / n) * (1ULL << s));
     FixArray fix_dn = fix->input(sci::PUBLIC, N, dn, true, ell, s);
     sum_res.party = sci::ALICE;
     // FixArray avg(party_origin, n, signed_, ell, s);
@@ -506,9 +506,9 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     for (size_t i = 0; i < N; i++)
     {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);
-        double delta = double(avg.data[i]) / (1ULL << 13);
-        unsig_fix_delta = static_cast<int64_t>(1.0 / sqrt_(float(delta)) * (1ULL << 13)); // (-5, 5)
-        unsig_fix_delta = sci::neg_mod(unsig_fix_delta, (int64_t)(1ULL << 37));           // (0, 10)
+        double delta = double(avg.data[i]) / (1ULL << s);
+        unsig_fix_delta = static_cast<int64_t>(1.0 / sqrt_(float(delta)) * (1ULL << s)); // (-5, 5)
+        unsig_fix_delta = sci::neg_mod(unsig_fix_delta, (int64_t)(1ULL << ell));         // (0, 10)
         ret[i].data[0] = unsig_fix_delta;
     }
     return ret;

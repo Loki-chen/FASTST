@@ -1,39 +1,8 @@
 #include <model.h>
 #include "ezpc_scilib/ezpc_utils.h"
 #define TEST
-#define DEFAULT_BITWIDTH 37
-#define DEFAULT_ELL 64
-bfv_matrix fixed_mean(bfv_matrix input, size_t row, size_t column, uint64_t mask)
-{
-    bfv_matrix result(row);
-    size_t i, j;
-    for (i = 0; i < row; i++)
-    {
-        for (j = 0; j < column; j++)
-        {
-            result[i] += input[i * column + j];
-        }
-        result[i] /= column;
-        result[i] &= mask;
-    }
-    return result;
-}
-
-bfv_matrix fixed_standard_deviation(bfv_matrix input, bfv_matrix means, size_t row, size_t column, uint64_t mask, FixOp *fixop)
-{
-    bfv_matrix result(row);
-    size_t i, j;
-    for (i = 0; i < row; i++)
-    {
-        for (j = 0; j < column; j++)
-        {
-            result[i] += (input[i * column + j] - means[i]) * (input[i * column + j] - means[i]);
-        }
-        result[i] /= column;
-        result[i] = (uint64_t)sqrt(result[i]) & mask;
-    }
-    return result;
-}
+#define DEFAULT_SCALE 13
+#define DEFAULT_ELL 37
 
 class SecureLayerNorm1
 {
@@ -44,9 +13,9 @@ class SecureLayerNorm1
     sci::IOPack *iopack;
     sci::OTPack *otpack;
 
-    FixOp *fix_alice;
-    FixOp *fix_bob;
-    FixOp *fix_public;
+    FPMath *fpmath_alice;
+    FPMath *fpmath_bob;
+    FPMath *fpmath_public;
 
 public:
     SecureLayerNorm1(BFVParm *bfv_parm_, BFVKey *alice_, BFVKey *bob_,
@@ -56,16 +25,16 @@ public:
                                                                    iopack(iopack_),
                                                                    otpack(otpack_)
     {
-        fix_alice = new FixOp(sci::ALICE, iopack, otpack);
-        fix_bob = new FixOp(sci::BOB, iopack, otpack);
-        fix_public = new FixOp(sci::PUBLIC, iopack, otpack);
+        fpmath_alice = new FPMath(sci::ALICE, iopack, otpack);
+        fpmath_bob = new FPMath(sci::BOB, iopack, otpack);
+        fpmath_public = new FPMath(sci::PUBLIC, iopack, otpack);
     }
 
     ~SecureLayerNorm1()
     {
-        delete fix_alice;
-        delete fix_bob;
-        delete fix_public;
+        delete fpmath_alice;
+        delete fpmath_bob;
+        delete fpmath_public;
     }
 
     void forward(BFVLongCiphertext &attn_s, const bfv_matrix &input_a, const bfv_matrix &input_b)
@@ -84,9 +53,13 @@ public:
         double ha1 = dist(gen), ha2 = dist(gen);
         double ha2_div_ha1 = ha2 / ha1;
 
-        uint64_t fix_ha1 = sci::neg_mod(static_cast<int64_t>(ha1 * (1ULL << DEFAULT_BITWIDTH)), DEFAULT_ELL);
-        uint64_t fix_ha2 = sci::neg_mod(static_cast<int64_t>(ha2 * (1ULL << DEFAULT_BITWIDTH)), DEFAULT_ELL);
-        uint64_t fix_h2_div_h1 = sci::neg_mod(static_cast<int64_t>(ha2_div_ha1 * (1ULL << DEFAULT_BITWIDTH)), DEFAULT_ELL);
+        uint64_t uint_ha1 = sci::neg_mod(static_cast<int64_t>(ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        uint64_t uint_ha2 = sci::neg_mod(static_cast<int64_t>(ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        uint64_t uint_h2_div_h1 = sci::neg_mod(static_cast<int64_t>(ha2_div_ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+
+        FixArray fix_ha1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_ha2 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_h2_div_h1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_h2_div_h1, true, DEFAULT_ELL, DEFAULT_SCALE);
 
         for (size_t i = 0; i < input_a.size(); i++)
         {
@@ -94,13 +67,23 @@ public:
             intput_data_b[i] = input_b[i];
         }
 
-        FixArray fix_input_a = fix_alice->input(sci::ALICE, input_a.size(), intput_data_a, true, 64, 12);
-        FixArray fix_input_b = fix_bob->input(sci::BOB, input_b.size(), intput_data_b, true, 64, 12);
-        FixArray ha1_xa = fix_public->mul(fix_input_a, fix_ha1); // TODO:: Fixarry * Fixarry; Maby this is correct!
+        FixArray fix_input_a = fpmath_alice->fix->input(sci::ALICE, input_a.size(), intput_data_a, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_input_b = fpmath_bob->fix->input(sci::BOB, input_b.size(), intput_data_b, true, 64, 12);
+
+        FixArray ha1_xa_test = fpmath_alice->fix->mul(fix_input_a, uint_ha1);
+
+        FixArray ha1_xa = fpmath_alice->fix->public_mul(fix_input_a, fix_ha1, DEFAULT_ELL); // TODO:: Fixarry * Fixarry; Maby this is correct!
+
         BFVLongCiphertext ha2_div_ha1_secret_a(bfv_parm, ha2_div_ha1, alice);
         // TODO:: ha1_xa--ss_to_he  ell to plain_mod
 
-        BFVLongPlaintext ha2_plain(bfv_parm, fix_ha2);
+        vector<uint64_t> fix_ha2_matrix(batch_size * d_module);
+        for (size_t i = 0; i < batch_size * d_module; i++)
+        {
+            fix_ha2_matrix[i] = fix_ha2.data[i];
+        }
+
+        BFVLongPlaintext ha2_plain(bfv_parm, fix_ha2_matrix);
         BFVLongCiphertext ha2_secret_a(ha2_plain, alice);
         BFVLongCiphertext attn_ha2_b = attn_s.multiply_plain(ha2_plain, bfv_parm->evaluator);
 
@@ -123,27 +106,29 @@ public:
         xha1_secret_a.add_inplace(ha2_div_ha1_secret_a, bfv_parm->evaluator);
 
 #ifdef TEST
-        int NL_ELL = 29;
-        uint64_t mask = (NL_ELL == 64 ? -1 : ((1ULL << NL_ELL) - 1));
+
+        uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
         auto attn_plain = attn_s.decrypt(bob);
         auto attn = attn_plain.decode(bfv_parm);
         for (size_t i = 0; i < batch_size * d_module; i++)
         {
             attn[i] = (attn[i] + input_a[i] + input_b[i]) & mask;
         }
-        auto mu = fixed_mean(attn, batch_size, d_module, mask);
-        auto sigma = fixed_standard_deviation(attn, mu, batch_size, d_module, mask, fix_public);
-        for (size_t i = 0; i < batch_size; i++)
-        {
-            for (size_t j = 0; j < d_module; j++)
-            {
-                attn[i * d_module + j] = (attn[i * d_module + j] - mu[i]) & mask;
-                // attn[i * d_module + j] = (attn[i * d_module + j] / sigma[i]) & mask;
-                // attn[i * d_module + j] *= gamma[i * d_module + j];
-                // attn[i * d_module + j] += beta[i * d_module + j];
-            }
-        }
-        std::cout << attn[0] << " " << sigma[0] << "\n";
+
+        // auto mu = fpmath_alice->mean(attn, batch_size, d_module, mask);
+        // auto sigma = fixed_standard_deviation(attn, mu, batch_size, d_module, mask, fix_public);
+        // for (size_t i = 0; i < batch_size; i++)
+        // {
+        //     for (size_t j = 0; j < d_module; j++)
+        //     {
+        //         attn[i * d_module + j] = (attn[i * d_module + j] - mu[i]) & mask;
+        //         // attn[i * d_module + j] = (attn[i * d_module + j] / sigma[i]) & mask;
+        //         // attn[i * d_module + j] *= gamma[i * d_module + j];
+        //         // attn[i * d_module + j] += beta[i * d_module + j];
+        //     }
+        // }
+        std::cout << attn[0] << " "; // << sigma[0];
+        std::cout << "\n";
 #endif
         delete intput_data_b;
         delete intput_data_a;
@@ -152,8 +137,8 @@ public:
 
 int main()
 {
-    int NL_ELL = 29;
-    uint64_t mask = (NL_ELL == 64 ? -1 : ((1ULL << NL_ELL) - 1));
+
+    uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
 
     BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
 
@@ -171,6 +156,10 @@ int main()
         attn[i] &= mask;
         input_a[i] &= mask;
         input_b[i] &= mask;
+
+        std::cout << attn[i] << " " << input_a[i] << " " << input_b[i] << " ";
+
+        std::cout << "\n";
     }
 
     BFVLongPlaintext attn_plain(bfv_parm, attn);
@@ -179,7 +168,9 @@ int main()
     sci::IOPack *iopack;
     sci::OTPack *otpack;
     SecureLayerNorm1 *sec_ln1 = new SecureLayerNorm1(bfv_parm, alice, bob, iopack, otpack);
+    std::cout << "test start \n";
     sec_ln1->forward(attn_secret_s, input_a, input_b);
+    std::cout << "test end \n";
     int length = 10;
     uint64_t *share = new uint64_t[length];
 

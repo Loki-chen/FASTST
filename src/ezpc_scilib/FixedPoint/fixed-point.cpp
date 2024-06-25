@@ -334,7 +334,7 @@ FixArray FixOp::B2A(const BoolArray &x, bool signed_, int ell)
 
 FixArray FixOp::public_mul(const FixArray &x, const FixArray &y, int ell)
 {
-    assert(x.party == PUBLIC || y.party == PUBLIC);
+    assert(x.party == ALICE && y.party == ALICE || x.party == BOB && y.party == BOB || x.party == PUBLIC && y.party == PUBLIC);
     assert(x.size == y.size);
     assert(ell >= x.ell && ell >= y.ell && ell <= x.ell + y.ell);
     assert(ell < 64);

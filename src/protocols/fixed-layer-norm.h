@@ -10,6 +10,7 @@ public:
     FixedLayerNorm(BFVKey *party, BFVParm *parm,
                    FPMath *fpmath, FPMath *fpmath_public) : FixedProtocol(party, parm, fpmath, fpmath_public) {}
     ~FixedLayerNorm() {}
+    // Alice possess: attn_secret_b X_a, Bob possess X_b
     BFVLongCiphertext forward(const BFVLongCiphertext &attn, const bfv_matrix &input) const;
 };
 #endif

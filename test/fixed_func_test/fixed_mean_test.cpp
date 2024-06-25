@@ -6,8 +6,8 @@
 int main()
 {
     // fixed-mean test
-    int array_size = 5;
-    int len = 2;
+    int array_size = 10;
+    int len = 4;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(-1, 1);
