@@ -143,7 +143,7 @@ matrix Attention::forward(const matrix &input) const {
 
         STOP_TIMER(buf)
         total_comm += io->counter;
-        std::cout << buf << "Send data " << total_comm << " Bytes. \n";
+        printf("%s Send data %ld Bytes. \n", buf, total_comm);
         delete buf;
 #endif
         return output;
@@ -275,7 +275,7 @@ matrix Attention::forward(const matrix &input) const {
         sprintf(buf, "Attention-%-2d", head);
         STOP_TIMER(buf)
         total_comm += io->counter;
-        std::cout << buf << "Send data " << total_comm << " Bytes. \n";
+        printf("%s Send data %ld Bytes. \n", buf, total_comm);
         delete buf;
 #endif
         return output;
@@ -293,10 +293,13 @@ Multi_Head_Attention::Multi_Head_Attention(CKKSKey *party, CKKSEncoder *encoder,
            bQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.bias.txt", "LAYER", layer_str),
            bK_file = replace("bert.encoder.layer.LAYER.attention.self.key.bias.txt", "LAYER", layer_str),
            bV_file = replace("bert.encoder.layer.LAYER.attention.self.value.bias.txt", "LAYER", layer_str);
-    matrix allWQ(n_heads), allWK(n_heads), allWV(n_heads);
+    matrix allWQ, allWK, allWV;
+    load_mat(allWQ, dir_path + WQ_file);
+    load_mat(allWK, dir_path + WK_file);
+    load_mat(allWV, dir_path + WV_file);
     size_t size = d_module * d_k;
     for (int i = 0; i < n_heads; i++) {
-        attns[i] = new Attention(party, encoder, evaluator, io, i, layer);
+        attns[i] = new Attention(party, encoder, evaluator, io, layer, i);
         attns[i]->WQ = matrix(allWQ.begin() + i * size, allWQ.begin() + (i + 1) * size);
         attns[i]->WK = matrix(allWK.begin() + i * size, allWK.begin() + (i + 1) * size);
         attns[i]->WV = matrix(allWV.begin() + i * size, allWV.begin() + (i + 1) * size);
@@ -311,14 +314,14 @@ Multi_Head_Attention::~Multi_Head_Attention() {
 }
 
 LongCiphertext Multi_Head_Attention::forward(const matrix &input) const {
-    matrix output(input.size());
+    matrix output(batch_size * d_module);
 
     size_t i, j;
     for (int h = 0; h < n_heads; h++) {
-        auto output_h = attns[h]->forward(input);
+        matrix output_h = attns[h]->forward(input);
         for (i = 0; i < batch_size; i++) {
             for (j = 0; j < d_module; j++) {
-                output[i * d_module + h * d_module + j] = output_h[i * d_module + j];
+                output[i * d_module + h * d_k + j] = output_h[i * d_k + j];
             }
         }
     }

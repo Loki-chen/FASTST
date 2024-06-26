@@ -1,7 +1,7 @@
 #ifndef FAST_PROTOCOL_H
 #define FAST_PROTOCOL_H
 #pragma once
-#include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
+#include <ezpc_scilib/ezpc_utils.h> // prg.h & io & arg
 #include <model.h>
 
 class Encoder;
