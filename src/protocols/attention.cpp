@@ -1,19 +1,22 @@
 #include "attention.h"
-matrix Attention::forward(const matrix &input) const
-{
+using std::to_string;
+
+string replace(string str, string substr1, string substr2) {
+    size_t index = str.find(substr1, 0);
+    str.replace(index, substr1.length(), substr2);
+    return str;
+}
+
+Attention::Attention(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator, sci::NetIO *io, int layer,
+                     int head_) : Protocol(party, encoder, evaluator, io, layer), head(head_) {}
+
+matrix Attention::forward(const matrix &input) const {
     size_t total_comm = 0;
-    size_t i,
-        j;
-    size_t d_k = d_module / n_heads;
-    matrix WQ(d_module * d_k), WK(d_module * d_k), WV(d_module * d_k);
-    load_mat(WQ, "WQa-${party}");
-    load_mat(WK, "WKa-${party}");
-    load_mat(WV, "WVa-${party}");
+    size_t i, j;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(-1, 1);
-    if (party->party == sci::ALICE)
-    {
+    if (party->party == sci::ALICE) {
 #ifdef LOG
         INIT_TIMER
         START_TIMER
@@ -21,19 +24,18 @@ matrix Attention::forward(const matrix &input) const
         // alice: possess: x_a, W_a
         double ra = dist(gen);
         matrix ra_xa(batch_size * d_module);
-        for (i = 0; i < batch_size * d_k; i++)
-        {
+        for (i = 0; i < batch_size * d_module; i++) {
             ra_xa[i] = ra * input[i];
         }
-        for (i = 0; i < d_module * d_k; i++)
-        {
-            WQ[i] = ra * WQ[i];
-            WK[i] = ra * WK[i];
-            WV[i] = ra * WV[i];
+        matrix raWQ(WQ.size()), raWK(WK.size()), raWV(WV.size());
+        for (i = 0; i < d_module * d_k; i++) {
+            raWQ[i] = ra * WQ[i];
+            raWK[i] = ra * WK[i];
+            raWV[i] = ra * WV[i];
         }
-        auto ra_xa_WQa = matmul(input, WQ, batch_size, d_module, d_k);
-        auto ra_xa_WKa = matmul(input, WK, batch_size, d_module, d_k);
-        auto ra_xa_WVa = matmul(input, WV, batch_size, d_module, d_k);
+        auto ra_xa_WQa = matmul(input, raWQ, batch_size, d_module, d_k);
+        auto ra_xa_WKa = matmul(input, raWK, batch_size, d_module, d_k);
+        auto ra_xa_WVa = matmul(input, raWV, batch_size, d_module, d_k);
         LongCiphertext ra_secret_a(ra, party, encoder);
         // send H1 = {ra_xa_WIa, ra_xa, ra_WIa, [ra]_a} to bob, where I = Q, K, V
         send_mat(io, &ra_xa_WQa);
@@ -62,27 +64,22 @@ matrix Attention::forward(const matrix &input) const
         random_mat(eScore_a, -10, 0);
         matrix negScore_a(eScore_a);
         auto sqrt_d_k = sqrt(d_k);
-        for (size_t i = 0; i < batch_size * d_k; i++)
-        {
+        for (size_t i = 0; i < batch_size * d_k; i++) {
             Q_div_rb1[i] /= ra;
             Q_div_rb1[i] /= sqrt_d_k;
             K_div_rb1[i] /= ra;
         }
         auto temp_Score = matmul(Q_div_rb1, K_div_rb1, batch_size, d_k, batch_size, true);
-        for (size_t i = 0; i < batch_size * batch_size; i++)
-        {
+        for (size_t i = 0; i < batch_size * batch_size; i++) {
             negScore_a[i] = -negScore_a[i];
             eScore_a[i] = exp(eScore_a[i]);
         }
         normalization(temp_Score, batch_size, batch_size);
         LongPlaintext Score_plain(temp_Score, encoder);
         LongCiphertext Score_b_secret_b;
-        try
-        {
+        try {
             Score_b_secret_b = rb1_square_secret_b.multiply_plain(Score_plain, evaluator);
-        }
-        catch (std::exception &e)
-        {
+        } catch (std::exception &e) {
 #ifdef WARNING
             cout << "Zero warning\n";
 #endif
@@ -125,17 +122,13 @@ matrix Attention::forward(const matrix &input) const
             Rb_V[i] /= ra;
 
         matrix exp_sum(batch_size);
-        for (size_t i = 0; i < batch_size; i++)
-        {
-            for (j = 0; j < batch_size; j++)
-            {
+        for (size_t i = 0; i < batch_size; i++) {
+            for (j = 0; j < batch_size; j++) {
                 exp_sum[i] += rs2_expScore[i * batch_size + j];
             }
         }
-        for (i = 0; i < batch_size; i++)
-        {
-            for (j = 0; j < batch_size; j++)
-            {
+        for (i = 0; i < batch_size; i++) {
+            for (j = 0; j < batch_size; j++) {
                 eScore_b[i * batch_size + j] *= eScore_a[i * batch_size + j];
                 eScore_b[i * batch_size + j] /= exp_sum[i];
             }
@@ -154,9 +147,7 @@ matrix Attention::forward(const matrix &input) const
         delete buf;
 #endif
         return output;
-    }
-    else
-    {
+    } else {
 #ifdef LOG
         INIT_TIMER
         START_TIMER
@@ -188,8 +179,7 @@ matrix Attention::forward(const matrix &input) const
                             matrix ra_xa, matrix ra_WIa, matrix ra_xa_WIa,
                             LongCiphertext ra_secret_a,
                             CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator,
-                            double scale, size_t d_k)
-        {
+                            double scale) {
             auto xbWI_b = matmul(input_b, WIb, batch_size, d_module, d_k);
             LongPlaintext xbWI_b_plain(xbWI_b, encoder);
             LongCiphertext raI_secret_a = ra_secret_a.multiply_plain(xbWI_b_plain, evaluator); // element-wise matmul
@@ -206,13 +196,13 @@ matrix Attention::forward(const matrix &input) const
         };
         // [r_aQ]_A
         LongCiphertext raQ_sec_a = cal_raI_A(input, WQ, ra_xa, ra_WQa, ra_xa_WQa, ra_secret_a,
-                                             party, encoder, evaluator, scale, d_k);
+                                             party, encoder, evaluator, scale);
         // [r_aK]_A
         LongCiphertext raK_sec_a = cal_raI_A(input, WK, ra_xa, ra_WKa, ra_xa_WKa, ra_secret_a,
-                                             party, encoder, evaluator, scale, d_k);
+                                             party, encoder, evaluator, scale);
         // [r_aV]_A
         LongCiphertext raV_sec_a = cal_raI_A(input, WV, ra_xa, ra_WVa, ra_xa_WVa, ra_secret_a,
-                                             party, encoder, evaluator, scale, d_k);
+                                             party, encoder, evaluator, scale);
         // 2. generate 1 / rb1
         double rb1 = dist(gen);
         LongPlaintext div_rb1_plain(1. / rb1, encoder);
@@ -243,17 +233,13 @@ matrix Attention::forward(const matrix &input) const
         matrix Db(batch_size);
         random_mat(Db);
         matrix O = zero_sum(batch_size, batch_size);
-        for (size_t i = 0; i < batch_size * batch_size; i++)
-        {
+        for (size_t i = 0; i < batch_size * batch_size; i++) {
             eScore_b[i] = exp(eScore_b[i]) * rb2;
         }
         LongPlaintext rb2_expZb_plain(eScore_b, encoder);
-        try
-        {
+        try {
             eScore_a_secret_a.multiply_plain_inplace(rb2_expZb_plain, evaluator);
-        }
-        catch (std::exception &e)
-        {
+        } catch (std::exception &e) {
 #ifdef WARNING
             cout << "Zero warning\n";
 #endif
@@ -297,49 +283,52 @@ matrix Attention::forward(const matrix &input) const
 }
 
 Multi_Head_Attention::Multi_Head_Attention(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator,
-                                           sci::NetIO *io) : Protocol(party, encoder, evaluator, io)
-{
+                                           sci::NetIO *io, int layer) : Protocol(party, encoder, evaluator, io, layer) {
     attns = new Attention *[n_heads];
-    for (int i = 0; i < n_heads; i++)
-    {
-        attns[i] = new Attention(party, encoder, evaluator, io, i);
+    string layer_str = to_string(layer),
+           dir_path = party->party == sci::ALICE ? "/data/BOLT/bolt/prune/mrpc/alice_weights_txt/" : "/data/BOLT/bolt/prune/mrpc/bob_weights_txt/",
+           WQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.weight.txt", "LAYER", layer_str),
+           WK_file = replace("bert.encoder.layer.LAYER.attention.self.key.weight.txt", "LAYER", layer_str),
+           WV_file = replace("bert.encoder.layer.LAYER.attention.self.value.weight.txt", "LAYER", layer_str),
+           bQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.bias.txt", "LAYER", layer_str),
+           bK_file = replace("bert.encoder.layer.LAYER.attention.self.key.bias.txt", "LAYER", layer_str),
+           bV_file = replace("bert.encoder.layer.LAYER.attention.self.value.bias.txt", "LAYER", layer_str);
+    matrix allWQ(n_heads), allWK(n_heads), allWV(n_heads);
+    size_t size = d_module * d_k;
+    for (int i = 0; i < n_heads; i++) {
+        attns[i] = new Attention(party, encoder, evaluator, io, i, layer);
+        attns[i]->WQ = matrix(allWQ.begin() + i * size, allWQ.begin() + (i + 1) * size);
+        attns[i]->WK = matrix(allWK.begin() + i * size, allWK.begin() + (i + 1) * size);
+        attns[i]->WV = matrix(allWV.begin() + i * size, allWV.begin() + (i + 1) * size);
     }
 }
 
-Multi_Head_Attention::~Multi_Head_Attention()
-{
-    for (int i = 0; i < n_heads; i++)
-    {
+Multi_Head_Attention::~Multi_Head_Attention() {
+    for (int i = 0; i < n_heads; i++) {
         delete attns[i];
     }
     delete[] attns;
 }
 
-LongCiphertext Multi_Head_Attention::forward(const matrix &input) const
-{
+LongCiphertext Multi_Head_Attention::forward(const matrix &input) const {
     matrix output(input.size());
-    size_t d_k = d_module / n_heads;
 
     size_t i, j;
-    for (int h = 0; h < n_heads; h++)
-    {
+    for (int h = 0; h < n_heads; h++) {
         auto output_h = attns[h]->forward(input);
-        for (i = 0; i < batch_size; i++)
-        {
-            for (j = 0; j < d_k; j++)
-            {
-                output[i * d_module + h * d_k + j] = output_h[i * d_k + j];
+        for (i = 0; i < batch_size; i++) {
+            for (j = 0; j < d_module; j++) {
+                output[i * d_module + h * d_module + j] = output_h[i * d_module + j];
             }
         }
     }
 
     LongCiphertext output_secret;
-    if (party->party == sci::ALICE)
-    {
+    if (party->party == sci::ALICE) {
         LongCiphertext::recv(io, &output_secret, party->context);
-    }
-    else
-    {
+        LongPlaintext output_plain = LongPlaintext(output, encoder);
+        output_secret.multiply_plain_inplace(output_plain, evaluator);
+    } else {
         LongCiphertext output_secret_b(
             LongPlaintext(output, encoder),
             party);
