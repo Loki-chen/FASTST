@@ -141,27 +141,39 @@ matrix standard_deviation(const matrix &input, const matrix means, size_t row, s
     return result;
 }
 
-void print_mat(const matrix &A, size_t row, size_t column) {
+void print_mat(const matrix &A, size_t row, size_t column)
+{
     size_t i, j;
     bool flag1, flag2 = false;
-    for (i = 0; i < row; i++) {
+    for (i = 0; i < row; i++)
+    {
         flag1 = false;
-        if (i < 5 || row - i < 5) {
-            for (j = 0; j < column; j++) {
-                if (j < 5 || column - j < 5) {
+        if (i < 5 || row - i < 5)
+        {
+            for (j = 0; j < column; j++)
+            {
+                if (j < 5 || column - j < 5)
+                {
                     const double elem = A[i * column + j];
-                    if (elem >= 0) {
+                    if (elem >= 0)
+                    {
                         printf(" %-14lf", elem);
-                    } else {
+                    }
+                    else
+                    {
                         printf("%-15lf", elem);
                     }
-                } else if (!flag1) {
+                }
+                else if (!flag1)
+                {
                     printf("...   ");
                     flag1 = true;
                 }
             }
             printf("\n");
-        } else if (!flag2) {
+        }
+        else if (!flag2)
+        {
             printf(" ...   \n");
             flag2 = true;
         }
@@ -169,7 +181,48 @@ void print_mat(const matrix &A, size_t row, size_t column) {
     cout << row << " x " << column << "\n";
 }
 
-void print_all_mat(const matrix &A, size_t row, size_t column) {
+void print_bfv_mat(const bfv_matrix &A, size_t row, size_t column)
+{
+    size_t i, j;
+    bool flag1, flag2 = false;
+    for (i = 0; i < row; i++)
+    {
+        flag1 = false;
+        if (i < 5 || row - i < 5)
+        {
+            for (j = 0; j < column; j++)
+            {
+                if (j < 5 || column - j < 5)
+                {
+                    const double elem = A[i * column + j];
+                    if (elem >= 0)
+                    {
+                        printf(" %-14lf", elem);
+                    }
+                    else
+                    {
+                        printf("%-15lf", elem);
+                    }
+                }
+                else if (!flag1)
+                {
+                    printf("...   ");
+                    flag1 = true;
+                }
+            }
+            printf("\n");
+        }
+        else if (!flag2)
+        {
+            printf(" ...   \n");
+            flag2 = true;
+        }
+    }
+    cout << row << " x " << column << "\n";
+}
+
+void print_all_mat(const matrix &A, size_t row, size_t column)
+{
     size_t i, j;
     for (i = 0; i < row; i++) {
         for (j = 0; j < column; j++) {

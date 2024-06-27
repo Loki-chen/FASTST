@@ -1,7 +1,7 @@
 #include <model.h>
 #include "ezpc_scilib/ezpc_utils.h"
 #define TEST
-#define DEFAULT_SCALE 13
+#define DEFAULT_SCALE 12
 #define DEFAULT_ELL 37
 
 class SecureLayerNorm1
@@ -16,6 +16,8 @@ class SecureLayerNorm1
     FPMath *fpmath_alice;
     FPMath *fpmath_bob;
     FPMath *fpmath_public;
+    FixOp *fix;
+    Conversion *conv;
 
 public:
     SecureLayerNorm1(BFVParm *bfv_parm_, BFVKey *alice_, BFVKey *bob_,
@@ -28,6 +30,8 @@ public:
         fpmath_alice = new FPMath(sci::ALICE, iopack, otpack);
         fpmath_bob = new FPMath(sci::BOB, iopack, otpack);
         fpmath_public = new FPMath(sci::PUBLIC, iopack, otpack);
+        conv = new Conversion();
+        fix = new FixOp(sci::PUBLIC, iopack, otpack);
     }
 
     ~SecureLayerNorm1()
@@ -37,83 +41,99 @@ public:
         delete fpmath_public;
     }
 
-    void forward(BFVLongCiphertext &attn_s, const bfv_matrix &input_a, const bfv_matrix &input_b)
+    void forward(BFVLongCiphertext &attn_b, const uint64_t *input_a, const uint64_t *input_b)
     {
 
         sci::PRG128 prg;
         size_t i, j;
-
-        uint64_t *intput_data_a = new uint64_t[input_a.size()];
-        uint64_t *intput_data_b = new uint64_t[input_b.size()];
-
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dist(-1, 1);
+        std::uniform_real_distribution<> dist(0, 2);
 
-        double ha1 = dist(gen), ha2 = dist(gen);
-        double ha2_div_ha1 = ha2 / ha1;
+        /*
+            alice generate ha
+            compute xa_ha,  [ha], attn_sec_b_ ha
+        */
+        double ha = dist(gen);
 
-        uint64_t uint_ha1 = sci::neg_mod(static_cast<int64_t>(ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
-        uint64_t uint_ha2 = sci::neg_mod(static_cast<int64_t>(ha2 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
-        uint64_t uint_h2_div_h1 = sci::neg_mod(static_cast<int64_t>(ha2_div_ha1 * (1ULL << DEFAULT_SCALE)), DEFAULT_ELL);
+        FixArray fix_ha = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
+                                                   (sci::neg_mod(static_cast<int64_t>(ha * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                   true, DEFAULT_ELL, DEFAULT_SCALE);
 
-        FixArray fix_ha1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha1, true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray fix_ha2 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_ha2, true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray fix_h2_div_h1 = fpmath_alice->fix->input(sci::ALICE, input_a.size(), uint_h2_div_h1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_xa = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
+                                                   input_a,
+                                                   true, DEFAULT_ELL, DEFAULT_SCALE);
 
-        for (size_t i = 0; i < input_a.size(); i++)
-        {
-            intput_data_a[i] = input_a[i];
-            intput_data_b[i] = input_b[i];
-        }
+        fix_ha.party = sci::PUBLIC;
+        FixArray fix_ha_xa = fpmath_alice->fix->mul(fix_xa, fix_ha, DEFAULT_ELL);
 
-        FixArray fix_input_a = fpmath_alice->fix->input(sci::ALICE, input_a.size(), intput_data_a, true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray fix_input_b = fpmath_bob->fix->input(sci::BOB, input_b.size(), intput_data_b, true, 64, 12);
+        fix_ha_xa = fpmath_alice->fix->location_truncation(fix_ha_xa, DEFAULT_SCALE);
 
-        FixArray ha1_xa_test = fpmath_alice->fix->mul(fix_input_a, uint_ha1);
+        fix_ha_xa.data = conv->Ring_to_Prime(fix_ha_xa.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        fix_ha.data = conv->Ring_to_Prime(fix_ha.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
 
-        FixArray ha1_xa = fpmath_alice->fix->public_mul(fix_input_a, fix_ha1, DEFAULT_ELL); // TODO:: Fixarry * Fixarry; Maby this is correct!
+        BFVLongPlaintext ha_plain(bfv_parm, fix_ha.data, batch_size * d_module);
+        BFVLongCiphertext ha_secret_a(ha_plain, alice);
+        BFVLongCiphertext attn_ha_secret_b = attn_b.multiply_plain(ha_plain, bfv_parm->evaluator);
+        attn_ha_secret_b.mod_switch_to_next_inplace(bfv_parm->evaluator);
 
-        BFVLongCiphertext ha2_div_ha1_secret_a(bfv_parm, ha2_div_ha1, alice);
-        // TODO:: ha1_xa--ss_to_he  ell to plain_mod
+        // Alice : send H1 = {ha_xa, ha_secret_a, attn_ha_secret_b} to bob
 
-        vector<uint64_t> fix_ha2_matrix(batch_size * d_module);
+        // Bob: receive H1, and get x_b[ha]_a, attn_ha
+        // computate: attn_ha + xb[ha]_a + xaha
+        // get [X_{add}ha]_a
+
+        BFVLongPlaintext attn_ha_plain = attn_ha_secret_b.decrypt(bob);
+
+        FixArray fix_xb = fpmath_bob->fix->input(sci::BOB, batch_size * d_module,
+                                                 input_b,
+                                                 true, DEFAULT_ELL, DEFAULT_SCALE);
+
+        fix_xb.data = conv->Ring_to_Prime(fix_xb.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        BFVLongPlaintext fix_b_plain(bfv_parm, fix_xb.data, fix_xb.size);
+        BFVLongCiphertext xb_ha_secret_a = ha_secret_a.multiply_plain(fix_b_plain, bfv_parm->evaluator); // ha_xb
+        xb_ha_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
+        xb_ha_secret_a.add_plain_inplace(attn_ha_plain, bfv_parm->evaluator);
+        BFVLongPlaintext ha_xa_plain(bfv_parm, fix_ha_xa.data, fix_ha_xa.size);
+        xb_ha_secret_a.add_plain_inplace(ha_xa_plain, bfv_parm->evaluator);
+
+        // Bob generate gb, get [x_add*ha*gb]_a
+
+        double gb = dist(gen);
+        FixArray fix_gb = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
+                                                   (sci::neg_mod(static_cast<int64_t>(gb * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                   true, DEFAULT_ELL, DEFAULT_SCALE);
+        fix_gb.data = conv->Ring_to_Prime(fix_gb.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        BFVLongPlaintext gb_plain(bfv_parm, fix_gb.data, batch_size * d_module);
+
+        xb_ha_secret_a.multiply_plain_inplace(gb_plain, bfv_parm->evaluator);
+        xb_ha_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
+        // Bob send [x_add*ha*gb]_a} to alice;
+
+        // Alice: alice receive message and get x * gb;
+        BFVLongPlaintext xgb_plain = xb_ha_secret_a.decrypt(alice);
+        bfv_matrix x_gb = xgb_plain.decode(bfv_parm);
+        std::cout << "Test: \n ";
+
         for (size_t i = 0; i < batch_size * d_module; i++)
         {
-            fix_ha2_matrix[i] = fix_ha2.data[i];
+            std::cout << x_gb[i] << " ";
         }
 
-        BFVLongPlaintext ha2_plain(bfv_parm, fix_ha2_matrix);
-        BFVLongCiphertext ha2_secret_a(ha2_plain, alice);
-        BFVLongCiphertext attn_ha2_b = attn_s.multiply_plain(ha2_plain, bfv_parm->evaluator);
-
-        // send H1 = {hc1_xc, hc2_div_hc1_secret_a, hc2_secret_a, attn_hc2_s} to bob
-
-        // bob receive H1, and get hc1_xc, hc2_div_hc1_secret_a, hc2_secret_a, attn_hc2
-        auto attn_ha2_plain = attn_ha2_b.decrypt(bob);
-
-        // TODO:: input_b--ss_to_he ell to plain_mod
-        BFVLongPlaintext input_b_plain(bfv_parm, input_b);
-        BFVLongCiphertext xha1_secret_a = ha2_secret_a.multiply_plain(input_b_plain, bfv_parm->evaluator);
-        // attn_ha2_plain.mod_switch_to_inplace(xha1_secret_a.parms_id(), evaluator); // error:  plain is not valid for encryption parameters ! just need to neg_mod to plain_mod from ell;
-        xha1_secret_a.add_plain_inplace(attn_ha2_plain, bfv_parm->evaluator);
-
-        // ------------------------------------------------------------------------------
-        // something is wrong here.
-        BFVLongPlaintext ha1_xa_plain(bfv_parm, ha1_xa.data, ha1_xa.size); // error:  fixrry need to mod to plain_mod
-        ha2_div_ha1_secret_a.multiply_plain_inplace(ha1_xa_plain, bfv_parm->evaluator);
-        // ha2_div_ha1_secret_a.mod_switch_to_inplace(xha1_secret_a.parms_id(), evaluator);
-        xha1_secret_a.add_inplace(ha2_div_ha1_secret_a, bfv_parm->evaluator);
+        std::cout << "\n ";
+        // conversion prime to Ring
+        FixArray fix_x_gb(sci::BOB, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
+        // fix_x_gb.data = conv->Prime_to_Ring();
 
 #ifdef TEST
 
-        uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
-        auto attn_plain = attn_s.decrypt(bob);
-        auto attn = attn_plain.decode(bfv_parm);
-        for (size_t i = 0; i < batch_size * d_module; i++)
-        {
-            attn[i] = (attn[i] + input_a[i] + input_b[i]) & mask;
-        }
+        // uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
+        // auto attn_plain = attn_s.decrypt(bob);
+        // auto attn = attn_plain.decode(bfv_parm);
+        // for (size_t i = 0; i < batch_size * d_module; i++)
+        // {
+        //     attn[i] = (attn[i] + input_a[i] + input_b[i]) & mask;
+        // }
 
         // auto mu = fpmath_alice->mean(attn, batch_size, d_module, mask);
         // auto sigma = fixed_standard_deviation(attn, mu, batch_size, d_module, mask, fix_public);
@@ -127,11 +147,11 @@ public:
         //         // attn[i * d_module + j] += beta[i * d_module + j];
         //     }
         // }
-        std::cout << attn[0] << " "; // << sigma[0];
-        std::cout << "\n";
+
 #endif
-        delete[] intput_data_b;
-        delete[] intput_data_a;
+
+        // delete[] xb;
+        // delete[] tmp_xb;
     }
 };
 
@@ -140,49 +160,64 @@ int main()
 
     uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
 
-    BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
+    BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(37));
 
     BFVKey *alice = new BFVKey(sci::ALICE, bfv_parm);
     BFVKey *bob = new BFVKey(sci::BOB, bfv_parm);
 
-    bfv_matrix attn(batch_size * d_module),
+    matrix attn(batch_size * d_module),
         input_a(batch_size * d_module), input_b(batch_size * d_module);
 
-    random_bfv_mat(attn);
-    random_bfv_mat(input_a);
-    random_bfv_mat(input_b);
+    random_mat(attn, -1, 1, false);
+    random_mat(input_a, -1, 1, false);
+    random_mat(input_b, -1, 1, false);
+
+    int64_t *int_attn = new int64_t[batch_size * d_module];
+    uint64_t *uint_attn = new uint64_t[batch_size * d_module];
+
+    int64_t *int_input_a = new int64_t[batch_size * d_module];
+    uint64_t *uint_input_a = new uint64_t[batch_size * d_module];
+
+    int64_t *int_input_b = new int64_t[batch_size * d_module];
+    uint64_t *uint_input_b = new uint64_t[batch_size * d_module];
+
+    // data prepare!
     for (size_t i = 0; i < batch_size * d_module; i++)
     {
-        attn[i] &= mask;
-        input_a[i] &= mask;
-        input_b[i] &= mask;
+        int_attn[i] = static_cast<int64_t>(attn[i] * (1ULL << (DEFAULT_SCALE)));
+        uint_attn[i] = sci::neg_mod(int_attn[i], (int64_t)(1ULL << DEFAULT_ELL));
 
-        std::cout << attn[i] << " " << input_a[i] << " " << input_b[i] << " ";
+        int_input_a[i] = static_cast<int64_t>(input_a[i] * (1ULL << DEFAULT_SCALE));
+        uint_input_a[i] = sci::neg_mod(int_input_a[i], (int64_t)(1ULL << DEFAULT_ELL));
 
-        std::cout << "\n";
+        int_input_b[i] = static_cast<int64_t>(input_b[i] * (1ULL << DEFAULT_SCALE));
+        uint_input_b[i] = sci::neg_mod(int_input_b[i], (int64_t)(1ULL << DEFAULT_ELL));
+        // std::cout << uint_input_b[i] << " ";
     }
 
-    BFVLongPlaintext attn_plain(bfv_parm, attn);
+    BFVLongPlaintext attn_plain(bfv_parm, uint_attn, batch_size * d_module);
     BFVLongCiphertext attn_secret_s(attn_plain, bob);
     size_t i, j;
     sci::IOPack *iopack;
     sci::OTPack *otpack;
     SecureLayerNorm1 *sec_ln1 = new SecureLayerNorm1(bfv_parm, alice, bob, iopack, otpack);
-    std::cout << "test start \n";
-    sec_ln1->forward(attn_secret_s, input_a, input_b);
-    std::cout << "test end \n";
+    std::cout << "layernorm start \n";
+    sec_ln1->forward(attn_secret_s, uint_input_a, uint_input_b);
+    std::cout << "layernorm end \n";
     int length = 10;
     uint64_t *share = new uint64_t[length];
 
     sci::PRG128 prg_con;
     prg_con.random_mod_p<uint64_t>(share, length, bfv_parm->plain_mod);
     BFVLongCiphertext ct;
-    // ss_to_he(bfv_parm, alice, share, ct, length, int 37);
-    delete bfv_parm;
-    delete alice;
-    delete bob;
-    delete iopack;
-    delete otpack;
+
     delete sec_ln1;
     delete[] share;
+
+    delete[] int_attn;
+    delete[] uint_attn;
+    delete[] int_input_a;
+    delete[] uint_input_a;
+    delete[] int_input_b;
+    delete[] uint_input_b;
 }

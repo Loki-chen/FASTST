@@ -7,14 +7,13 @@
 class Conversion
 {
 public:
-    BFVKey *party;
-    BFVparm *bfvparm;
-    BatchEncoder *encoder;
-    Conversion(BFVKey *_party, BFVparm *_bfvparm, BatchEncoder *_encoder) : party(_party), bfvparm(_bfvparm), encoder(_encoder) {}
+    Conversion() {}
 
     ~Conversion() {}
 
-    uint64_t *Prime_to_Ring(uint64_t *input, uint64_t *output, Evaluator *evaluator);
+    uint64_t *Prime_to_Ring(int party, uint64_t *input, int length, int ell, u_int64_t plain_prime, int s_in, int s_out, FPMath *fpmath);
 
-    uint64_t *Ring_to_Prime(uint64_t *input, int length, int ell, int plain_prime);
+    uint64_t *Ring_to_Prime(uint64_t *input, int length, int ell, int64_t plain_prime);
 };
+
+#endif // FAST_HE_BFV_CONVERSION_H__
