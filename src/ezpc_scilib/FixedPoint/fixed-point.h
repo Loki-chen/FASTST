@@ -438,7 +438,7 @@ public:
     // Output bitlength and scale are x.ell-s and x.s-s; Output signedness is same as that of x
     // x must be public FixArray
     // s < bitlength of x (x.ell) and s >= 0
-    FixArray public_truncation(const FixArray &x, int scale);
+    FixArray location_truncation(const FixArray &x, int scale);
 
     inline int64_t unsigned_val(uint64_t x, int bw_x)
     {

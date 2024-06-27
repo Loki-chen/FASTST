@@ -52,7 +52,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         FixArray fix_ha2xgb = fpmath->fix->input(sci::PUBLIC, ha2xgb.size(), ha2xgb.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_xgb = fpmath->fix->mul(fix_ha2xgb, fix_div_ha2);
         fix_xgb.party = PUBLIC;
-        fix_xgb = fpmath->fix->public_truncation(fix_xgb, DEFAULT_SCALE);
+        fix_xgb = fpmath->fix->location_truncation(fix_xgb, DEFAULT_SCALE);
         fix_xgb.party = sci::ALICE;
         // auto fix = fpmath->fix;
         // print_fix(fix_xgb);

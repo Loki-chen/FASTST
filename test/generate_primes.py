@@ -2,7 +2,7 @@ import math
 import gmpy2
 import random
 
-bitlengths = range(29, 42, 1)
+bitlengths = range(19, 20, 1)
 primes = []
 mod_degree = 2**19
 
