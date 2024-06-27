@@ -647,6 +647,36 @@ BoolArray FixOp::LSB(const FixArray &x)
     return ret;
 }
 
+BoolArray FixOp::MSB(const FixArray &x, int ell)
+{
+    assert(ell <= 64);
+    int size = x.size;
+    int32_t shift = ell - 1;
+    uint64_t shift_mask = (shift == 64 ? -1 : ((1ULL << shift) - 1));
+    uint64_t *tmp_x = new uint64_t[size];
+    uint64_t *tmp_x2 = new uint64_t[size];
+    uint8_t *msb_xb = new uint8_t[size];
+    for (int i = 0; i < size; i++)
+    {
+        tmp_x[i] = x.data[i] & shift_mask;
+        std::cout << tmp_x[i];
+        msb_xb[i] = (x.data[i] >> shift) & 1;
+        std::cout << msb_xb[i];
+        tmp_x2[i] = (shift_mask - tmp_x[i]) & shift_mask;
+        std::cout << tmp_x2[i];
+    }
+    BoolArray ret(x.party, x.size);
+
+    for (int i = 0; i < x.size; i++)
+    {
+        ret.data[i] = msb_xb[i];
+    }
+    delete[] tmp_x;
+    delete[] msb_xb;
+    delete[] tmp_x2;
+    return ret;
+}
+
 BoolArray FixOp::wrap(const FixArray &x)
 {
     assert(x.party != PUBLIC);
@@ -751,9 +781,23 @@ BoolArray FixOp::LT(const FixArray &x, const FixArray &y)
     return ret;
 }
 
+BoolArray FixOp::location_LT(const FixArray &x, const FixArray &y)
+{
+    BoolArray ret(this->party, x.size);
+    FixArray diff = this->sub(x, y);
+    // MSB();
+    // get MSB of
+    return ret;
+}
+
 BoolArray FixOp::GT(const FixArray &x, const FixArray &y)
 {
     return this->LT(y, x);
+}
+
+BoolArray FixOp::location_GT(const FixArray &x, const FixArray &y)
+{
+    return this->location_LT(y, x);
 }
 
 BoolArray FixOp::LE(const FixArray &x, const FixArray &y)
@@ -1639,7 +1683,7 @@ FixArray FixOp::location_truncation(const FixArray &x, int scale)
     uint64_t *sign_x = new uint64_t[x.size];
     for (size_t i = 0; i < x.size; i++)
     {
-        sign_x[i] = static_cast<uint64_t>((signed_val(x.data[i], x.ell)) >> scale) & ret_mask;
+        sign_x[i] = sci::neg_mod((signed_val(x.data[i], x.ell)) >> scale, (1ULL << (x.ell))) & ret_mask;
     }
     sign_ret = fix->input(x.party, x.size, sign_x, x.signed_, x.ell, x.s - scale);
 

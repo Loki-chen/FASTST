@@ -1,7 +1,7 @@
 #include "conversion.h"
 
 // R-to-P:location conversion
-uint64_t *Conversion::Ring_to_Prime(uint64_t *input, int length, int ell, int64_t plain_mod)
+uint64_t *Conversion::Ring_to_Prime(const uint64_t *input, int length, int ell, int64_t plain_mod)
 {
 #ifdef LOG
     auto t_conversion = high_resolution_clock::now();
@@ -45,4 +45,13 @@ uint64_t *Conversion::Prime_to_Ring(int party, uint64_t *input, int length, int 
     memcpy(output, tmp.data, length * sizeof(uint64_t));
 
     return output;
+}
+
+// P-to-R:location conversion
+uint64_t *Conversion::Prime_to_Ring(uint64_t *input, int length, int ell, u_int64_t plain_prime, int s_in, int s_out, FPMath *fpmath)
+{
+    FixArray fix_input = fpmath->fix->input(sci::PUBLIC, length, input, true, ell, s_in);
+    FixArray p_array = fpmath->fix->input(sci::PUBLIC, length, plain_prime, true, ell, s_in);
+    FixArray p_2_array = fpmath->fix->input(sci::PUBLIC, length, (plain_prime - 1) / 2, true, ell, s_in);
+    // FixArray output = fpmath->location_gt_p_sub(fix_input, p_2_array);
 }
