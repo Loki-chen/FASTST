@@ -11,7 +11,7 @@
 // #define ffn_dim 3072   // 影响不大
 
 // test condition
-#define batch_size 5 // 影响不大
+#define batch_size 1 // 影响不大
 #define d_module 5   // 5.5X  9.5x
 #define n_heads 5    // 影响不大
 #define ffn_dim 5    // 影响不大

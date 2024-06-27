@@ -463,7 +463,7 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     FixArray avg = fix->mul(sum_res, fix_dn, ell);
 
     avg.party = sci::PUBLIC;
-    avg = fix->public_truncation(avg, s);
+    avg = fix->location_truncation(avg, s);
 
     vector<FixArray> ret(N);
     for (int i = 0; i < N; i++)
@@ -492,14 +492,14 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     {
         tmp_ret[i] = fix->sub(x[i], mean[i].data[0]);
         tmp_ret[i] = fix->public_mul(tmp_ret[i], tmp_ret[i], ell + 2 * s);
-        tmp_ret[i] = fix->public_truncation(tmp_ret[i], s);
+        tmp_ret[i] = fix->location_truncation(tmp_ret[i], s);
     }
 
     FixArray sum_res = fix->tree_sum(tmp_ret); // obtain (((g)^s)^2delta)^2
     sum_res.party = sci::ALICE;
     FixArray avg = fix->mul(sum_res, fix_dn, ell);
     avg.party = sci::PUBLIC;
-    avg = fix->public_truncation(avg, s);
+    avg = fix->location_truncation(avg, s);
     uint64_t unsig_fix_delta;
     vector<FixArray> ret(N);
 

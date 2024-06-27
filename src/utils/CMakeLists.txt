@@ -34,6 +34,7 @@ add_library(FASTST-UTILS
     he-tools.cpp
     he-bfv.cpp
     mat-tools.cpp
+    conversion.cpp
 )
 
 

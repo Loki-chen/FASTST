@@ -1629,9 +1629,9 @@ void FixOp::recv_fix_array(FixArray &fix_array)
     iopack->io->flush();
 }
 
-FixArray FixOp::public_truncation(const FixArray &x, int scale)
+FixArray FixOp::location_truncation(const FixArray &x, int scale)
 {
-    assert(x.party == sci::PUBLIC);
+
     assert(scale <= x.ell && scale >= 0);
 
     FixArray sign_ret(x.party, x.size, x.signed_, x.ell, x.s);
