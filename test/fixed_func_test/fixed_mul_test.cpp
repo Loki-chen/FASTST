@@ -20,5 +20,5 @@ int main()
     bfv_parm->encoder->decode(ptaa, res);
     // std::cout << "result: " << double(res[0]) / double(default_prime_mod.at(29)) << "\n";
     std::cout << "result: " << res[0] << "\n";
-    std::cout << "result: " << (1ULL << 64 - 1) << "\n";
+    std::cout << "result: " << (1ULL << (64 - 1)) << "\n";
 }

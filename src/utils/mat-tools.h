@@ -1,13 +1,18 @@
 #ifndef FAST_MAT_TOOLS_H__
 #define FAST_MAT_TOOLS_H__
 #pragma once
-#include <iostream>
-#include <random>
-#include <vector>
 #include "he-tools.h"
 #include "omp.h"
+#include <fstream>
+#include <iostream>
+#include <random>
+#include <sstream>
+#include <vector>
 
+using std::cerr;
 using std::cout;
+using std::ifstream;
+using std::istringstream;
 using std::vector;
 
 typedef vector<double> matrix;
@@ -19,7 +24,7 @@ void random_mat(matrix &mat, double min = -1., double max = 1., bool binomial = 
 void random_bfv_mat(bfv_matrix &mat);
 
 matrix zero_sum(size_t row, size_t column);
-void load_mat(matrix &mat, const char *path);
+void load_mat(matrix &mat, string path);
 void normalization(matrix &A, size_t row, size_t column);
 matrix mean(const matrix &input, size_t row, size_t column);
 matrix standard_deviation(const matrix &input, const matrix means, size_t row, size_t column);
@@ -31,13 +36,11 @@ LongCiphertext RFCP_matmul(const LongCiphertext *A_secret, const matrix &B,
                            size_t dim1, size_t dim2, size_t dim3,
                            CKKSEncoder *encoder, Evaluator *evaluator);
 
-inline void send_mat(sci::NetIO *io, matrix *mat, bool count_comm = true)
-{
+inline void send_mat(sci::NetIO *io, const matrix *mat, bool count_comm = true) {
     io->send_data(mat->data(), mat->size() * sizeof(double), count_comm);
 }
 
-inline void recv_mat(sci::NetIO *io, matrix *mat, bool count_comm = true)
-{
+inline void recv_mat(sci::NetIO *io, matrix *mat, bool count_comm = true) {
     io->recv_data(mat->data(), mat->size() * sizeof(double), count_comm);
 }
 

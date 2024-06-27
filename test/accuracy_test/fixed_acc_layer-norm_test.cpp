@@ -212,7 +212,7 @@ int main()
     BFVLongCiphertext ct;
 
     delete sec_ln1;
-    delete share;
+    delete[] share;
 
     delete[] int_attn;
     delete[] uint_attn;

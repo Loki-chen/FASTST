@@ -1,22 +1,25 @@
 #ifndef FAST_PROTOCOL_H
 #define FAST_PROTOCOL_H
 #pragma once
+#include <ezpc_scilib/ezpc_utils.h> // prg.h & io & arg
 #include <model.h>
-#include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
-class Protocol
-{
+
+class Encoder;
+
+class Protocol {
 protected:
+    int layer;
     CKKSKey *party;
     CKKSEncoder *encoder;
     Evaluator *evaluator;
     sci::NetIO *io;
 
 public:
+    friend Encoder;
     Protocol(CKKSKey *party_, CKKSEncoder *encoder_, Evaluator *evaluator_,
-             sci::NetIO *io_) : party(party_),
-                                encoder(encoder_),
-                                evaluator(evaluator_),
-                                io(io_) {}
+             sci::NetIO *io_, int _layer)
+        : party(party_), encoder(encoder_), evaluator(evaluator_), io(io_),
+          layer(_layer) {}
     ~Protocol() {}
 };
 #endif

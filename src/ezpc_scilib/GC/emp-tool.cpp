@@ -24,7 +24,7 @@ Enquiries about further applications and development opportunities are welcome.
 
 Modified by Deevashwer Rathee
 */
-#pragma once
+// #pragma once
 #include "circuit_execution.h"
 #include "protocol_execution.h"
 

@@ -1,7 +1,7 @@
 
 #Build FASTST
 
-cd $ROOT/FASTST
+# cd $ROOT/FASTST
 mkdir -p build
 cd build
 
@@ -11,4 +11,4 @@ else
   cmake -DCMAKE_INSTALL_PREFIX=./install ../
 fi
 
-cmake --build . --target install --parallel -j 40
+cmake --build . --target install --parallel -j $1

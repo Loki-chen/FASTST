@@ -1,6 +1,3 @@
-.vscode
-build
-extern/
+.*
+*build*
 data/
-Protocols.md
-Problem.md

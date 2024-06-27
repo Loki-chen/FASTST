@@ -27,6 +27,7 @@ Modified by Deevashwer Rathee
 
 #ifndef CONFIG_H__
 #define CONFIG_H__
+#include <cstdint>
 #include <map>
 
 namespace sci
