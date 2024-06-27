@@ -1,4 +1,5 @@
 #include "attention.h"
+#include "model.h"
 using std::to_string;
 
 string replace(string str, string substr1, string substr2) {
@@ -144,7 +145,7 @@ matrix Attention::forward(const matrix &input) const {
         STOP_TIMER(buf)
         total_comm += io->counter;
         printf("%s Send data %ld Bytes. \n", buf, total_comm);
-        delete buf;
+        delete[] buf;
 #endif
         return output;
     } else {
@@ -276,7 +277,7 @@ matrix Attention::forward(const matrix &input) const {
         STOP_TIMER(buf)
         total_comm += io->counter;
         printf("%s Send data %ld Bytes. \n", buf, total_comm);
-        delete buf;
+        delete[] buf;
 #endif
         return output;
     }
@@ -320,7 +321,7 @@ LongCiphertext Multi_Head_Attention::forward(const matrix &input) const {
     for (int h = 0; h < n_heads; h++) {
         matrix output_h = attns[h]->forward(input);
         for (i = 0; i < batch_size; i++) {
-            for (j = 0; j < d_module; j++) {
+            for (j = 0; j < d_k; j++) {
                 output[i * d_module + h * d_k + j] = output_h[i * d_k + j];
             }
         }

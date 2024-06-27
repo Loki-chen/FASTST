@@ -14,10 +14,15 @@ if you want to turn off the test sample, run:
 
 ```bash
 mkdir build & cd build
--DCMAKE_INSTALL_PREFIX=./install ../ -FASTST_test=ON
+cmake -DCMAKE_INSTALL_PREFIX=./install ../ -FASTST_test=ON
+cmake --build  --config Debug --target all --
 ```
 
-cmake --build  --config Debug --target all --
+or just run:
+
+```bash
+./setup_and_build.sh
+```
 
 
 # Acknowledgments

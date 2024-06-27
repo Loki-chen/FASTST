@@ -182,7 +182,7 @@ void print_all_mat(const matrix &A, size_t row, size_t column) {
 LongCiphertext *RFCP_encodeA(const matrix &A, CKKSKey *party, CKKSEncoder *encoder,
                              size_t dim1, size_t dim2, size_t dim3) {
     matrix Ae(dim1 * dim2 * dim3);
-#pragma omp parallal for
+#pragma omp parallel for
     for (size_t i = 0; i < dim2; i++) {
         for (size_t j = 0; j < dim1 * dim3; j++) {
             Ae[i * dim1 * dim3 + j] = A[j / dim3 * dim2 + i];

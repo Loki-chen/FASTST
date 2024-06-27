@@ -102,13 +102,13 @@ int main()
 
     print_fix(result);
 
-    delete random_share;
+    delete[] random_share;
     delete bfv_parm;
     delete alice;
     delete otpack;
     delete iopack;
     delete mill;
-    delete x;
+    delete[] x;
     delete fix_input;
     delete input;
     delete unsig_fix_input;

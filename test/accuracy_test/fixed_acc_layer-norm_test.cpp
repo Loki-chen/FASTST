@@ -130,8 +130,8 @@ public:
         std::cout << attn[0] << " "; // << sigma[0];
         std::cout << "\n";
 #endif
-        delete intput_data_b;
-        delete intput_data_a;
+        delete[] intput_data_b;
+        delete[] intput_data_a;
     }
 };
 
@@ -184,5 +184,5 @@ int main()
     delete iopack;
     delete otpack;
     delete sec_ln1;
-    delete share;
+    delete[] share;
 }
