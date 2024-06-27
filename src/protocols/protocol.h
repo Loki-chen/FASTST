@@ -17,10 +17,9 @@ protected:
 public:
     friend Encoder;
     Protocol(CKKSKey *party_, CKKSEncoder *encoder_, Evaluator *evaluator_,
-             sci::NetIO *io_, int _layer) : party(party_),
-                                            encoder(encoder_),
-                                            evaluator(evaluator_),
-                                            io(io_), layer(_layer) {}
+             sci::NetIO *io_, int _layer)
+        : party(party_), encoder(encoder_), evaluator(evaluator_), io(io_),
+          layer(_layer) {}
     ~Protocol() {}
 };
 #endif
