@@ -1,33 +1,43 @@
 #include "mat-tools.h"
 
 matrix matmul(const matrix &mat1, const matrix &mat2,
-              size_t dim1, size_t dim2, size_t dim3, bool trans) {
+              size_t dim1, size_t dim2, size_t dim3, bool trans)
+{
     matrix result(dim1 * dim3);
-    if (!trans) {
+    if (!trans)
+    {
         {
 #pragma omp parallel for
-            for (size_t i = 0; i < dim1; i++) {
+            for (size_t i = 0; i < dim1; i++)
+            {
                 const size_t base_idx1 = i * dim2;
                 const size_t base_idx2 = i * dim3;
-                for (size_t k = 0; k < dim2; k++) {
+                for (size_t k = 0; k < dim2; k++)
+                {
                     const size_t base_idx3 = k * dim3;
                     const double tmp = mat1[base_idx1 + k];
-                    for (size_t j = 0; j < dim3; j++) {
+                    for (size_t j = 0; j < dim3; j++)
+                    {
                         result[base_idx2 + j] += tmp * mat2[base_idx3 + j];
                     }
                 }
             }
         }
-    } else {
+    }
+    else
+    {
         {
 #pragma omp parallel for
-            for (size_t i = 0; i < dim1; i++) {
+            for (size_t i = 0; i < dim1; i++)
+            {
                 const size_t base_idx1 = i * dim2;
                 const size_t base_idx2 = i * dim3;
-                for (size_t j = 0; j < dim3; j++) {
+                for (size_t j = 0; j < dim3; j++)
+                {
                     const size_t base_idx3 = j * dim2;
                     double sum = 0.;
-                    for (size_t k = 0; k < dim2; k++) {
+                    for (size_t k = 0; k < dim2; k++)
+                    {
                         sum += mat1[base_idx1 + k] * mat2[base_idx3 + k];
                     }
                     result[base_idx2 + j] = sum;
@@ -38,37 +48,72 @@ matrix matmul(const matrix &mat1, const matrix &mat2,
     return result;
 }
 
-void random_mat(matrix &mat, double min, double max, bool binomial) {
+void random_mat(matrix &mat, double min, double max, bool binomial)
+{
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(min, max);
 
     size_t size = mat.size();
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++)
+    {
         mat[i] = dist(gen);
-        if (binomial) {
+        if (binomial)
+        {
             mat[i] = mat[i] > 0 ? max : min;
         }
     }
 }
 
-void random_bfv_mat(bfv_matrix &mat) {
+void random_modP_mat(bfv_matrix &mat, int plain_mod)
+{
+    sci::PRG128 prg;
+    size_t size = mat.size();
+    uint64_t *rand_data = new uint64_t[size];
+    prg.random_mod_p<uint64_t>(rand_data, size, plain_mod);
+    for (size_t i = 0; i < size; i++)
+    {
+        mat[i] = rand_data[i];
+    }
+    delete[] rand_data;
+}
+
+void random_ell_mat(bfv_matrix &mat, int ell)
+{
+    sci::PRG128 prg;
+    size_t size = mat.size();
+    uint64_t *rand_data = new uint64_t[size];
+    prg.random_mod_p<uint64_t>(rand_data, size, 1ULL << (ell - 1));
+    for (size_t i = 0; i < size; i++)
+    {
+        mat[i] = rand_data[i];
+    }
+    delete[] rand_data;
+}
+
+void random_bfv_mat(bfv_matrix &mat)
+{
     sci::PRG128 prg;
     size_t size = mat.size();
     uint64_t *rand_data = new uint64_t[size];
     prg.random_data(rand_data, size * sizeof(uint64_t));
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++)
+    {
         mat[i] = rand_data[i];
     }
+    delete[] rand_data;
 }
 
-matrix zero_sum(size_t row, size_t column) {
+matrix zero_sum(size_t row, size_t column)
+{
     matrix mat(row * column);
     random_mat(mat);
     size_t i, j;
-    for (i = 0; i < row; i++) {
+    for (i = 0; i < row; i++)
+    {
         double sum = 0.;
-        for (j = 0; j < column - 1; j++) {
+        for (j = 0; j < column - 1; j++)
+        {
             sum += mat[i * column + j];
         }
         mat[(i + 1) * column - 1] = -sum;
@@ -76,51 +121,65 @@ matrix zero_sum(size_t row, size_t column) {
     return mat;
 }
 
-void load_mat(matrix &mat, string path) {
+void load_mat(matrix &mat, string path)
+{
     ifstream input_file(path);
 
-    if (!input_file.is_open()) {
+    if (!input_file.is_open())
+    {
         cerr << "Error opening file: " << path << "\n";
         return;
     }
 
     string line;
-    while (getline(input_file, line)) {
+    while (getline(input_file, line))
+    {
         istringstream line_stream(line);
         string cell;
-        while (getline(line_stream, cell, ',')) {
+        while (getline(line_stream, cell, ','))
+        {
             mat.push_back(stoll(cell));
         }
     }
     input_file.close();
 }
 
-void normalization(matrix &A, size_t row, size_t column) {
+void normalization(matrix &A, size_t row, size_t column)
+{
     size_t i, j;
     double max_value = 1ul << 20;
-    for (i = 0; i < row * column; i++) {
-        if (std::isnan(A[i]) || A[i] > max_value || -A[i] > max_value) {
+    for (i = 0; i < row * column; i++)
+    {
+        if (std::isnan(A[i]) || A[i] > max_value || -A[i] > max_value)
+        {
             A[i] = 0;
         }
     }
-    for (i = 0; i < row; i++) {
+    for (i = 0; i < row; i++)
+    {
         auto max = A[i * column];
-        for (j = 1; j < column; j++) {
-            if (max < A[i * column + j]) {
+        for (j = 1; j < column; j++)
+        {
+            if (max < A[i * column + j])
+            {
                 max = A[i * column + j];
             }
         }
-        for (j = 0; j < column; j++) {
+        for (j = 0; j < column; j++)
+        {
             A[i * column + j] -= max;
         }
     }
 }
 
-matrix mean(const matrix &input, size_t row, size_t column) {
+matrix mean(const matrix &input, size_t row, size_t column)
+{
     matrix result(row);
     size_t i, j;
-    for (i = 0; i < row; i++) {
-        for (j = 0; j < column; j++) {
+    for (i = 0; i < row; i++)
+    {
+        for (j = 0; j < column; j++)
+        {
             result[i] += input[i * column + j];
         }
         result[i] /= column;
@@ -128,11 +187,14 @@ matrix mean(const matrix &input, size_t row, size_t column) {
     return result;
 }
 
-matrix standard_deviation(const matrix &input, const matrix means, size_t row, size_t column) {
+matrix standard_deviation(const matrix &input, const matrix means, size_t row, size_t column)
+{
     matrix result(row);
     size_t i, j;
-    for (i = 0; i < row; i++) {
-        for (j = 0; j < column; j++) {
+    for (i = 0; i < row; i++)
+    {
+        for (j = 0; j < column; j++)
+        {
             result[i] += (input[i * column + j] - means[i]) * (input[i * column + j] - means[i]);
         }
         result[i] /= column;
@@ -224,8 +286,10 @@ void print_bfv_mat(const bfv_matrix &A, size_t row, size_t column)
 void print_all_mat(const matrix &A, size_t row, size_t column)
 {
     size_t i, j;
-    for (i = 0; i < row; i++) {
-        for (j = 0; j < column; j++) {
+    for (i = 0; i < row; i++)
+    {
+        for (j = 0; j < column; j++)
+        {
             cout << A[i * column + j] << " ";
         }
         cout << "\n";
@@ -233,18 +297,22 @@ void print_all_mat(const matrix &A, size_t row, size_t column)
 }
 
 LongCiphertext *RFCP_encodeA(const matrix &A, CKKSKey *party, CKKSEncoder *encoder,
-                             size_t dim1, size_t dim2, size_t dim3) {
+                             size_t dim1, size_t dim2, size_t dim3)
+{
     matrix Ae(dim1 * dim2 * dim3);
 #pragma omp parallel for
-    for (size_t i = 0; i < dim2; i++) {
-        for (size_t j = 0; j < dim1 * dim3; j++) {
+    for (size_t i = 0; i < dim2; i++)
+    {
+        for (size_t j = 0; j < dim1 * dim3; j++)
+        {
             Ae[i * dim1 * dim3 + j] = A[j / dim3 * dim2 + i];
         }
     }
 
     LongCiphertext *lct = new LongCiphertext[dim2];
 #pragma omp parallel for
-    for (size_t i = 0; i < dim2; i++) {
+    for (size_t i = 0; i < dim2; i++)
+    {
         LongPlaintext lpt(matrix(Ae.begin() + dim1 * dim3 * i, Ae.begin() + dim1 * dim3 * (i + 1)), encoder);
         lct[i] = LongCiphertext(lpt, party);
     }
@@ -254,12 +322,15 @@ LongCiphertext *RFCP_encodeA(const matrix &A, CKKSKey *party, CKKSEncoder *encod
 LongCiphertext RFCP_matmul(const LongCiphertext *A_secret,
                            const matrix &B,
                            size_t dim1, size_t dim2, size_t dim3,
-                           CKKSEncoder *encoder, Evaluator *evaluator) {
+                           CKKSEncoder *encoder, Evaluator *evaluator)
+{
     // we assume that A_secret has encoded
     matrix Be(dim1 * dim2 * dim3);
 #pragma omp parallel for
-    for (size_t i = 0; i < dim2; i++) {
-        for (size_t j = 0; j < dim1 * dim3; j++) {
+    for (size_t i = 0; i < dim2; i++)
+    {
+        for (size_t j = 0; j < dim1 * dim3; j++)
+        {
             Be[i * dim1 * dim3 + j] = B[i * dim3 + j % dim3];
         }
     }
@@ -267,7 +338,8 @@ LongCiphertext RFCP_matmul(const LongCiphertext *A_secret,
     LongPlaintext lpt(matrix(Be.begin(), Be.begin() + dim1 * dim3), encoder);
     LongCiphertext result = A_secret[0].multiply_plain(lpt, evaluator);
 #pragma omp parallel for
-    for (size_t i = 1; i < dim2; i++) {
+    for (size_t i = 1; i < dim2; i++)
+    {
         LongPlaintext tmp_lpt(matrix(Be.begin() + dim1 * dim3 * i, Be.begin() + dim1 * dim3 * (i + 1)), encoder);
         LongCiphertext tmp_lct = A_secret[i].multiply_plain(tmp_lpt, evaluator);
 #pragma omp critical
