@@ -1,4 +1,5 @@
 #include <model.h>
+
 #include "ezpc_scilib/ezpc_utils.h"
 #define TEST
 #define DEFAULT_SCALE 12
@@ -17,6 +18,7 @@ class SecureLayerNorm1
     FPMath *fpmath_bob;
     FPMath *fpmath_public;
     FixOp *fix;
+    BoolOp *bool_op;
     Conversion *conv;
 
 public:
@@ -32,6 +34,7 @@ public:
         fpmath_public = new FPMath(sci::PUBLIC, iopack, otpack);
         conv = new Conversion();
         fix = new FixOp(sci::PUBLIC, iopack, otpack);
+        bool_op = new BoolOp(sci::PUBLIC, iopack, otpack);
     }
 
     ~SecureLayerNorm1()
@@ -41,7 +44,7 @@ public:
         delete fpmath_public;
     }
 
-    void forward(BFVLongCiphertext &attn_b, const uint64_t *input_a, const uint64_t *input_b)
+    void forward(BFVLongCiphertext &attn_b, uint64_t *input_a, uint64_t *input_b)
     {
 
         sci::PRG128 prg;
@@ -60,19 +63,24 @@ public:
                                                    (sci::neg_mod(static_cast<int64_t>(ha * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
 
+        FixArray fix_div_ha = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
+                                                       (sci::neg_mod(static_cast<int64_t>((1.0 / ha) * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                       true, DEFAULT_ELL, DEFAULT_SCALE);
+
         FixArray fix_xa = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
                                                    input_a,
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
 
         fix_ha.party = sci::PUBLIC;
         FixArray fix_ha_xa = fpmath_alice->fix->mul(fix_xa, fix_ha, DEFAULT_ELL);
-
         fix_ha_xa = fpmath_alice->fix->location_truncation(fix_ha_xa, DEFAULT_SCALE);
 
-        fix_ha_xa.data = conv->Ring_to_Prime(fix_ha_xa.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
-        fix_ha.data = conv->Ring_to_Prime(fix_ha.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        uint64_t *prime_ha_xa = new uint64_t[batch_size * d_module];
+        uint64_t *prime_ha = new uint64_t[batch_size * d_module];
+        conv->Ring_to_Prime(fix_ha_xa.data, prime_ha_xa, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        conv->Ring_to_Prime(fix_ha.data, prime_ha, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
 
-        BFVLongPlaintext ha_plain(bfv_parm, fix_ha.data, batch_size * d_module);
+        BFVLongPlaintext ha_plain(bfv_parm, prime_ha_xa, batch_size * d_module);
         BFVLongCiphertext ha_secret_a(ha_plain, alice);
         BFVLongCiphertext attn_ha_secret_b = attn_b.multiply_plain(ha_plain, bfv_parm->evaluator);
         attn_ha_secret_b.mod_switch_to_next_inplace(bfv_parm->evaluator);
@@ -84,46 +92,140 @@ public:
         // get [X_{add}ha]_a
 
         BFVLongPlaintext attn_ha_plain = attn_ha_secret_b.decrypt(bob);
+        uint64_t *prime_xb = new uint64_t[batch_size * d_module];
 
-        FixArray fix_xb = fpmath_bob->fix->input(sci::BOB, batch_size * d_module,
-                                                 input_b,
-                                                 true, DEFAULT_ELL, DEFAULT_SCALE);
+        conv->Ring_to_Prime(input_b, prime_xb, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
 
-        fix_xb.data = conv->Ring_to_Prime(fix_xb.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
-        BFVLongPlaintext fix_b_plain(bfv_parm, fix_xb.data, fix_xb.size);
-        BFVLongCiphertext xb_ha_secret_a = ha_secret_a.multiply_plain(fix_b_plain, bfv_parm->evaluator); // ha_xb
+        for (size_t i = 0; i < batch_size * d_module; i++)
+        {
+            std::cout << prime_xb[i] << " ";
+        }
+        std::cout << "\n";
+        BFVLongPlaintext xb_plain(bfv_parm, prime_xb, batch_size * d_module);
+        BFVLongCiphertext xb_ha_secret_a = ha_secret_a.multiply_plain(xb_plain, bfv_parm->evaluator); // ha_xb
         xb_ha_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
         xb_ha_secret_a.add_plain_inplace(attn_ha_plain, bfv_parm->evaluator);
-        BFVLongPlaintext ha_xa_plain(bfv_parm, fix_ha_xa.data, fix_ha_xa.size);
+        BFVLongPlaintext ha_xa_plain(bfv_parm, prime_ha_xa, batch_size * d_module);
         xb_ha_secret_a.add_plain_inplace(ha_xa_plain, bfv_parm->evaluator);
 
         // Bob generate gb, get [x_add*ha*gb]_a
 
         double gb = dist(gen);
+        std::cout << "gb: " << gb << "\n";
         FixArray fix_gb = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
                                                    (sci::neg_mod(static_cast<int64_t>(gb * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
-        fix_gb.data = conv->Ring_to_Prime(fix_gb.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
-        BFVLongPlaintext gb_plain(bfv_parm, fix_gb.data, batch_size * d_module);
+        uint64_t *prime_gb = new uint64_t[batch_size * d_module];
+        conv->Ring_to_Prime(fix_gb.data, prime_gb, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        BFVLongPlaintext gb_plain(bfv_parm, prime_gb, batch_size * d_module);
 
         xb_ha_secret_a.multiply_plain_inplace(gb_plain, bfv_parm->evaluator);
         xb_ha_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
         // Bob send [x_add*ha*gb]_a} to alice;
 
         // Alice: alice receive message and get x * gb;
-        BFVLongPlaintext xgb_plain = xb_ha_secret_a.decrypt(alice);
-        bfv_matrix x_gb = xgb_plain.decode(bfv_parm);
-        std::cout << "Test: \n ";
+        BFVLongPlaintext xgb_ha_plain = xb_ha_secret_a.decrypt(alice);
+        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode(bfv_parm);
 
+        FixArray fix_x_gb(sci::BOB, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
+        uint64_t *x_gb_ha_prime = new uint64_t[batch_size * d_module];
+        uint64_t *x_gb_ha_ring = new uint64_t[batch_size * d_module];
+
+        // conversion prime to Ring: x_add is not share, and x_gb is a public value, thus, need location conversion:
         for (size_t i = 0; i < batch_size * d_module; i++)
         {
-            std::cout << x_gb[i] << " ";
+            x_gb_ha_prime[i] = x_gb_ha_matrix[i];
+        }
+        conv->Prime_to_Ring(x_gb_ha_prime, x_gb_ha_ring, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod, DEFAULT_SCALE, DEFAULT_SCALE, fpmath_public);
+        std::cout << "prime: ";
+        for (size_t i = 0; i < batch_size * d_module; i++)
+        {
+            std::cout << x_gb_ha_prime[i] << " ";
+        }
+        std::cout << "\n ring : ";
+        for (size_t i = 0; i < batch_size * d_module; i++)
+        {
+            std::cout << x_gb_ha_ring[i] << " ";
+        }
+        std::cout << "\n";
+        fix_x_gb = fpmath_bob->fix->input(sci::BOB, batch_size * d_module, x_gb_ha_ring, true, DEFAULT_ELL, DEFAULT_SCALE * 2);
+        int x_gb_originparty = fix_x_gb.party;
+        fix_x_gb.party = sci::PUBLIC;
+        print_fix(fix_x_gb);
+        fix_x_gb.party = x_gb_originparty;
+        std::cout << "worng? \n";
+        fix_x_gb = fpmath_alice->fix->location_right_shift(fix_x_gb, DEFAULT_SCALE); // something wrong here
+        std::cout << "worng? \n";
+        int x_gb_originparty2 = fix_x_gb.party;
+        fix_x_gb.party = sci::PUBLIC;
+        print_fix(fix_x_gb);
+
+        fix_div_ha.party = sci::PUBLIC;
+
+        fix_x_gb = fpmath_bob->fix->mul(fix_x_gb, fix_div_ha, DEFAULT_ELL);
+
+        int x_gb_originparty3 = fix_x_gb.party;
+        fix_x_gb.party = sci::PUBLIC;
+        print_fix(fix_x_gb);
+        fix_x_gb.party = x_gb_originparty3;
+
+        fix_x_gb.party = x_gb_originparty2;
+        // Fixarray(batch*d_module) ----> vector<Fixary>
+
+        vector<FixArray> vec_x_gb; //(batch_size);
+
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            vec_x_gb.push_back(fpmath_bob->fix->input(fix_x_gb.party, d_module, &fix_x_gb.data[i * d_module], fix_x_gb.signed_, fix_x_gb.ell, fix_x_gb.s));
         }
 
-        std::cout << "\n ";
-        // conversion prime to Ring
-        FixArray fix_x_gb(sci::BOB, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
-        // fix_x_gb.data = conv->Prime_to_Ring();
+        vector<FixArray> fix_mean_g = fpmath_bob->mean(vec_x_gb); // dim:  batch_size * 1
+        std::cout << "test start \n";
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            vec_x_gb[i].party = sci::PUBLIC;
+            print_fix(vec_x_gb[i]);
+            fix_mean_g[i].party = sci::PUBLIC;
+            print_fix(fix_mean_g[i]);
+        }
+        vector<FixArray> out_array = fpmath_bob->standard_deviation(vec_x_gb, fix_mean_g);
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            out_array[i].party = sci::PUBLIC;
+            print_fix(out_array[i]);
+        }
+        std::cout << "test end \n";
+        // double ka = dist(gen);
+        // auto mu_gb = mean(xgb, batch_size, d_module);
+        // auto sigma_gb = standard_deviation(xgb, mu_gb, batch_size, d_module);
+        // matrix div_sigma_gb(batch_size * d_module);
+        // matrix tmp1(batch_size * d_module);
+        // for (i = 0; i < batch_size; i++)
+        // {
+        //     for (j = 0; j < d_module; j++)
+        //     {
+        //         tmp1[i * d_module + j] = (xgb[i * d_module + j] - mu_gb[i]) * ka;
+        //         div_sigma_gb[i * d_module + j] = 1 / (sigma_gb[i] * ka);
+        //     }
+        // }
+        // LongPlaintext div_sigma_gb_plain(div_sigma_gb, encoder);
+        // LongCiphertext tmp2_secret_a(div_sigma_gb_plain, alice);
+        // // send H3 = {tmp1, tmp2_secret_a} to bob
+
+        // // bob receive H3
+        // matrix gamma(batch_size * d_module);
+        // matrix beta(batch_size * d_module);
+        // random_mat(gamma);
+        // random_mat(beta);
+        // for (i = 0; i < batch_size * d_module; i++)
+        // {
+        //     tmp1[i] *= gamma[i];
+        // }
+        // LongPlaintext gamma_tmp1_plain(tmp1, encoder), beta_plain(beta, encoder);
+        // LongCiphertext ln_secret_a = tmp2_secret_a.multiply_plain(gamma_tmp1_plain, evaluator);
+        // beta_plain.mod_switch_to_inplace(ln_secret_a.parms_id(), evaluator);
+        // ln_secret_a.add_plain_inplace(beta_plain, evaluator);
+        // std::cout << "Secure LayerNorm1 done.\n";
 
 #ifdef TEST
 
@@ -149,9 +251,12 @@ public:
         // }
 
 #endif
-
-        // delete[] xb;
-        // delete[] tmp_xb;
+        delete[] prime_xb;
+        delete[] prime_ha;
+        delete[] prime_ha_xa;
+        delete[] prime_gb;
+        delete[] x_gb_ha_ring;
+        delete[] x_gb_ha_prime;
     }
 };
 
@@ -160,7 +265,7 @@ int main()
 
     uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
 
-    BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(37));
+    BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
 
     BFVKey *alice = new BFVKey(sci::ALICE, bfv_parm);
     BFVKey *bob = new BFVKey(sci::BOB, bfv_parm);
@@ -192,7 +297,7 @@ int main()
 
         int_input_b[i] = static_cast<int64_t>(input_b[i] * (1ULL << DEFAULT_SCALE));
         uint_input_b[i] = sci::neg_mod(int_input_b[i], (int64_t)(1ULL << DEFAULT_ELL));
-        // std::cout << uint_input_b[i] << " ";
+        std::cout << input_a[i] << " ";
     }
 
     BFVLongPlaintext attn_plain(bfv_parm, uint_attn, batch_size * d_module);
@@ -201,7 +306,7 @@ int main()
     sci::IOPack *iopack;
     sci::OTPack *otpack;
     SecureLayerNorm1 *sec_ln1 = new SecureLayerNorm1(bfv_parm, alice, bob, iopack, otpack);
-    std::cout << "layernorm start \n";
+    std::cout << "\n layernorm start \n";
     sec_ln1->forward(attn_secret_s, uint_input_a, uint_input_b);
     std::cout << "layernorm end \n";
     int length = 10;

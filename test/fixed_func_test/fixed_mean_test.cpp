@@ -6,8 +6,8 @@
 int main()
 {
     // fixed-mean test
-    int array_size = 3072;
-    int len = 128;
+    int array_size = 5;
+    int len = 1;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(-1, 1);
@@ -69,6 +69,7 @@ int main()
 
     FPMath *fpmath = new FPMath(sci::PUBLIC, iopack, otpack);
     FixOp *fix = new FixOp(sci::PUBLIC, iopack, otpack);
+    BoolOp *bool_op = new BoolOp(sci::PUBLIC, iopack, otpack);
     vector<FixArray> input_array;
     for (size_t i = 0; i < len; i++)
     {
@@ -81,11 +82,19 @@ int main()
 
     vector<FixArray> out_array = fpmath->standard_deviation(input_array, mean);
 
+
+
+
+
     for (size_t i = 0; i < len; i++)
-    {
+    {   input_array[i].party = sci::PUBLIC;
+        print_fix(input_array[i]);
         out_array[i].party = sci::PUBLIC;
         print_fix(out_array[i]);
     }
+    BoolArray result =  fpmath->fix->MSB(input_array[0], 37);
+    std::cout<<"MSB: ";
+    print_bool(result);
 
     delete[] input;
     delete[] fix_input;

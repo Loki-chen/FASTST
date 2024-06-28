@@ -270,6 +270,13 @@ FixArray FPMath::gt_p_sub(const FixArray &x, const FixArray &p)
     return fix->if_else(gt, sub, x);
 }
 
+FixArray FPMath::location_gt_p_sub(const FixArray &x, const FixArray &p)
+{
+    BoolArray gt = fix->location_GT(x, p);
+    FixArray sub = fix->sub(x, p);
+    return fix->location_if_else(gt, sub, x); // use location_if_else, without mul multiplexer.
+}
+
 void FPMath::print(const FixArray &x)
 {
     print_fix(x);
@@ -453,18 +460,14 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     int ell = x[0].ell;
     int s = x[0].s;
     bool signed_ = x[0].signed_;
-
     FixArray sum_res = fix->tree_sum(x);
     uint64_t dn = static_cast<uint64_t>((1.0 / n) * (1ULL << s));
     FixArray fix_dn = fix->input(sci::PUBLIC, N, dn, true, ell, s);
     sum_res.party = sci::ALICE;
-    // FixArray avg(party_origin, n, signed_, ell, s);
-
     FixArray avg = fix->mul(sum_res, fix_dn, ell);
-
     avg.party = sci::PUBLIC;
     avg = fix->location_truncation(avg, s);
-
+    avg.party = party_origin;
     vector<FixArray> ret(N);
     for (int i = 0; i < N; i++)
     {
@@ -502,7 +505,6 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     avg = fix->location_truncation(avg, s);
     uint64_t unsig_fix_delta;
     vector<FixArray> ret(N);
-
     for (size_t i = 0; i < N; i++)
     {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);
