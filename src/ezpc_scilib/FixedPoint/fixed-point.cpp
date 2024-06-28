@@ -538,6 +538,7 @@ FixArray FixOp::location_right_shift(const FixArray &x, int s, uint8_t *msb_x)
     assert(s <= x.ell && s >= 0);
     FixArray ret(x.party, x.size, x.signed_, x.ell, x.s - s);
     this->location_truncation(x, s);
+    return ret;
 }
 
 FixArray FixOp::truncate_reduce(const FixArray &x, int s, uint8_t *wrap_x_s)
@@ -1688,16 +1689,11 @@ FixArray FixOp::location_truncation(const FixArray &x, int scale)
 
     assert(scale <= x.ell && scale >= 0);
 
-    FixArray sign_ret(x.party, x.size, x.signed_, x.ell, x.s);
-    uint64_t ret_mask = ((x.ell) == 64 ? -1 : ((1ULL << (x.ell)) - 1));
-    uint64_t *sign_x = new uint64_t[x.size];
+    FixArray ret(x.party, x.size, x.signed_, x.ell, x.s - scale);
+    uint64_t ret_mask = ret.ell_mask();
     for (size_t i = 0; i < x.size; i++)
     {
-        sign_x[i] = sci::neg_mod((signed_val(x.data[i], x.ell)) >> scale, (1ULL << (x.ell))) & ret_mask;
+        ret.data[i] = (x.data[i] >> scale) & ret_mask;
     }
-    sign_ret = fix->input(x.party, x.size, sign_x, x.signed_, x.ell, x.s - scale);
-
-    delete[] sign_x;
-
-    return sign_ret;
+    return ret;
 }

@@ -9,7 +9,6 @@ void Conversion::Ring_to_Prime(uint64_t *input, uint64_t *output, int length, in
 
     vector<uint64_t> tmp(length);
     for (size_t i = 0; i < length; i++)
-
     {
         tmp[i] = sci::neg_mod(sci::signed_val(input[i], ell), (int64_t)plain_mod);
     }

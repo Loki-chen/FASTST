@@ -51,7 +51,7 @@ public:
         size_t i, j;
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dist(0, 2);
+        std::uniform_real_distribution<> dist(0, 1);
 
         /*
             alice generate ha
@@ -96,11 +96,6 @@ public:
 
         conv->Ring_to_Prime(input_b, prime_xb, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
 
-        for (size_t i = 0; i < batch_size * d_module; i++)
-        {
-            std::cout << prime_xb[i] << " ";
-        }
-        std::cout << "\n";
         BFVLongPlaintext xb_plain(bfv_parm, prime_xb, batch_size * d_module);
         BFVLongCiphertext xb_ha_secret_a = ha_secret_a.multiply_plain(xb_plain, bfv_parm->evaluator); // ha_xb
         xb_ha_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
@@ -111,7 +106,7 @@ public:
         // Bob generate gb, get [x_add*ha*gb]_a
 
         double gb = dist(gen);
-        std::cout << "gb: " << gb << "\n";
+
         FixArray fix_gb = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
                                                    (sci::neg_mod(static_cast<int64_t>(gb * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
@@ -125,52 +120,26 @@ public:
 
         // Alice: alice receive message and get x * gb;
         BFVLongPlaintext xgb_ha_plain = xb_ha_secret_a.decrypt(alice);
-        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode(bfv_parm);
+        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode(bfv_parm); // something wrong here
 
         FixArray fix_x_gb(sci::BOB, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
         uint64_t *x_gb_ha_prime = new uint64_t[batch_size * d_module];
         uint64_t *x_gb_ha_ring = new uint64_t[batch_size * d_module];
 
-        // conversion prime to Ring: x_add is not share, and x_gb is a public value, thus, need location conversion:
+        // // conversion prime to Ring: x_add is not share, and x_gb is a public value, thus, need location conversion:
         for (size_t i = 0; i < batch_size * d_module; i++)
         {
             x_gb_ha_prime[i] = x_gb_ha_matrix[i];
         }
         conv->Prime_to_Ring(x_gb_ha_prime, x_gb_ha_ring, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod, DEFAULT_SCALE, DEFAULT_SCALE, fpmath_public);
-        std::cout << "prime: ";
-        for (size_t i = 0; i < batch_size * d_module; i++)
-        {
-            std::cout << x_gb_ha_prime[i] << " ";
-        }
-        std::cout << "\n ring : ";
-        for (size_t i = 0; i < batch_size * d_module; i++)
-        {
-            std::cout << x_gb_ha_ring[i] << " ";
-        }
-        std::cout << "\n";
+
         fix_x_gb = fpmath_bob->fix->input(sci::BOB, batch_size * d_module, x_gb_ha_ring, true, DEFAULT_ELL, DEFAULT_SCALE * 2);
-        int x_gb_originparty = fix_x_gb.party;
-        fix_x_gb.party = sci::PUBLIC;
-        print_fix(fix_x_gb);
-        fix_x_gb.party = x_gb_originparty;
-        std::cout << "worng? \n";
-        fix_x_gb = fpmath_alice->fix->location_right_shift(fix_x_gb, DEFAULT_SCALE); // something wrong here
-        std::cout << "worng? \n";
-        int x_gb_originparty2 = fix_x_gb.party;
-        fix_x_gb.party = sci::PUBLIC;
-        print_fix(fix_x_gb);
+
+        fix_x_gb = fpmath_alice->fix->location_truncation(fix_x_gb, DEFAULT_SCALE);
 
         fix_div_ha.party = sci::PUBLIC;
-
         fix_x_gb = fpmath_bob->fix->mul(fix_x_gb, fix_div_ha, DEFAULT_ELL);
-
-        int x_gb_originparty3 = fix_x_gb.party;
-        fix_x_gb.party = sci::PUBLIC;
-        print_fix(fix_x_gb);
-        fix_x_gb.party = x_gb_originparty3;
-
-        fix_x_gb.party = x_gb_originparty2;
-        // Fixarray(batch*d_module) ----> vector<Fixary>
+        fix_x_gb = fpmath_bob->fix->location_truncation(fix_x_gb, DEFAULT_SCALE);
 
         vector<FixArray> vec_x_gb; //(batch_size);
 
@@ -180,21 +149,14 @@ public:
         }
 
         vector<FixArray> fix_mean_g = fpmath_bob->mean(vec_x_gb); // dim:  batch_size * 1
-        std::cout << "test start \n";
-        for (size_t i = 0; i < batch_size; i++)
-        {
-            vec_x_gb[i].party = sci::PUBLIC;
-            print_fix(vec_x_gb[i]);
-            fix_mean_g[i].party = sci::PUBLIC;
-            print_fix(fix_mean_g[i]);
-        }
+
         vector<FixArray> out_array = fpmath_bob->standard_deviation(vec_x_gb, fix_mean_g);
-        for (size_t i = 0; i < batch_size; i++)
-        {
-            out_array[i].party = sci::PUBLIC;
-            print_fix(out_array[i]);
-        }
-        std::cout << "test end \n";
+        // for (size_t i = 0; i < batch_size; i++)
+        // {
+        //     out_array[i].party = sci::PUBLIC;
+        //     print_fix(out_array[i]);
+        // }
+
         // double ka = dist(gen);
         // auto mu_gb = mean(xgb, batch_size, d_module);
         // auto sigma_gb = standard_deviation(xgb, mu_gb, batch_size, d_module);
@@ -228,7 +190,7 @@ public:
         // std::cout << "Secure LayerNorm1 done.\n";
 
 #ifdef TEST
-
+        std::cout << "LayerNorm End! \n";
         // uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
         // auto attn_plain = attn_s.decrypt(bob);
         // auto attn = attn_plain.decode(bfv_parm);
@@ -297,7 +259,7 @@ int main()
 
         int_input_b[i] = static_cast<int64_t>(input_b[i] * (1ULL << DEFAULT_SCALE));
         uint_input_b[i] = sci::neg_mod(int_input_b[i], (int64_t)(1ULL << DEFAULT_ELL));
-        std::cout << input_a[i] << " ";
+        // std::cout << input_a[i] << " ";
     }
 
     BFVLongPlaintext attn_plain(bfv_parm, uint_attn, batch_size * d_module);
@@ -306,19 +268,14 @@ int main()
     sci::IOPack *iopack;
     sci::OTPack *otpack;
     SecureLayerNorm1 *sec_ln1 = new SecureLayerNorm1(bfv_parm, alice, bob, iopack, otpack);
-    std::cout << "\n layernorm start \n";
+    std::cout << "layernorm start \n";
     sec_ln1->forward(attn_secret_s, uint_input_a, uint_input_b);
     std::cout << "layernorm end \n";
-    int length = 10;
-    uint64_t *share = new uint64_t[length];
-
-    sci::PRG128 prg_con;
-    prg_con.random_mod_p<uint64_t>(share, length, bfv_parm->plain_mod);
-    BFVLongCiphertext ct;
 
     delete sec_ln1;
-    delete[] share;
-
+    delete alice;
+    delete bob;
+    delete bfv_parm;
     delete[] int_attn;
     delete[] uint_attn;
     delete[] int_input_a;
