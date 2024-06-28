@@ -273,6 +273,8 @@ FixArray FPMath::gt_p_sub(const FixArray &x, const FixArray &p)
 FixArray FPMath::location_gt_p_sub(const FixArray &x, const FixArray &p)
 {
     BoolArray gt = fix->location_GT(x, p);
+    FixArray sub = fix->sub(x,p);
+    return fix->if_else(gt, sub, x); // use location_if_else, without mul multiplexer.
 }
 
 void FPMath::print(const FixArray &x)
@@ -503,7 +505,6 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     avg = fix->location_truncation(avg, s);
     uint64_t unsig_fix_delta;
     vector<FixArray> ret(N);
-    std::cout << "test in \n";
     for (size_t i = 0; i < N; i++)
     {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);

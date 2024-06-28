@@ -181,6 +181,11 @@ public:
     //// cond, x, y must have equal size
     //// x, y must have same signedness, bitlength and scale
     FixArray if_else(const BoolArray &cond, const FixArray &x, const FixArray &y);
+    //// Without Multiplexers: return x[i] if cond[i]=1, else return y[i]
+    //// Both cond, x, and y are PUBLIC.
+    //// cond, x, y must have equal size
+    //// x, ,y must have smae signedness,bitlength and scale
+    FixArray location_if_else(const BoolArray &cond, const FixArray &x, const FixArray &y);
     //// x can be PUBLIC or secret-shared
     //// cond, x must have equal size
     //// y[i] = y (with same signedness, bitlength and scale as x)

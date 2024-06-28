@@ -211,6 +211,20 @@ FixArray FixOp::if_else(const BoolArray &cond, const FixArray &x,
     return this->add(ret, y);
 }
 
+FixArray FixOp::location_if_else(const BoolArray &cond, const FixArray &x, const FixArray &y){
+    assert(cond.size == x.size && cond.size == y.size);
+    assert(x.signed_ == y.signed_);
+    assert(x.ell == y.ell);
+    assert(x.s == y.s);
+
+    FixArray ret(this->party, x.size, x.signed_, x.ell, x.s);
+    FixArray diff = this->sub(x, y);
+    FixArray cond_fix = this->B2A(cond, x.signed_, x.ell);
+    cond_fix.s = x.s;
+    ret = this->mul(cond_fix, diff, x.ell);
+    return this->add(ret, y);
+}
+
 FixArray FixOp::if_else(const BoolArray &cond, const FixArray &x, uint64_t y)
 {
     assert(cond.party != PUBLIC);
@@ -652,28 +666,12 @@ BoolArray FixOp::MSB(const FixArray &x, int ell)
     assert(ell <= 64);
     int size = x.size;
     int32_t shift = ell - 1;
-    uint64_t shift_mask = (shift == 64 ? -1 : ((1ULL << shift) - 1));
-    uint64_t *tmp_x = new uint64_t[size];
-    uint64_t *tmp_x2 = new uint64_t[size];
-    uint8_t *msb_xb = new uint8_t[size];
-    for (int i = 0; i < size; i++)
-    {
-        tmp_x[i] = x.data[i] & shift_mask;
-        std::cout << tmp_x[i];
-        msb_xb[i] = (x.data[i] >> shift) & 1;
-        std::cout << msb_xb[i];
-        tmp_x2[i] = (shift_mask - tmp_x[i]) & shift_mask;
-        std::cout << tmp_x2[i];
-    }
     BoolArray ret(x.party, x.size);
 
     for (int i = 0; i < x.size; i++)
     {
-        ret.data[i] = msb_xb[i];
+        ret.data[i] =uint8_t((x.data[i] >> shift) & 1);
     }
-    delete[] tmp_x;
-    delete[] msb_xb;
-    delete[] tmp_x2;
     return ret;
 }
 
@@ -785,8 +783,7 @@ BoolArray FixOp::location_LT(const FixArray &x, const FixArray &y)
 {
     BoolArray ret(this->party, x.size);
     FixArray diff = this->sub(x, y);
-    // MSB();
-    // get MSB of
+    ret  = this->MSB(diff, diff.ell);
     return ret;
 }
 
