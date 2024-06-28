@@ -273,8 +273,8 @@ FixArray FPMath::gt_p_sub(const FixArray &x, const FixArray &p)
 FixArray FPMath::location_gt_p_sub(const FixArray &x, const FixArray &p)
 {
     BoolArray gt = fix->location_GT(x, p);
-    FixArray sub = fix->sub(x,p);
-    return fix->if_else(gt, sub, x); // use location_if_else, without mul multiplexer.
+    FixArray sub = fix->sub(x, p);
+    return fix->location_if_else(gt, sub, x); // use location_if_else, without mul multiplexer.
 }
 
 void FPMath::print(const FixArray &x)

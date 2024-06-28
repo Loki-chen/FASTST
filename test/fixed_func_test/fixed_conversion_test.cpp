@@ -56,10 +56,8 @@ int main(int argc, const char **argv)
                 }
             }
 
-            
-
             uint64_t *output = new uint64_t[len * array_size];
-            output = conv->Ring_to_Prime(unsig_fix_input, len * array_size, ell, plain_mod);
+            conv->Ring_to_Prime(unsig_fix_input, output, len * array_size, ell, plain_mod);
 
             for (size_t j = 0; j < len * array_size; j++)
             {
@@ -75,9 +73,10 @@ int main(int argc, const char **argv)
         Conversion *conv_party = new Conversion();
         // test conversion print--to--ring
         uint64_t *input_pring = new uint64_t[len * array_size];
+        uint64_t *output_pring = new uint64_t[len * array_size];
         prg.random_mod_p<uint64_t>(input_pring, len * array_size, plain_mod);
 
-        input_pring = conv_party->Prime_to_Ring(party_, input_pring, len * array_size, ell, plain_mod, s, s, fpmath);
+        conv_party->Prime_to_Ring(party_, input_pring, output_pring, len * array_size, ell, plain_mod, s, s, fpmath);
 
         for (size_t j = 0; j < len * array_size; j++)
         {
@@ -86,6 +85,7 @@ int main(int argc, const char **argv)
         std::cout << "\n";
 
         delete[] input_pring;
+        delete[] output_pring;
         return 0;
     }
 }

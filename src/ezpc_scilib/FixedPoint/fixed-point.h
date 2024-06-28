@@ -291,7 +291,12 @@ public:
     // s <= bitlength of x (x.ell) and s >= 0
     // msb_x is an optional parameter that points to an array holding boolean shares of most significant bit (MSB) of x[i]'s. If msb_x provided, this operation is cheaper
     FixArray right_shift(const FixArray &x, int s, uint8_t *msb_x = nullptr);
-
+    // Right Shift: returns x[i] >> s
+    // Output scale is x.s - s; Output bitlength and signedness are same as that of x
+    // x must be secret shared FixArray
+    // s <= bitlength of x (x.ell) and s >= 0
+    // msb_x is an optional parameter that points to an array holding boolean shares of most significant bit (MSB) of x[i]'s. If msb_x provided, this operation is cheaper
+    FixArray location_right_shift(const FixArray &x, int s, uint8_t *msb_x = nullptr);
     // Truncate and Reduce: returns x[i] >> s mod 2^{x.ell - s}
     // Output bitlength and scale are x.ell-s and x.s-s; Output signedness is same as that of x
     // x must be secret shared FixArray

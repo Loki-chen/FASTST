@@ -211,7 +211,8 @@ FixArray FixOp::if_else(const BoolArray &cond, const FixArray &x,
     return this->add(ret, y);
 }
 
-FixArray FixOp::location_if_else(const BoolArray &cond, const FixArray &x, const FixArray &y){
+FixArray FixOp::location_if_else(const BoolArray &cond, const FixArray &x, const FixArray &y)
+{
     assert(cond.size == x.size && cond.size == y.size);
     assert(x.signed_ == y.signed_);
     assert(x.ell == y.ell);
@@ -221,7 +222,10 @@ FixArray FixOp::location_if_else(const BoolArray &cond, const FixArray &x, const
     FixArray diff = this->sub(x, y);
     FixArray cond_fix = this->B2A(cond, x.signed_, x.ell);
     cond_fix.s = x.s;
+    int origin_party = cond_fix.party;
+    cond_fix.party = sci::ALICE;
     ret = this->mul(cond_fix, diff, x.ell);
+    ret = this->location_truncation(ret, y.s);
     return this->add(ret, y);
 }
 
@@ -279,6 +283,7 @@ FixArray FixOp::add(const FixArray &x, uint64_t y)
 
 FixArray FixOp::sub(const FixArray &x, const FixArray &y)
 {
+
     FixArray neg_y = this->mul(y, uint64_t(-1));
     return this->add(x, neg_y);
 }
@@ -527,6 +532,14 @@ FixArray FixOp::right_shift(const FixArray &x, int s, uint8_t *msb_x)
     return ret;
 }
 
+FixArray FixOp::location_right_shift(const FixArray &x, int s, uint8_t *msb_x)
+{
+    assert(x.party != PUBLIC);
+    assert(s <= x.ell && s >= 0);
+    FixArray ret(x.party, x.size, x.signed_, x.ell, x.s - s);
+    this->location_truncation(x, s);
+}
+
 FixArray FixOp::truncate_reduce(const FixArray &x, int s, uint8_t *wrap_x_s)
 {
     assert(x.party != PUBLIC);
@@ -670,7 +683,7 @@ BoolArray FixOp::MSB(const FixArray &x, int ell)
 
     for (int i = 0; i < x.size; i++)
     {
-        ret.data[i] =uint8_t((x.data[i] >> shift) & 1);
+        ret.data[i] = uint8_t((x.data[i] >> shift) & 1);
     }
     return ret;
 }
@@ -783,7 +796,7 @@ BoolArray FixOp::location_LT(const FixArray &x, const FixArray &y)
 {
     BoolArray ret(this->party, x.size);
     FixArray diff = this->sub(x, y);
-    ret  = this->MSB(diff, diff.ell);
+    ret = this->MSB(diff, diff.ell);
     return ret;
 }
 
