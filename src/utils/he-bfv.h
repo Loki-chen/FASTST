@@ -1,6 +1,6 @@
 #ifndef FAST_HE_BFV_TOOLS_H__
 #define FAST_HE_BFV_TOOLS_H__
-#pragma once
+
 #include <cassert>
 #include <sstream>
 #include <string>

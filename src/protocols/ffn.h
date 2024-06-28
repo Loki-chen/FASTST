@@ -1,6 +1,6 @@
 #ifndef FAST_FFN_H__
 #define FAST_FFN_H__
-#pragma once
+
 #include "protocol.h"
 class FFN : public Protocol {
     LongCiphertext f3(const LongCiphertext &x1, const LongCiphertext &x2,
