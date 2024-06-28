@@ -181,6 +181,11 @@ public:
     //// cond, x, y must have equal size
     //// x, y must have same signedness, bitlength and scale
     FixArray if_else(const BoolArray &cond, const FixArray &x, const FixArray &y);
+    //// Without Multiplexers: return x[i] if cond[i]=1, else return y[i]
+    //// Both cond, x, and y are PUBLIC.
+    //// cond, x, y must have equal size
+    //// x, ,y must have smae signedness,bitlength and scale
+    FixArray location_if_else(const BoolArray &cond, const FixArray &x, const FixArray &y);
     //// x can be PUBLIC or secret-shared
     //// cond, x must have equal size
     //// y[i] = y (with same signedness, bitlength and scale as x)
@@ -286,7 +291,12 @@ public:
     // s <= bitlength of x (x.ell) and s >= 0
     // msb_x is an optional parameter that points to an array holding boolean shares of most significant bit (MSB) of x[i]'s. If msb_x provided, this operation is cheaper
     FixArray right_shift(const FixArray &x, int s, uint8_t *msb_x = nullptr);
-
+    // Right Shift: returns x[i] >> s
+    // Output scale is x.s - s; Output bitlength and signedness are same as that of x
+    // x must be secret shared FixArray
+    // s <= bitlength of x (x.ell) and s >= 0
+    // msb_x is an optional parameter that points to an array holding boolean shares of most significant bit (MSB) of x[i]'s. If msb_x provided, this operation is cheaper
+    FixArray location_right_shift(const FixArray &x, int s, uint8_t *msb_x = nullptr);
     // Truncate and Reduce: returns x[i] >> s mod 2^{x.ell - s}
     // Output bitlength and scale are x.ell-s and x.s-s; Output signedness is same as that of x
     // x must be secret shared FixArray
@@ -341,8 +351,9 @@ public:
         assert(x.party != sci::PUBLIC);
         return fix->LT(x, 0);
     }
-
-    FixArray MSB(const FixArray &x, int ell);
+    // Most Significant Bit: returns MSB of x in the form of BoolArray
+    // x must be public
+    BoolArray MSB(const FixArray &x, int ell);
 
     // Wrap Bit and Zero-test Bit: returns 1{ share(1, x[i]) + share(2, x[i]) >= 2^{x.ell} } and 1{ x[i] = 0 } in the form of BoolArrays
     // x must be secret-shared
@@ -362,10 +373,15 @@ public:
     BoolArray GT(const FixArray &x, const FixArray &y);
     BoolArray LE(const FixArray &x, const FixArray &y);
     BoolArray GE(const FixArray &x, const FixArray &y);
+    //// x and y must be possed by one side at the same time
+    BoolArray location_LT(const FixArray &x, const FixArray &y);
+    BoolArray location_GT(const FixArray &x, const FixArray &y);
+
     //// x must be secret-shared
     //// y[i] = y (with same signedness, bitlength and scale as x)
     BoolArray EQ(const FixArray &x, uint64_t y);
     BoolArray LT(const FixArray &x, uint64_t y);
+
     BoolArray GT(const FixArray &x, uint64_t y);
     BoolArray LE(const FixArray &x, uint64_t y);
     BoolArray GE(const FixArray &x, uint64_t y);
@@ -452,22 +468,6 @@ public:
         uint64_t mask_x = pow_x - 1;
         x = x & mask_x;
         return int64_t(x - ((x >= (pow_x / 2)) * pow_x));
-    }
-
-    inline int8_t msb(int64_t n)
-    {
-        int64_t mask = 1;
-        int msb = 0;
-        while (mask <= n)
-        {
-            if (n & mask)
-            {
-                return msb;
-            }
-            msb++;
-            mask <<= 1;
-        }
-        return -1; // n is zero
     }
 };
 #endif

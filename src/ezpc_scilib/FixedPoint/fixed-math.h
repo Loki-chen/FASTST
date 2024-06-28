@@ -44,6 +44,8 @@ public:
 
     FixArray gt_p_sub(const FixArray &x, const FixArray &p);
 
+    FixArray location_gt_p_sub(const FixArray &x, const FixArray &p);
+
     FixArray sqrt_(const FixArray &x, bool recp_sqrt);
 
     std::tuple<FixArray, FixArray, FixArray> bitonic_sort_and_swap(

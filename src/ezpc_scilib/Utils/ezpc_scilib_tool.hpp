@@ -568,3 +568,11 @@ inline int64_t signed_val(uint64_t x, int bw_x)
     x = x & mask_x;
     return int64_t(x - ((x >= (pow_x / 2)) * pow_x));
 }
+
+inline int64_t signed_prime_val(uint64_t x, int64_t prime_mod)
+{
+    uint64_t pow_x = (static_cast<uint64_t>(log2(static_cast<double>(prime_mod))) == 64 ? 0ULL : prime_mod);
+    uint64_t mask_x = pow_x;
+    x = x & mask_x;
+    return int64_t(x - ((x >= (pow_x / 2)) * pow_x));
+}

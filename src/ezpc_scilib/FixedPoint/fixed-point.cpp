@@ -211,6 +211,24 @@ FixArray FixOp::if_else(const BoolArray &cond, const FixArray &x,
     return this->add(ret, y);
 }
 
+FixArray FixOp::location_if_else(const BoolArray &cond, const FixArray &x, const FixArray &y)
+{
+    assert(cond.size == x.size && cond.size == y.size);
+    assert(x.signed_ == y.signed_);
+    assert(x.ell == y.ell);
+    assert(x.s == y.s);
+
+    FixArray ret(this->party, x.size, x.signed_, x.ell, x.s);
+    FixArray diff = this->sub(x, y);
+    FixArray cond_fix = this->B2A(cond, x.signed_, x.ell);
+    cond_fix.s = x.s;
+    int origin_party = cond_fix.party;
+    cond_fix.party = sci::ALICE;
+    ret = this->mul(cond_fix, diff, x.ell);
+    ret = this->location_truncation(ret, y.s);
+    return this->add(ret, y);
+}
+
 FixArray FixOp::if_else(const BoolArray &cond, const FixArray &x, uint64_t y)
 {
     assert(cond.party != PUBLIC);
@@ -265,6 +283,7 @@ FixArray FixOp::add(const FixArray &x, uint64_t y)
 
 FixArray FixOp::sub(const FixArray &x, const FixArray &y)
 {
+
     FixArray neg_y = this->mul(y, uint64_t(-1));
     return this->add(x, neg_y);
 }
@@ -513,6 +532,14 @@ FixArray FixOp::right_shift(const FixArray &x, int s, uint8_t *msb_x)
     return ret;
 }
 
+FixArray FixOp::location_right_shift(const FixArray &x, int s, uint8_t *msb_x)
+{
+    assert(x.party != PUBLIC);
+    assert(s <= x.ell && s >= 0);
+    FixArray ret(x.party, x.size, x.signed_, x.ell, x.s - s);
+    this->location_truncation(x, s);
+}
+
 FixArray FixOp::truncate_reduce(const FixArray &x, int s, uint8_t *wrap_x_s)
 {
     assert(x.party != PUBLIC);
@@ -647,6 +674,20 @@ BoolArray FixOp::LSB(const FixArray &x)
     return ret;
 }
 
+BoolArray FixOp::MSB(const FixArray &x, int ell)
+{
+    assert(ell <= 64);
+    int size = x.size;
+    int32_t shift = ell - 1;
+    BoolArray ret(x.party, x.size);
+
+    for (int i = 0; i < x.size; i++)
+    {
+        ret.data[i] = uint8_t((x.data[i] >> shift) & 1);
+    }
+    return ret;
+}
+
 BoolArray FixOp::wrap(const FixArray &x)
 {
     assert(x.party != PUBLIC);
@@ -751,9 +792,22 @@ BoolArray FixOp::LT(const FixArray &x, const FixArray &y)
     return ret;
 }
 
+BoolArray FixOp::location_LT(const FixArray &x, const FixArray &y)
+{
+    BoolArray ret(this->party, x.size);
+    FixArray diff = this->sub(x, y);
+    ret = this->MSB(diff, diff.ell);
+    return ret;
+}
+
 BoolArray FixOp::GT(const FixArray &x, const FixArray &y)
 {
     return this->LT(y, x);
+}
+
+BoolArray FixOp::location_GT(const FixArray &x, const FixArray &y)
+{
+    return this->location_LT(y, x);
 }
 
 BoolArray FixOp::LE(const FixArray &x, const FixArray &y)
@@ -1639,7 +1693,7 @@ FixArray FixOp::location_truncation(const FixArray &x, int scale)
     uint64_t *sign_x = new uint64_t[x.size];
     for (size_t i = 0; i < x.size; i++)
     {
-        sign_x[i] = static_cast<uint64_t>((signed_val(x.data[i], x.ell)) >> scale) & ret_mask;
+        sign_x[i] = sci::neg_mod((signed_val(x.data[i], x.ell)) >> scale, (1ULL << (x.ell))) & ret_mask;
     }
     sign_ret = fix->input(x.party, x.size, sign_x, x.signed_, x.ell, x.s - scale);
 
