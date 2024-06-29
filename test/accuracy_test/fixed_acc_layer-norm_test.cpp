@@ -42,6 +42,9 @@ public:
         delete fpmath_alice;
         delete fpmath_bob;
         delete fpmath_public;
+        delete conv;
+        delete fix;
+        delete bool_op;
     }
 
     void forward(BFVLongCiphertext &attn_b, uint64_t *input_a, uint64_t *input_b)
