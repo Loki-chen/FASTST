@@ -179,7 +179,7 @@ public:
         bfv_matrix gamma(batch_size * d_module);
         bfv_matrix beta(batch_size * d_module);
         random_bfv_mat(gamma);
-        random_modP_mat(beta);
+        random_modP_mat(beta, bfv_parm->plain_mod);
         uint64_t *gama_array = new uint64_t[batch_size * d_module];
         uint64_t *beta_array = new uint64_t[batch_size * d_module];
         for (size_t i = 0; i < batch_size * d_module; i++)
@@ -196,41 +196,23 @@ public:
         conv->Ring_to_Prime(tmp1, tmp1, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
         conv->Ring_to_Prime(tmp2, tmp2, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
 
-        conv->Ring_to_Prime(fix_div_ka.data, fix_div_ka.data, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
-
+        conv->Ring_to_Prime(fix_div_ha.data[0], fix_div_ka.data[0], DEFAULT_ELL, bfv_parm->plain_mod);
         BFVLongPlaintext tmp1_plain(bfv_parm, tmp1, batch_size * d_module);
-        BFVLongCiphertext layernorm_secret_a(bfv_parm, fix_div_ka.data, alice); // somthing wrong here;
+        BFVLongCiphertext layernorm_secret_a(bfv_parm, fix_div_ha.data[0], alice); // somthing wrong here;
         layernorm_secret_a.multiply_plain_inplace(tmp1_plain, bfv_parm->evaluator);
         layernorm_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
         BFVLongPlaintext beta_plain(bfv_parm, beta_array, batch_size * d_module);
         layernorm_secret_a.add_plain_inplace(beta_plain, bfv_parm->evaluator);
 
-        std::cout << "Secure LayerNorm1 done.\n";
+        // BFVLongPlaintext result = layernorm_secret_a.decrypt(alice);
+        // bfv_matrix result_matrix = result.decode(bfv_parm); // something wrong here
 
-#ifdef TEST
-
-        // uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
-        // auto attn_plain = attn_s.decrypt(bob);
-        // auto attn = attn_plain.decode(bfv_parm);
+        // std::cout << "Secure LayerNorm1 done.\n";
         // for (size_t i = 0; i < batch_size * d_module; i++)
         // {
-        //     attn[i] = (attn[i] + input_a[i] + input_b[i]) & mask;
+        //     std::cout << result_matrix[i] << " ";
         // }
 
-        // auto mu = fpmath_alice->mean(attn, batch_size, d_module, mask);
-        // auto sigma = fixed_standard_deviation(attn, mu, batch_size, d_module, mask, fix_public);
-        // for (size_t i = 0; i < batch_size; i++)
-        // {
-        //     for (size_t j = 0; j < d_module; j++)
-        //     {
-        //         attn[i * d_module + j] = (attn[i * d_module + j] - mu[i]) & mask;
-        //         // attn[i * d_module + j] = (attn[i * d_module + j] / sigma[i]) & mask;
-        //         // attn[i * d_module + j] *= gamma[i * d_module + j];
-        //         // attn[i * d_module + j] += beta[i * d_module + j];
-        //     }
-        // }
-
-#endif
         delete[] prime_xb;
         delete[] prime_ha;
         delete[] prime_ha_xa;
@@ -290,8 +272,10 @@ int main()
     sci::IOPack *iopack;
     sci::OTPack *otpack;
     SecureLayerNorm1 *sec_ln1 = new SecureLayerNorm1(bfv_parm, alice, bob, iopack, otpack);
+    INIT_TIMER
+    START_TIMER
     sec_ln1->forward(attn_secret_s, uint_input_a, uint_input_b);
-
+    STOP_TIMER("Secure LayerNorm")
     delete sec_ln1;
     delete alice;
     delete bob;

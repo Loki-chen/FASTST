@@ -17,7 +17,7 @@ public:
 
     void Ring_to_Prime(uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_mod);
 
-    void Ring_to_Prime(uint64_t input, uint64_t output, int length, int ell, int64_t plain_mod);
+    void Ring_to_Prime(uint64_t input, uint64_t output, int ell, int64_t plain_mod);
 };
 
 #endif // FAST_HE_BFV_CONVERSION_H__

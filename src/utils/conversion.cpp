@@ -1,6 +1,6 @@
 #include "conversion.h"
 
-void Ring_to_Prime(uint64_t input, uint64_t output, int length, int ell, int64_t plain_mod)
+void Conversion::Ring_to_Prime(uint64_t input, uint64_t output, int ell, int64_t plain_mod)
 {
 #ifdef LOG
     auto t_conversion = high_resolution_clock::now();
