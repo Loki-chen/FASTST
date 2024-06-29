@@ -129,7 +129,6 @@ public:
         uint64_t *x_gb_ha_prime = new uint64_t[batch_size * d_module];
         uint64_t *x_gb_ha_ring = new uint64_t[batch_size * d_module];
 
-        // // conversion prime to Ring: x_add is not share, and x_gb is a public value, thus, need location conversion:
         for (size_t i = 0; i < batch_size * d_module; i++)
         {
             x_gb_ha_prime[i] = x_gb_ha_matrix[i];
@@ -144,7 +143,7 @@ public:
         fix_x_gb = fpmath_bob->fix->mul(fix_x_gb, fix_div_ha, DEFAULT_ELL);
         fix_x_gb = fpmath_bob->fix->location_truncation(fix_x_gb, DEFAULT_SCALE);
 
-        vector<FixArray> vec_x_gb; //(batch_size);
+        vector<FixArray> vec_x_gb;
 
         for (size_t i = 0; i < batch_size; i++)
         {
@@ -153,75 +152,80 @@ public:
 
         vector<FixArray> fix_mean_g = fpmath_bob->mean(vec_x_gb); // dim:  batch_size * 1
 
-        vector<FixArray> out_array = fpmath_bob->standard_deviation(vec_x_gb, fix_mean_g);
-        // for (size_t i = 0; i < batch_size; i++)
-        // {
-        //     out_array[i].party = sci::PUBLIC;
-        //     print_fix(out_array[i]);
-        // }
+        vector<FixArray> delta_gb = fpmath_bob->standard_deviation(vec_x_gb, fix_mean_g); // delta -1/2
 
-        // double ka = dist(gen);
-        // auto mu_gb = mean(xgb, batch_size, d_module);
-        // auto sigma_gb = standard_deviation(xgb, mu_gb, batch_size, d_module);
-        // matrix div_sigma_gb(batch_size * d_module);
-        // matrix tmp1(batch_size * d_module);
-        // for (i = 0; i < batch_size; i++)
-        // {
-        //     for (j = 0; j < d_module; j++)
-        //     {
-        //         tmp1[i * d_module + j] = (xgb[i * d_module + j] - mu_gb[i]) * ka;
-        //         div_sigma_gb[i * d_module + j] = 1 / (sigma_gb[i] * ka);
-        //     }
-        // }
-        // LongPlaintext div_sigma_gb_plain(div_sigma_gb, encoder);
-        // LongCiphertext tmp2_secret_a(div_sigma_gb_plain, alice);
-        // // send H3 = {tmp1, tmp2_secret_a} to bob
+        double ka = dist(gen);
+        FixArray fix_ka = fpmath_alice->fix->input(sci::ALICE, 1,
+                                                   (sci::neg_mod(static_cast<int64_t>(ka * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                   true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_div_ka = fpmath_alice->fix->input(sci::ALICE, 1,
+                                                       (sci::neg_mod(static_cast<int64_t>((1.0 / ka) * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                       true, DEFAULT_ELL, DEFAULT_SCALE);
 
-        // // bob receive H3
-        // matrix gamma(batch_size * d_module);
-        // matrix beta(batch_size * d_module);
-        // random_mat(gamma);
-        // random_mat(beta);
-        // for (i = 0; i < batch_size * d_module; i++)
-        // {
-        //     tmp1[i] *= gamma[i];
-        // }
-        // LongPlaintext gamma_tmp1_plain(tmp1, encoder), beta_plain(beta, encoder);
-        // LongCiphertext ln_secret_a = tmp2_secret_a.multiply_plain(gamma_tmp1_plain, evaluator);
-        // beta_plain.mod_switch_to_inplace(ln_secret_a.parms_id(), evaluator);
-        // ln_secret_a.add_plain_inplace(beta_plain, evaluator);
+        vector<FixArray> ir_tmp1(batch_size);
+        uint64_t *tmp1 = new uint64_t[batch_size * d_module];
+        uint64_t *tmp2 = new uint64_t[batch_size * d_module];
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            vec_x_gb[i].party = sci::PUBLIC;
+            ir_tmp1[i] = fpmath_public->fix->sub(vec_x_gb[i], fix_mean_g[i].data[0]);
+            ir_tmp1[i] = fpmath_alice->fix->mul(ir_tmp1[i], fix_ka.data[0], DEFAULT_ELL);
+            ir_tmp1[i] = fpmath_alice->fix->location_truncation(ir_tmp1[i], DEFAULT_SCALE);
+            for (size_t j = 0; j < d_module; j++)
+            {
+                tmp1[i * d_module + j] = ir_tmp1[i].data[j];
+                tmp2[i * d_module + j] = delta_gb[i].data[j];
+            }
+        }
+        FixArray ret_tmp1 = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module, tmp1, true, DEFAULT_ELL, DEFAULT_SCALE);
+        // tmp * gama
+        bfv_matrix gamma(batch_size * d_module);
+        bfv_matrix beta(batch_size * d_module);
+        random_bfv_mat(gamma);
+        random_modP_mat(beta, bfv_parm->plain_mod);
+        uint64_t *gama_array = new uint64_t[batch_size * d_module];
+        uint64_t *beta_array = new uint64_t[batch_size * d_module];
+        for (size_t i = 0; i < batch_size * d_module; i++)
+        {
+            gama_array[i] = gamma[i];
+            beta_array[i] = beta[i];
+        }
+        FixArray gama_fix = fpmath_bob->fix->input(sci::BOB, batch_size * d_module, gama_array, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray gama_tmp1(sci::BOB, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
+
+        ret_tmp1.party = sci::PUBLIC;
+        gama_tmp1 = fpmath_bob->fix->mul(ret_tmp1, gama_fix, DEFAULT_ELL);
+        gama_tmp1 = fpmath_bob->fix->location_truncation(gama_tmp1, DEFAULT_SCALE);
+        conv->Ring_to_Prime(tmp1, tmp1, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+        conv->Ring_to_Prime(tmp2, tmp2, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
+
+        conv->Ring_to_Prime(fix_div_ha.data[0], fix_div_ka.data[0], DEFAULT_ELL, bfv_parm->plain_mod);
+        BFVLongPlaintext tmp1_plain(bfv_parm, tmp1, batch_size * d_module);
+        BFVLongCiphertext layernorm_secret_a(bfv_parm, fix_div_ha.data[0], alice); // somthing wrong here;
+        layernorm_secret_a.multiply_plain_inplace(tmp1_plain, bfv_parm->evaluator);
+        layernorm_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
+        BFVLongPlaintext beta_plain(bfv_parm, beta_array, batch_size * d_module);
+        layernorm_secret_a.add_plain_inplace(beta_plain, bfv_parm->evaluator);
+
+        // BFVLongPlaintext result = layernorm_secret_a.decrypt(alice);
+        // bfv_matrix result_matrix = result.decode(bfv_parm); // something wrong here
+
         // std::cout << "Secure LayerNorm1 done.\n";
-
-#ifdef TEST
-        std::cout << "LayerNorm End! \n";
-        // uint64_t mask = (DEFAULT_ELL == 64 ? -1 : ((1ULL << DEFAULT_ELL) - 1));
-        // auto attn_plain = attn_s.decrypt(bob);
-        // auto attn = attn_plain.decode(bfv_parm);
         // for (size_t i = 0; i < batch_size * d_module; i++)
         // {
-        //     attn[i] = (attn[i] + input_a[i] + input_b[i]) & mask;
+        //     std::cout << result_matrix[i] << " ";
         // }
 
-        // auto mu = fpmath_alice->mean(attn, batch_size, d_module, mask);
-        // auto sigma = fixed_standard_deviation(attn, mu, batch_size, d_module, mask, fix_public);
-        // for (size_t i = 0; i < batch_size; i++)
-        // {
-        //     for (size_t j = 0; j < d_module; j++)
-        //     {
-        //         attn[i * d_module + j] = (attn[i * d_module + j] - mu[i]) & mask;
-        //         // attn[i * d_module + j] = (attn[i * d_module + j] / sigma[i]) & mask;
-        //         // attn[i * d_module + j] *= gamma[i * d_module + j];
-        //         // attn[i * d_module + j] += beta[i * d_module + j];
-        //     }
-        // }
-
-#endif
         delete[] prime_xb;
         delete[] prime_ha;
         delete[] prime_ha_xa;
         delete[] prime_gb;
         delete[] x_gb_ha_ring;
         delete[] x_gb_ha_prime;
+        delete[] gama_array;
+        delete[] beta_array;
+        delete[] tmp1;
+        delete[] tmp2;
     }
 };
 
@@ -271,10 +275,10 @@ int main()
     sci::IOPack *iopack;
     sci::OTPack *otpack;
     SecureLayerNorm1 *sec_ln1 = new SecureLayerNorm1(bfv_parm, alice, bob, iopack, otpack);
-    std::cout << "layernorm start \n";
+    INIT_TIMER
+    START_TIMER
     sec_ln1->forward(attn_secret_s, uint_input_a, uint_input_b);
-    std::cout << "layernorm end \n";
-
+    STOP_TIMER("Secure LayerNorm")
     delete sec_ln1;
     delete alice;
     delete bob;

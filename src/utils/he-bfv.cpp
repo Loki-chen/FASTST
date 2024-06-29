@@ -201,7 +201,6 @@ bfv_matrix BFVLongPlaintext::decode(BFVParm *contex) const
         else
         {
             size_t tail_len = len % solut_cout;
-            
             tail_len = tail_len ? tail_len : solut_cout;
             copy(temp.begin(), temp.begin() + tail_len, data.begin() + i * solut_cout);
         }
