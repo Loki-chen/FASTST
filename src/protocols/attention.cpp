@@ -3,12 +3,6 @@
 
 using std::cout;
 
-string replace(string str, string substr1, string substr2) {
-    size_t index = str.find(substr1);
-    str.replace(index, substr1.length(), substr2);
-    return str;
-}
-
 Attention::Attention(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator,
                      sci::NetIO *io, int layer, int head_)
     : Protocol(party, encoder, evaluator, io, layer), head(head_) {}
@@ -309,9 +303,6 @@ Multi_Head_Attention::Multi_Head_Attention(CKKSKey *party, CKKSEncoder *encoder,
     : Protocol(party, encoder, evaluator, io, layer) {
     attns = new Attention *[n_heads];
     string layer_str = std::to_string(layer),
-           dir_path = party->party == sci::ALICE
-                          ? "/data/BOLT/bolt/prune/mrpc/alice_weights_txt/"
-                          : "/data/BOLT/bolt/prune/mrpc/bob_weights_txt/",
            WQ_file = replace(
                "bert.encoder.layer.LAYER.attention.self.query.weight.txt",
                "LAYER", layer_str),

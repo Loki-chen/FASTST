@@ -3,6 +3,7 @@
 
 #include <ezpc_scilib/ezpc_utils.h> // prg.h & io & arg
 #include <model.h>
+#include <string>
 
 class Encoder;
 
@@ -13,13 +14,17 @@ protected:
     CKKSEncoder *encoder;
     Evaluator *evaluator;
     sci::NetIO *io;
+    string layer_str;
+    string dir_path;
 
 public:
     friend Encoder;
-    Protocol(CKKSKey *party_, CKKSEncoder *encoder_, Evaluator *evaluator_,
-             sci::NetIO *io_, int _layer)
-        : party(party_), encoder(encoder_), evaluator(evaluator_), io(io_),
-          layer(_layer) {}
+    Protocol(CKKSKey *party_, CKKSEncoder *encoder_, Evaluator *evaluator_, sci::NetIO *io_, int _layer)
+        : party(party_), encoder(encoder_), evaluator(evaluator_), io(io_), layer(_layer) {
+        layer_str = std::to_string(layer);
+        dir_path = party->party == sci::ALICE ? "/data/BOLT/bolt/prune/mrpc/alice_weights_txt/"
+                                              : "/data/BOLT/bolt/prune/mrpc/bob_weights_txt/";
+    }
     ~Protocol() {}
 };
 #endif

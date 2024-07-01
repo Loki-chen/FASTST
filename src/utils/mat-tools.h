@@ -25,6 +25,7 @@ void random_modP_mat(bfv_matrix &mat, int plain_mod);
 
 matrix zero_sum(size_t row, size_t column);
 void load_mat(matrix &mat, string path);
+void load_bfv_mat(bfv_matrix &mat, string path);
 void normalization(matrix &A, size_t row, size_t column);
 matrix mean(const matrix &input, size_t row, size_t column);
 matrix standard_deviation(const matrix &input, const matrix means, size_t row, size_t column);
