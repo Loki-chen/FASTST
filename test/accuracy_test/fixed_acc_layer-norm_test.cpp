@@ -33,8 +33,8 @@ public:
         fpmath_bob = new FPMath(sci::BOB, iopack, otpack);
         fpmath_public = new FPMath(sci::PUBLIC, iopack, otpack);
         conv = new Conversion();
-        fix = new FixOp(sci::PUBLIC, iopack, otpack);
-        bool_op = new BoolOp(sci::PUBLIC, iopack, otpack);
+        // fix = new FixOp(sci::PUBLIC, iopack, otpack);
+        // bool_op = new BoolOp(sci::PUBLIC, iopack, otpack);
     }
 
     ~SecureLayerNorm1()
