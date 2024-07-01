@@ -1,6 +1,7 @@
 #include "fixed-layer-norm.h"
 #include "FixedPoint/fixed-point.h"
 #include "Utils/constants.h"
+#include "model.h"
 #include "protocols/fixed-protocol.h"
 #include "utils/he-bfv.h"
 #include <cstdint>
@@ -121,10 +122,15 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
             }
         }
         conv->Ring_to_Prime(fix_div_ha.data[0], fix_div_ka.data[0], DEFAULT_ELL, party->parm->plain_mod);
+        conv->Ring_to_Prime(tmp2, tmp2, batch_size * d_module, DEFAULT_ELL, party->parm->plain_mod);
 
         BFVLongCiphertext layernorm_secret_a(party->parm, fix_div_ha.data[0], party);
+        BFVLongPlaintext tmp2_plain(party->parm, tmp2, batch_size * d_module);
+        layernorm_secret_a.multiply_plain_inplace(tmp2_plain, party->parm->evaluator);
+        auto ln_plain = layernorm_secret_a.decrypt(party);
+        auto ln = ln_plain.decode(parm);
+        std::cout << ln[0] << "\n";
         io->send_data(tmp1, batch_size * d_module);
-        io->send_data(tmp2, batch_size * d_module);
         BFVLongCiphertext::send(io, &layernorm_secret_a);
 
         return BFVLongCiphertext();
@@ -165,10 +171,8 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         BFVLongCiphertext::send(io, &xb_ha_secret_a);
 
         uint64_t *tmp1 = new uint64_t[batch_size * d_module];
-        uint64_t *tmp2 = new uint64_t[batch_size * d_module];
         BFVLongCiphertext layernorm_secret_a;
         io->recv_data(tmp1, batch_size * d_module);
-        io->recv_data(tmp2, batch_size * d_module);
         BFVLongCiphertext::recv(io, &layernorm_secret_a, party->parm->context);
         // tmp * gama
         bfv_matrix gamma(batch_size * d_module);
@@ -191,9 +195,9 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         gama_tmp1 = fpmath->fix->mul(ret_tmp1, gama_fix, DEFAULT_ELL);
         gama_tmp1 = fpmath->fix->location_truncation(gama_tmp1, DEFAULT_SCALE);
         conv->Ring_to_Prime(tmp1, tmp1, batch_size * d_module, DEFAULT_ELL, party->parm->plain_mod);
-        conv->Ring_to_Prime(tmp2, tmp2, batch_size * d_module, DEFAULT_ELL, party->parm->plain_mod);
 
         BFVLongPlaintext tmp1_plain(party->parm, tmp1, batch_size * d_module);
+        std::cout << tmp1[0] << "\n";
         layernorm_secret_a.multiply_plain_inplace(tmp1_plain, party->parm->evaluator);
         layernorm_secret_a.mod_switch_to_next_inplace(party->parm->evaluator);
         BFVLongPlaintext beta_plain(party->parm, beta_array, batch_size * d_module);
