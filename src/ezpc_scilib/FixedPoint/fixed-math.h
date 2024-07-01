@@ -27,6 +27,7 @@ public:
     {
         delete bool_op;
         delete fix;
+        delete math;
     }
 
     // Fixed-Point Math Functions: returns OP(x[i]), OP = {sinpi, cospi, tanpi, exp2, log2, exp, ln, erf}

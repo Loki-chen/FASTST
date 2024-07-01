@@ -1,5 +1,17 @@
 #include "conversion.h"
 
+void Conversion::Ring_to_Prime(uint64_t input, uint64_t output, int ell, int64_t plain_mod)
+{
+#ifdef LOG
+    auto t_conversion = high_resolution_clock::now();
+#endif
+    output = sci::neg_mod(sci::signed_val(input, ell), (int64_t)plain_mod);
+
+#ifdef LOG
+    t_total_conversion += interval(t_conversion);
+#endif
+}
+
 // R-to-P:location conversion
 void Conversion::Ring_to_Prime(uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_mod)
 {
@@ -8,9 +20,9 @@ void Conversion::Ring_to_Prime(uint64_t *input, uint64_t *output, int length, in
 #endif
 
     vector<uint64_t> tmp(length);
-    for (size_t i = 0; i < length; i++) {
-        tmp[i] =
-            sci::neg_mod(sci::signed_val(input[i], ell), (int64_t)plain_mod);
+    for (size_t i = 0; i < length; i++)
+    {
+        tmp[i] = sci::neg_mod(sci::signed_val(input[i], ell), (int64_t)plain_mod);
     }
     memcpy(output, tmp.data(), length * sizeof(uint64_t));
 

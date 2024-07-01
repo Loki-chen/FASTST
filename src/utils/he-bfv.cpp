@@ -183,13 +183,17 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, uint64_t *data, size_t len)
 
 bfv_matrix BFVLongPlaintext::decode(BFVParm *contex) const
 {
-    bfv_matrix data(len);
-    size_t size = plain_data.size();
-    size_t solut_cout = contex->slot_count;
+    bfv_matrix data(len); // 5
+
+    size_t size = plain_data.size(); // 1
+
+    size_t solut_cout = contex->slot_count; // 8192
+
     for (size_t i = 0; i < size; i++)
     {
         bfv_matrix temp;
         contex->encoder->decode(plain_data[i], temp);
+
         if (i < size - 1)
         {
             copy(temp.begin(), temp.end(), data.begin() + i * solut_cout);
@@ -198,7 +202,7 @@ bfv_matrix BFVLongPlaintext::decode(BFVParm *contex) const
         {
             size_t tail_len = len % solut_cout;
             tail_len = tail_len ? tail_len : solut_cout;
-            copy(temp.begin(), temp.begin() + tail_len + 1, data.begin() + i * solut_cout);
+            copy(temp.begin(), temp.begin() + tail_len, data.begin() + i * solut_cout);
         }
     }
     return data;

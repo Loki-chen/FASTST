@@ -20,7 +20,8 @@ int main(int argc, const char **argv)
         BFVKey *party = new BFVKey(party_, bfv_parm);
         sci::IOPack *iopack = new sci::IOPack(party_, 56789);
         sci::OTPack *otpack = new sci::OTPack(iopack, party_);
-
+        sci::NetIO *io = iopack->io;
+        Conversion *conv = new Conversion();
         FPMath *fpmath = new FPMath(party_, iopack, otpack);
         FPMath *fpmath_public = new FPMath(sci::PUBLIC, iopack, otpack);
 
@@ -29,7 +30,7 @@ int main(int argc, const char **argv)
         bfv_matrix input(batch_size * d_module);
         random_bfv_mat(input);
 
-        FixedLayerNorm *ln = new FixedLayerNorm(party, bfv_parm, fpmath, fpmath_public);
+        FixedLayerNorm *ln = new FixedLayerNorm(party, bfv_parm, io, fpmath, fpmath_public, conv);
         BFVLongCiphertext attn_secret_b;
         if (party_ == sci::ALICE)
         {
