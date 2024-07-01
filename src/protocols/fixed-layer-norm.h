@@ -3,7 +3,8 @@
 #include "fixed-protocol.h"
 #include "utils/he-bfv.h"
 
-class FixedLayerNorm : public FixedProtocol {
+class FixedLayerNorm : public FixedProtocol
+{
     bool before_attn;
     bfv_matrix gamma, beta;
 

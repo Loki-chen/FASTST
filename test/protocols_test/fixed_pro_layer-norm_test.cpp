@@ -32,9 +32,12 @@ int main(int argc, const char **argv)
 
         FixedLayerNorm *ln = new FixedLayerNorm(0, party, bfv_parm, io, fpmath, fpmath_public, conv, false);
         BFVLongCiphertext attn_secret_b;
-        if (party_ == sci::ALICE) {
+        if (party_ == sci::ALICE)
+        {
             BFVLongCiphertext::recv(iopack->io, &attn_secret_b, bfv_parm->context);
-        } else if (party_ == sci::BOB) {
+        }
+        else if (party_ == sci::BOB)
+        {
             bfv_matrix attn(batch_size * d_module);
             random_bfv_mat(attn);
 
@@ -56,9 +59,13 @@ int main(int argc, const char **argv)
         else if (comm < 1024 * 1024)
         {
             printf("data size of communication: %.2lf KB\n", comm / 1024.);
-        } else if (comm < 1024 * 1024 * 1024) {
+        }
+        else if (comm < 1024 * 1024 * 1024)
+        {
             printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
-        } else {
+        }
+        else
+        {
             printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024. * 1024.));
         }
         std::cout << "rounds of communication: " << rounds << "\n";
