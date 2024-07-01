@@ -43,9 +43,19 @@ inline void send_mat(sci::NetIO *io, const matrix *mat, bool count_comm = true)
     io->send_data(mat->data(), mat->size() * sizeof(double), count_comm);
 }
 
+inline void send_mat(sci::NetIO *io, const uint64_t *mat, int length, bool count_comm = true)
+{
+    io->send_data(mat, length * sizeof(uint64_t), count_comm);
+}
+
 inline void recv_mat(sci::NetIO *io, matrix *mat, bool count_comm = true)
 {
     io->recv_data(mat->data(), mat->size() * sizeof(double), count_comm);
+}
+
+inline void recv_mat(sci::NetIO *io, uint64_t *mat, int length, bool count_comm = true)
+{
+    io->recv_data(mat, length * sizeof(uint64_t), count_comm);
 }
 
 #endif

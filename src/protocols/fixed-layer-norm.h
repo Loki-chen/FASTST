@@ -2,13 +2,11 @@
 #define FAST_FIXED_LAYER_NROM1_H__
 #include "fixed-protocol.h"
 
-using namespace sci;
-using namespace std;
 class FixedLayerNorm : public FixedProtocol
 {
 public:
     FixedLayerNorm(BFVKey *party, BFVParm *parm,
-                   FPMath *fpmath, FPMath *fpmath_public) : FixedProtocol(party, parm, fpmath, fpmath_public) {}
+                   sci::NetIO *io, FPMath *fpmath, FPMath *fpmath_public, Conversion *conv) : FixedProtocol(party, parm, io, fpmath, fpmath_public, conv) {}
     ~FixedLayerNorm() {}
     // Alice possess: attn_secret_b X_a, Bob possess X_b
     BFVLongCiphertext forward(const BFVLongCiphertext &attn, const bfv_matrix &input) const;
