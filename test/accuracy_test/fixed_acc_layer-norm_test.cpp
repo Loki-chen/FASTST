@@ -63,11 +63,11 @@ public:
         double ha = dist(gen);
 
         FixArray fix_ha = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
-                                                   (sci::neg_mod(static_cast<int64_t>(ha * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                   (sci::neg_mod(static_cast<int64_t>(ha * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL))),
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
 
         FixArray fix_div_ha = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
-                                                       (sci::neg_mod(static_cast<int64_t>((1.0 / ha) * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                       (sci::neg_mod(static_cast<int64_t>((1.0 / ha) * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL))),
                                                        true, DEFAULT_ELL, DEFAULT_SCALE);
 
         FixArray fix_xa = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
@@ -111,7 +111,7 @@ public:
         double gb = dist(gen);
 
         FixArray fix_gb = fpmath_alice->fix->input(sci::ALICE, batch_size * d_module,
-                                                   (sci::neg_mod(static_cast<int64_t>(gb * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                   (sci::neg_mod(static_cast<int64_t>(gb * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL))),
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
         uint64_t *prime_gb = new uint64_t[batch_size * d_module];
         conv->Ring_to_Prime(fix_gb.data, prime_gb, batch_size * d_module, DEFAULT_ELL, bfv_parm->plain_mod);
@@ -156,10 +156,10 @@ public:
 
         double ka = dist(gen);
         FixArray fix_ka = fpmath_alice->fix->input(sci::ALICE, 1,
-                                                   (sci::neg_mod(static_cast<int64_t>(ka * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                   (sci::neg_mod(static_cast<int64_t>(ka * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL))),
                                                    true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_div_ka = fpmath_alice->fix->input(sci::ALICE, 1,
-                                                       (sci::neg_mod(static_cast<int64_t>((1.0 / ka) * (1ULL << (DEFAULT_SCALE))), DEFAULT_ELL)),
+                                                       (sci::neg_mod(static_cast<int64_t>((1.0 / ka) * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL))),
                                                        true, DEFAULT_ELL, DEFAULT_SCALE);
 
         vector<FixArray> ir_tmp1(batch_size);
@@ -202,10 +202,26 @@ public:
         conv->Ring_to_Prime(fix_div_ha.data[0], fix_div_ka.data[0], DEFAULT_ELL, bfv_parm->plain_mod);
         BFVLongPlaintext tmp1_plain(bfv_parm, tmp1, batch_size * d_module);
         BFVLongCiphertext layernorm_secret_a(bfv_parm, fix_div_ha.data[0], alice); // somthing wrong here;
-        layernorm_secret_a.multiply_plain_inplace(tmp1_plain, bfv_parm->evaluator);
+
+        layernorm_secret_a.multiply_plain_inplace(tmp1_plain, alice->parm->evaluator);
         layernorm_secret_a.mod_switch_to_next_inplace(bfv_parm->evaluator);
         BFVLongPlaintext beta_plain(bfv_parm, beta_array, batch_size * d_module);
         layernorm_secret_a.add_plain_inplace(beta_plain, bfv_parm->evaluator);
+
+        BFVLongPlaintext layernorm_plain = layernorm_secret_a.decrypt(alice);
+        bfv_matrix layernorm = layernorm_plain.decode(bfv_parm); // something wrong here
+        for (size_t i = 0; i < batch_size * d_module; i++)
+        {
+            if (layernorm[i] == 0)
+            {
+                std::cout << "zero appeal!";
+            }
+        }
+        std::cout << "\n";
+        // for (size_t i = 0; i < batch_size * d_module; i++)
+        // {
+        //     std::cout << layernorm[1] << " ";
+        // }
 
         // BFVLongPlaintext result = layernorm_secret_a.decrypt(alice);
         // bfv_matrix result_matrix = result.decode(bfv_parm); // something wrong here
@@ -245,6 +261,14 @@ int main()
     random_mat(attn, -1, 1, false);
     random_mat(input_a, -1, 1, false);
     random_mat(input_b, -1, 1, false);
+
+    for (size_t i = 0; i < batch_size * d_module; i++)
+    {
+        if (attn[i] == 0)
+        {
+            std::cout << i;
+        }
+    }
 
     int64_t *int_attn = new int64_t[batch_size * d_module];
     uint64_t *uint_attn = new uint64_t[batch_size * d_module];
