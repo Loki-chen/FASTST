@@ -22,7 +22,7 @@ matrix Encoder::forward(const matrix &input) {
     LongCiphertext output2 = ln1->forward(output1, input);
     LongCiphertext output3 = ffn->forward(output2);
     LongCiphertext output4 = ln2->forward(output3, input);
-    if (ln2->party->party == ALICE) {
+    if (ln2->party->party == sci::ALICE) {
         LongCiphertext out_sec_a;
         LongCiphertext::recv(ln2->io, &out_sec_a, ln2->party->context);
         LongPlaintext out_plain = out_sec_a.decrypt(ln2->party);
