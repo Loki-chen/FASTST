@@ -7,8 +7,9 @@
 #include <cstdint>
 
 FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
-                               FPMath *fpmath_public, Conversion *conv, bool _before_attn)
-    : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv), before_attn(_before_attn) {
+                               FPMath *fpmath_public, Conversion *conv, bool _before_attn) ////////////////////
+    : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv), before_attn(_before_attn)
+{
     string layer_str = std::to_string(layer),
            gamma_file = before_attn
                             ? replace("bert.encoder.layer.LAYER.attention.output.LayerNorm.weight.txt", "LAYER", layer_str)
@@ -20,7 +21,8 @@ FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::Net
     load_bfv_mat(beta, dir_path + beta_file);
 }
 
-BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const bfv_matrix &input) const {
+BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const bfv_matrix &input) const
+{
 
     sci::PRG128 prg;
     std::random_device rd;
@@ -97,8 +99,9 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         {
             x_gb_ha_prime[i] = x_gb_ha_matrix[i];
         }
+        /////////////////////////////////////////////
         conv->Prime_to_Ring(x_gb_ha_prime, x_gb_ha_ring, batch_size * d_module, DEFAULT_ELL, parm->plain_mod,
-                            DEFAULT_SCALE, DEFAULT_SCALE, fpmath_public);
+                            DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
 
         fix_x_gb =
             fpmath->fix->input(sci::ALICE, batch_size * d_module, x_gb_ha_ring, true, DEFAULT_ELL, DEFAULT_SCALE * 2);
@@ -218,8 +221,10 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         // tmp * gama
         uint64_t *gama_array = new uint64_t[batch_size * d_module];
         uint64_t *beta_array = new uint64_t[batch_size * d_module];
-        for (size_t i = 0; i < batch_size; i++) {
-            for (size_t j = 0; j < d_module; j++) {
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            for (size_t j = 0; j < d_module; j++)
+            {
                 gama_array[i * d_module + j] = gamma[j];
                 beta_array[i * d_module + j] =
                     sci::neg_mod(static_cast<int64_t>(beta[i]), static_cast<int64_t>(party->parm->plain_mod));
