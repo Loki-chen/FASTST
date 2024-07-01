@@ -147,6 +147,29 @@ void load_mat(matrix &mat, string path)
     input_file.close();
 }
 
+void load_bfv_mat(bfv_matrix &mat, string path)
+{
+    ifstream input_file(path);
+
+    if (!input_file.is_open())
+    {
+        cerr << "Error opening file: " << path << "\n";
+        return;
+    }
+
+    string line;
+    while (getline(input_file, line))
+    {
+        istringstream line_stream(line);
+        string cell;
+        while (getline(line_stream, cell, ','))
+        {
+            mat.push_back(stoll(cell));
+        }
+    }
+    input_file.close();
+}
+
 void normalization(matrix &A, size_t row, size_t column)
 {
     size_t i, j;

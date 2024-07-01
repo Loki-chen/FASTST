@@ -6,6 +6,20 @@
 #include "utils/he-bfv.h"
 #include <cstdint>
 
+FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
+                               FPMath *fpmath_public, Conversion *conv, bool _before_attn)
+    : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv), before_attn(_before_attn) {
+    string layer_str = std::to_string(layer),
+           gamma_file = before_attn
+                            ? replace("bert.encoder.layer.LAYER.attention.output.LayerNorm.weight.txt", "LAYER", layer_str)
+                            : replace("bert.encoder.layer.LAYER.output.LayerNorm.weight.txt", "LAYER", layer_str),
+           beta_file = before_attn
+                           ? replace("bert.encoder.layer.LAYER.attention.output.LayerNorm.bias.txt", "LAYER", layer_str)
+                           : replace("bert.encoder.layer.LAYER.output.LayerNorm.bias.txt", "LAYER", layer_str);
+    load_bfv_mat(gamma, dir_path + gamma_file);
+    load_bfv_mat(beta, dir_path + beta_file);
+}
+
 BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const bfv_matrix &input) const {
 
     sci::PRG128 prg;
@@ -54,7 +68,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         attn_ha_secret_b.mod_switch_to_next_inplace(parm->evaluator);
 
         // Alice : send H1 = {ha_xa, ha_secret_a, attn_ha_secret_b} to bob
-        io->send_data(prime_ha_xa, batch_size * d_module);
+        io->send_data(prime_ha_xa, batch_size * d_module * sizeof(uint64_t));
         send_mat(io, fix_ha_xa.data, fix_ha_xa.size);
         BFVLongCiphertext::send(io, &ha_secret_a);
         BFVLongCiphertext::send(io, &attn_ha_secret_b);
@@ -130,7 +144,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         auto ln_plain = layernorm_secret_a.decrypt(party);
         auto ln = ln_plain.decode(parm);
         std::cout << ln[0] << "\n";
-        io->send_data(tmp1, batch_size * d_module);
+        io->send_data(tmp1, batch_size * d_module * sizeof(uint64_t));
         BFVLongCiphertext::send(io, &layernorm_secret_a);
 
         return BFVLongCiphertext();
@@ -140,7 +154,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         FixArray fix_ha_xa = fpmath->fix->input(sci::ALICE, batch_size * d_module, x, true, DEFAULT_ELL, DEFAULT_SCALE);
         BFVLongCiphertext ha_secret_a, attn_ha_secret_b;
 
-        io->recv_data(prime_ha_xa, batch_size * d_module);
+        io->recv_data(prime_ha_xa, batch_size * d_module * sizeof(uint64_t));
         recv_mat(io, fix_ha_xa.data, fix_ha_xa.size);
         BFVLongCiphertext::recv(io, &ha_secret_a, parm->context);
         BFVLongCiphertext::recv(io, &attn_ha_secret_b, parm->context);
@@ -172,18 +186,17 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
 
         uint64_t *tmp1 = new uint64_t[batch_size * d_module];
         BFVLongCiphertext layernorm_secret_a;
-        io->recv_data(tmp1, batch_size * d_module);
+        io->recv_data(tmp1, batch_size * d_module * sizeof(uint64_t));
         BFVLongCiphertext::recv(io, &layernorm_secret_a, party->parm->context);
         // tmp * gama
-        bfv_matrix gamma(batch_size * d_module);
-        bfv_matrix beta(batch_size * d_module);
-        random_bfv_mat(gamma);
-        random_modP_mat(beta, party->parm->plain_mod);
         uint64_t *gama_array = new uint64_t[batch_size * d_module];
         uint64_t *beta_array = new uint64_t[batch_size * d_module];
-        for (size_t i = 0; i < batch_size * d_module; i++) {
-            gama_array[i] = gamma[i];
-            beta_array[i] = beta[i];
+        for (size_t i = 0; i < batch_size; i++) {
+            for (size_t j = 0; j < d_module; j++) {
+                gama_array[i * d_module + j] = gamma[j];
+                beta_array[i * d_module + j] =
+                    sci::neg_mod(static_cast<int64_t>(beta[i]), static_cast<int64_t>(party->parm->plain_mod));
+            }
         }
         FixArray gama_fix =
             fpmath->fix->input(sci::BOB, batch_size * d_module, gama_array, true, DEFAULT_ELL, DEFAULT_SCALE);
@@ -197,7 +210,6 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         conv->Ring_to_Prime(tmp1, tmp1, batch_size * d_module, DEFAULT_ELL, party->parm->plain_mod);
 
         BFVLongPlaintext tmp1_plain(party->parm, tmp1, batch_size * d_module);
-        std::cout << tmp1[0] << "\n";
         layernorm_secret_a.multiply_plain_inplace(tmp1_plain, party->parm->evaluator);
         layernorm_secret_a.mod_switch_to_next_inplace(party->parm->evaluator);
         BFVLongPlaintext beta_plain(party->parm, beta_array, batch_size * d_module);

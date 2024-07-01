@@ -11,8 +11,7 @@ int main(int argc, const char **argv) {
             std::cout << "Party: BOB"
                       << "\n";
         }
-        BFVParm *bfv_parm =
-            new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
+        BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
         BFVKey *party = new BFVKey(party_, bfv_parm);
         sci::IOPack *iopack = new sci::IOPack(party_, 56789);
         sci::OTPack *otpack = new sci::OTPack(iopack, party_);
@@ -26,12 +25,10 @@ int main(int argc, const char **argv) {
         bfv_matrix input(batch_size * d_module);
         random_bfv_mat(input);
 
-        FixedLayerNorm *ln = new FixedLayerNorm(party, bfv_parm, io, fpmath,
-                                                fpmath_public, conv);
+        FixedLayerNorm *ln = new FixedLayerNorm(0, party, bfv_parm, io, fpmath, fpmath_public, conv, false);
         BFVLongCiphertext attn_secret_b;
         if (party_ == sci::ALICE) {
-            BFVLongCiphertext::recv(iopack->io, &attn_secret_b,
-                                    bfv_parm->context);
+            BFVLongCiphertext::recv(iopack->io, &attn_secret_b, bfv_parm->context);
         } else if (party_ == sci::BOB) {
             bfv_matrix attn(batch_size * d_module);
             random_bfv_mat(attn);
@@ -39,8 +36,7 @@ int main(int argc, const char **argv) {
             BFVLongCiphertext attn_s_b(attn_plain, party);
             BFVLongCiphertext::send(iopack->io, &attn_s_b);
         }
-        printf("batch size:       %d\nd_module:         %d\n", batch_size,
-               d_module);
+        printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
         INIT_TIMER;
         START_TIMER;
         BFVLongCiphertext result = ln->forward(attn_secret_b, input);
@@ -52,11 +48,9 @@ int main(int argc, const char **argv) {
         } else if (comm < 1024 * 1024) {
             printf("data size of communication: %.2lf KB\n", comm / 1024.);
         } else if (comm < 1024 * 1024 * 1024) {
-            printf("data size of communication: %.2lf MB\n",
-                   comm / (1024. * 1024.));
+            printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
         } else {
-            printf("data size of communication: %.2lf MB\n",
-                   comm / (1024. * 1024. * 1024.));
+            printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024. * 1024.));
         }
         std::cout << "rounds of communication: " << rounds << "\n";
 
