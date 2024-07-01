@@ -1,13 +1,8 @@
 #ifndef FAST_FIXED_PROTOCOL_H
 #define FAST_FIXED_PROTOCOL_H
-#pragma once
+
 #include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
 #include <model.h>
-using sci::ALICE;
-using sci::BOB;
-using sci::IOPack;
-using sci::OTPack;
-using sci::PUBLIC;
 
 #define DEFAULT_SCALE 12
 #define DEFAULT_ELL 37

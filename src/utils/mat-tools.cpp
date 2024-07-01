@@ -1,5 +1,8 @@
 #include "mat-tools.h"
 
+using std::cerr;
+using std::cout;
+
 matrix matmul(const matrix &mat1, const matrix &mat2,
               size_t dim1, size_t dim2, size_t dim3, bool trans)
 {

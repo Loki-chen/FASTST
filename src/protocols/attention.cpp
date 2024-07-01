@@ -1,9 +1,10 @@
 #include "attention.h"
 #include "model.h"
-using std::to_string;
+
+using std::cout;
 
 string replace(string str, string substr1, string substr2) {
-    size_t index = str.find(substr1, 0);
+    size_t index = str.find(substr1);
     str.replace(index, substr1.length(), substr2);
     return str;
 }
@@ -35,9 +36,9 @@ matrix Attention::forward(const matrix &input) const {
             raWK[i] = ra * WK[i];
             raWV[i] = ra * WV[i];
         }
-        auto ra_xa_WQa = matmul(input, raWQ, batch_size, d_module, d_k);
-        auto ra_xa_WKa = matmul(input, raWK, batch_size, d_module, d_k);
-        auto ra_xa_WVa = matmul(input, raWV, batch_size, d_module, d_k);
+        matrix ra_xa_WQa = matmul(input, raWQ, batch_size, d_module, d_k);
+        matrix ra_xa_WKa = matmul(input, raWK, batch_size, d_module, d_k);
+        matrix ra_xa_WVa = matmul(input, raWV, batch_size, d_module, d_k);
         LongCiphertext ra_secret_a(ra, party, encoder);
         // send H1 = {ra_xa_WIa, ra_xa, ra_WIa, [ra]_a} to bob, where I = Q, K,
         // V
@@ -74,7 +75,7 @@ matrix Attention::forward(const matrix &input) const {
             Q_div_rb1[i] /= sqrt_d_k;
             K_div_rb1[i] /= ra;
         }
-        auto temp_Score =
+        matrix temp_Score =
             matmul(Q_div_rb1, K_div_rb1, batch_size, d_k, batch_size, true);
         for (size_t i = 0; i < batch_size * batch_size; i++) {
             negScore_a[i] = -negScore_a[i];
@@ -125,10 +126,10 @@ matrix Attention::forward(const matrix &input) const {
         LongCiphertext::recv(io, &raV_sec_a, party->context);
 
         LongPlaintext rs2_expScore_plain = eScore_a_secret_a.decrypt(party);
-        auto rs2_expScore = rs2_expScore_plain.decode(encoder);
+        matrix rs2_expScore = rs2_expScore_plain.decode(encoder);
 
         LongPlaintext Rb_V_plain = raV_sec_a.decrypt(party);
-        auto Rb_V = Rb_V_plain.decode(encoder);
+        matrix Rb_V = Rb_V_plain.decode(encoder);
         for (size_t i = 0; i < batch_size * d_k; i++)
             Rb_V[i] /= ra;
 
@@ -147,7 +148,7 @@ matrix Attention::forward(const matrix &input) const {
 #ifdef SOFTMAX_TIME_TEST
         STOP_TIMER("attention softmax");
 #endif
-        auto output = matmul(eScore_b, Rb_V, batch_size, batch_size, d_k);
+        matrix output = matmul(eScore_b, Rb_V, batch_size, batch_size, d_k);
 #ifdef LOG
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
@@ -191,16 +192,18 @@ matrix Attention::forward(const matrix &input) const {
                             LongCiphertext ra_secret_a, CKKSKey *party,
                             CKKSEncoder *encoder, Evaluator *evaluator,
                             double scale) {
-            auto xbWI_b = matmul(input_b, WIb, batch_size, d_module, d_k);
+            matrix xbWI_b = matmul(input_b, WIb, batch_size, d_module, d_k);
             LongPlaintext xbWI_b_plain(xbWI_b, encoder);
             LongCiphertext raI_secret_a = ra_secret_a.multiply_plain(
                 xbWI_b_plain, evaluator); // element-wise matmul
 
             matrix temp_raI(batch_size * d_k);
-            auto temp_raI1 = matmul(ra_xa, WIb, batch_size, d_module, d_k);
-            auto temp_raI2 = matmul(input_b, ra_WIa, batch_size, d_module, d_k);
-            for (size_t i = 0; i < batch_size * d_k; i++)
+            matrix temp_raI1 = matmul(ra_xa, WIb, batch_size, d_module, d_k);
+            matrix temp_raI2 =
+                matmul(input_b, ra_WIa, batch_size, d_module, d_k);
+            for (size_t i = 0; i < batch_size * d_k; i++) {
                 temp_raI[i] = ra_xa_WIa[i] + temp_raI1[i] + temp_raI2[i];
+            }
             LongPlaintext temp_raI_plain(temp_raI, encoder);
             temp_raI_plain.mod_switch_to_inplace(raI_secret_a.parms_id(),
                                                  evaluator);
@@ -305,7 +308,7 @@ Multi_Head_Attention::Multi_Head_Attention(CKKSKey *party, CKKSEncoder *encoder,
                                            int layer)
     : Protocol(party, encoder, evaluator, io, layer) {
     attns = new Attention *[n_heads];
-    string layer_str = to_string(layer),
+    string layer_str = std::to_string(layer),
            dir_path = party->party == sci::ALICE
                           ? "/data/BOLT/bolt/prune/mrpc/alice_weights_txt/"
                           : "/data/BOLT/bolt/prune/mrpc/bob_weights_txt/",

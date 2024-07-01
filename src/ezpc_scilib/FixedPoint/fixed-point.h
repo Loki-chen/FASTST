@@ -1,6 +1,6 @@
 #ifndef FIXED_POINT_H__
 #define FIXED_POINT_H__
-#pragma once
+
 #include "OT/emp-ot.h"
 #include "Millionaire/millionaire_with_equality.h"
 #include "Millionaire/equality.h"

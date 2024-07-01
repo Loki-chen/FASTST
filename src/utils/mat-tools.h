@@ -9,8 +9,6 @@
 #include <sstream>
 #include <vector>
 
-using std::cerr;
-using std::cout;
 using std::ifstream;
 using std::istringstream;
 using std::vector;

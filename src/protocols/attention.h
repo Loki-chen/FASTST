@@ -1,6 +1,6 @@
 #ifndef FAST_ATTENTION_H__
 #define FAST_ATTENTION_H__
-#pragma once
+
 #include "protocol.h"
 
 // #define SOFTMAX_TIME_TEST
