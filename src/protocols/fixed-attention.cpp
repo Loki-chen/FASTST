@@ -60,7 +60,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
                 ra_xa_WVa.data[i * d_k + j] &= ell_mask_;
             }
         }
-        BFVLongCiphertext ra_secret_a(parm, ra, party);
+        BFVLongCiphertext ra_secret_a(parm, fix_ra, party);
         ra_xa_WQa.party = sci::PUBLIC;
         ra_xa_WKa.party = sci::PUBLIC;
         ra_xa_WVa.party = sci::PUBLIC;
@@ -77,6 +77,33 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         BFVLongCiphertext::recv(io, &raQ_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &raK_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &rb1_square_secret_b, party->parm->context);
+
+        BFVLongPlaintext raQ_div_rb1_plain = raQ_sec_a.decrypt(party);
+        BFVLongPlaintext raK_div_rb1_plain = raK_sec_a.decrypt(party);
+        bfv_matrix Q_div_rb1 = raQ_div_rb1_plain.decode(parm);
+        bfv_matrix K_div_rb1 = raK_div_rb1_plain.decode(parm);
+        bfv_matrix eScore_a(batch_size * batch_size);
+        random_ell_mat(eScore_a, DEFAULT_ELL);
+        double sqrt_d_k = sqrt(d_k);
+        // uint64_t *Q_div_rb1_ring = new uint64_t[Q_div_rb1.size()];
+        // uint64_t *K_div_rb1_ring = new uint64_t[K_div_rb1.size()];
+        conv->Prime_to_Ring(Q_div_rb1.data(), Q_div_rb1.data(), Q_div_rb1.size(), DEFAULT_ELL, party->parm->plain_mod,
+                            DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
+        conv->Prime_to_Ring(K_div_rb1.data(), K_div_rb1.data(), K_div_rb1.size(), DEFAULT_ELL, party->parm->plain_mod,
+                            DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
+        FixArray fix_Q_div_rb1 =
+            fpmath->fix->input(sci::PUBLIC, Q_div_rb1.size(), Q_div_rb1.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_K_div_rb1 =
+            fpmath->fix->input(sci::PUBLIC, K_div_rb1.size(), K_div_rb1.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        uint64_t fix_div_ra =
+            sci::neg_mod(static_cast<int64_t>(1. / ra * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        uint64_t fix_div_sqrt_d_k =
+            sci::neg_mod(static_cast<int64_t>(1. / sqrt_d_k * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        fix_Q_div_rb1 = fpmath->fix->mul(fix_Q_div_rb1, fix_div_ra);
+        fix_Q_div_rb1 = fpmath->fix->mul(fix_Q_div_rb1, fix_div_sqrt_d_k);
+        fix_K_div_rb1 = fpmath->fix->mul(fix_K_div_rb1, fix_div_ra);
+        fix_Q_div_rb1.party = sci::ALICE;
+        FixArray temp_Score = fpmath->dot(fix_Q_div_rb1, fix_K_div_rb1, batch_size, d_k, batch_size, DEFAULT_ELL, true);
         // Alice End
     } else {
         FixArray ra_xa_WQa(sci::PUBLIC, batch_size * d_k, true, DEFAULT_ELL, DEFAULT_SCALE),
@@ -96,7 +123,8 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         fpmath->fix->recv_fix_array(fix_ra_wva);
         BFVLongCiphertext::recv(io, &ra_secret_a, party->parm->context);
 
-        auto cal_raI = [this, &fix_ra_xa, &ra_secret_a] (FixArray& fix_input, FixArray& ra_xa_WIa, const bfv_matrix& WIb, FixArray& ra_WIa, const bfv_matrix& bI) {
+        auto cal_raI = [this, &fix_ra_xa, &ra_secret_a](FixArray &fix_input, FixArray &ra_xa_WIa, const bfv_matrix &WIb,
+                                                        FixArray &ra_WIa, const bfv_matrix &bI) {
             FixArray fix_wib = fpmath->fix->input(sci::BOB, WIb.size(), WIb.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
             FixArray xb_wib = fpmath->dot(fix_input, fix_wib, batch_size, d_module, d_k, DEFAULT_ELL);
             uint64_t *prime_xb_wib = new uint64_t[d_module * d_k];
@@ -127,10 +155,15 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         BFVLongCiphertext raV_sec_a = cal_raI(fix_input, ra_xa_WVa, WV, fix_ra_wva, bV);
 
         double rb1 = dist(gen);
-        uint64_t div_fix_rb1 = sci::neg_mod(static_cast<int64_t>(1. / rb1 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
-        uint64_t fix_rb1_square = sci::neg_mod(static_cast<int64_t>(rb1 * rb1 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
-        BFVLongPlaintext div_rb1_plain(party->parm, sci::neg_mod(sci::signed_val(div_fix_rb1, DEFAULT_ELL), (int64_t)party->parm->plain_mod));
-        BFVLongCiphertext rb1_square_secret_b(party->parm, sci::neg_mod(sci::signed_val(fix_rb1_square, DEFAULT_ELL), (int64_t)party->parm->plain_mod), party);
+        uint64_t div_fix_rb1 =
+            sci::neg_mod(static_cast<int64_t>(1. / rb1 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        uint64_t fix_rb1_square =
+            sci::neg_mod(static_cast<int64_t>(rb1 * rb1 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        BFVLongPlaintext div_rb1_plain(
+            party->parm, sci::neg_mod(sci::signed_val(div_fix_rb1, DEFAULT_ELL), (int64_t)party->parm->plain_mod));
+        BFVLongCiphertext rb1_square_secret_b(
+            party->parm, sci::neg_mod(sci::signed_val(fix_rb1_square, DEFAULT_ELL), (int64_t)party->parm->plain_mod),
+            party);
         raQ_sec_a.multiply_plain_inplace(div_rb1_plain, party->parm->evaluator);
         raK_sec_a.multiply_plain_inplace(div_rb1_plain, party->parm->evaluator);
 
@@ -200,6 +233,5 @@ BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) c
         BFVLongCiphertext output_secret_b(BFVLongPlaintext(party->parm, output), party);
         BFVLongCiphertext::send(io, &output_secret_b);
     }
-    // io->io->num_rounds /= 12;
     return output_secret;
 }

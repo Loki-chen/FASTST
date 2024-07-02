@@ -57,7 +57,7 @@ public:
 
     double sqrt_(float x);
 
-    FixArray dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell,
+    FixArray dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell, bool trans = false,
                  uint8_t *msb_x = nullptr, uint8_t *msb_y = nullptr); // remember to location_truncation
 };
 

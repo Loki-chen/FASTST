@@ -459,7 +459,7 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     return ret;
 }
 
-FixArray FPMath::dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell,
+FixArray FPMath::dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell, bool trans,
                      uint8_t *msb_x, uint8_t *msb_y) {
     assert(x.party != PUBLIC || y.party != PUBLIC);
     assert(x.signed_ || (x.signed_ == y.signed_));
@@ -472,15 +472,31 @@ FixArray FPMath::dot(const FixArray &x, const FixArray &y, size_t dim1, size_t d
         FixArray x_ext = fix->extend(x, ell, msb_x);
         FixArray y_ext = fix->extend(y, ell, msb_y);
         uint64_t ret_mask = ret.ell_mask();
-        #pragma omp parallel for
-        for (size_t i = 0; i < dim1; i++) {
-            const size_t base_idx1 = i * dim2;
-            const size_t base_idx2 = i * dim3;
-            for (size_t k = 0; k < dim2; k++) {
-                const size_t base_idx3 = k * dim3;
-                const auto tmp = x_ext.data[base_idx1 + k];
+        if (!trans) {
+#pragma omp parallel for
+            for (size_t i = 0; i < dim1; i++) {
+                const size_t base_idx1 = i * dim2;
+                const size_t base_idx2 = i * dim3;
+                for (size_t k = 0; k < dim2; k++) {
+                    const size_t base_idx3 = k * dim3;
+                    const auto tmp = x_ext.data[base_idx1 + k];
+                    for (size_t j = 0; j < dim3; j++) {
+                        ret.data[base_idx2 + j] += ((tmp * y_ext.data[base_idx3 + j]) & ret_mask);
+                    }
+                }
+            }
+        } else {
+#pragma omp parallel for
+            for (size_t i = 0; i < dim1; i++) {
+                const size_t base_idx1 = i * dim2;
+                const size_t base_idx2 = i * dim3;
                 for (size_t j = 0; j < dim3; j++) {
-                    ret.data[base_idx2 + j] += ((tmp * y_ext.data[base_idx3 + j]) & ret_mask);
+                    const size_t base_idx3 = j * dim2;
+                    uint64_t sum = 0;
+                    for (size_t k = 0; k < dim2; k++) {
+                        sum += ((x_ext.data[base_idx1 + k] * y_ext.data[base_idx3 + k]) & ret_mask);
+                    }
+                    ret.data[base_idx2 + j] = sum;
                 }
             }
         }

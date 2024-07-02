@@ -85,13 +85,7 @@ void random_ell_mat(bfv_matrix &mat, int ell)
 {
     sci::PRG128 prg;
     size_t size = mat.size();
-    uint64_t *rand_data = new uint64_t[size];
-    prg.random_mod_p<uint64_t>(rand_data, size, 1ULL << (ell - 1));
-    for (size_t i = 0; i < size; i++)
-    {
-        mat[i] = rand_data[i];
-    }
-    delete[] rand_data;
+    prg.random_mod_p<uint64_t>(mat.data(), size, (1ULL << ell) - 1);
 }
 
 void random_bfv_mat(bfv_matrix &mat)
