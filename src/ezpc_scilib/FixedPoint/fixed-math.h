@@ -1,10 +1,9 @@
 #ifndef FIXED_POINT_MATH_H__
 #define FIXED_POINT_MATH_H__
-#include "fixed-point.h"
 #include "Math/math-functions.h"
+#include "fixed-point.h"
 #include <cmath>
-class FPMath
-{
+class FPMath {
 public:
     int party;
     sci::IOPack *iopack;
@@ -13,8 +12,7 @@ public:
     FixOp *fix;
     MathFunctions *math;
 
-    FPMath(int party, sci::IOPack *iopack, sci::OTPack *otpack)
-    {
+    FPMath(int party, sci::IOPack *iopack, sci::OTPack *otpack) {
         this->party = party;
         this->iopack = iopack;
         this->otpack = otpack;
@@ -23,8 +21,7 @@ public:
         this->math = new MathFunctions(party, iopack, otpack);
     }
 
-    ~FPMath()
-    {
+    ~FPMath() {
         delete bool_op;
         delete fix;
         delete math;
@@ -49,8 +46,8 @@ public:
 
     FixArray sqrt_(const FixArray &x, bool recp_sqrt);
 
-    std::tuple<FixArray, FixArray, FixArray> bitonic_sort_and_swap(
-        const FixArray &x, FixArray softmax_v_, FixArray h1_, bool swap);
+    std::tuple<FixArray, FixArray, FixArray> bitonic_sort_and_swap(const FixArray &x, FixArray softmax_v_, FixArray h1_,
+                                                                   bool swap);
 
     void print(const FixArray &x);
 
@@ -59,6 +56,9 @@ public:
     vector<FixArray> standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean);
 
     double sqrt_(float x);
+
+    FixArray dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell,
+                 uint8_t *msb_x = nullptr, uint8_t *msb_y = nullptr); // remember to location_truncation
 };
 
 #endif // FIXED_POINT_MATH_H__

@@ -32,8 +32,8 @@ public:
   {
     assert(party->party == fpmath->fix->party);
     layer_str = std::to_string(layer);
-    dir_path = party->party == sci::ALICE ? "/home/FASTST/data/BOLT/bolt/prune/mrpc/alice_weights_txt/"
-                                          : "/home/FASTST/data/BOLT/bolt/prune/mrpc/bob_weights_txt/";
+    dir_path = party->party == sci::ALICE ? "/data/BOLT/bolt/prune/mrpc/alice_weights_txt/"
+                                          : "/data/BOLT/bolt/prune/mrpc/bob_weights_txt/";
   }
   ~FixedProtocol() {}
 };

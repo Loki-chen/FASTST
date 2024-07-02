@@ -28,5 +28,5 @@ macro(add_fixed_pro_test _name)
 endmacro()
 
 add_fixed_pro_test(layer-norm)
-
+add_fixed_pro_test(attention)
 
