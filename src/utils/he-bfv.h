@@ -119,6 +119,10 @@ public:
     BFVLongCiphertext add_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
     void add_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     BFVLongCiphertext add(BFVLongCiphertext &lct, Evaluator *evaluator) const;
+    void sub_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator);
+    BFVLongCiphertext sub_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
+    void sub_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
+    BFVLongCiphertext sub(BFVLongCiphertext &lct, Evaluator *evaluator) const;
     void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
     BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
     static void send(sci::NetIO *io, BFVLongCiphertext *lct);
