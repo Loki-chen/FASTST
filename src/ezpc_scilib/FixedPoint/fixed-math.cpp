@@ -448,7 +448,7 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
 
 double FPMath::sqrt_(float x)
 {
-    return sqrt(x);
+    return std::sqrt(x);
 }
 
 // math function for FASTLMPI
@@ -513,5 +513,86 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
         unsig_fix_delta = sci::neg_mod(unsig_fix_delta, (int64_t)(1ULL << ell));         // (0, 10)
         ret[i].data[0] = unsig_fix_delta;
     }
+    return ret;
+}
+
+int64_t FPMath::LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out)
+{
+    if (s_in < 0)
+    {
+        s_in *= -1;
+        val_in *= (1 << (s_in));
+        s_in = 0;
+    }
+    int64_t res_val = exp(-1.0 * (val_in / double(1LL << s_in))) * (1LL << s_out);
+    return res_val;
+}
+
+FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
+{
+    assert(x.party == PUBLIC);
+    int digit_limit = 8;
+    BoolArray msb_x = fix->MSB(x, x.ell);
+    FixArray neg_x(x.party, x.size, true, x.ell, x.s);
+    int64_t *A = new int64_t[x.size];
+    for (size_t i = 0; i < x.size; i++) // FIX:: use location_if_else
+    {
+        if (msb_x.data[i])
+        {
+            neg_x.data[i] = x.data[i];
+        }
+        else
+        {
+            neg_x.data[i] = x.data[i] * -1;
+        }
+    }
+    vector<double> neg_x_double = neg_x.get_native_type<double>();
+
+    for (size_t i = 0; i < x.size; i++)
+    {
+        A[i] = neg_x_double[i] * (1ULL << x.s);
+    }
+
+    int32_t s_demote = log2(1);
+    int num_digits = ceil(double(x.ell) / digit_limit);
+    int last_digit_size = x.ell - (num_digits - 1) * digit_limit;
+    int64_t digit_mask = (digit_limit == 64 ? -1 : (1LL << digit_limit) - 1);
+    int64_t A_digits[num_digits];
+    FixArray ret(x.party, x.size, true, x.ell, x.s);
+
+    int64_t error = 0;
+    for (size_t i = 0; i < x.size; i++)
+    {
+        assert(A[i] <= 0);
+        int64_t neg_A = -1LL * (A[i]);
+        for (int j = 0; j < digit_limit; j++)
+        {
+            A_digits[j] = (neg_A >> (j * digit_limit)) & digit_mask;
+            A_digits[j] = this->LUT_neg_exp(A_digits[j], scale_in - digit_limit * j, scale_out);
+        }
+        for (int j = 1; j < digit_limit; j *= 2)
+        {
+            for (int k = 0; k < digit_limit and k + j < digit_limit; k += 2 * j)
+            {
+                A_digits[k] = (A_digits[k + j] * A_digits[k]) >> scale_out;
+            }
+        }
+        ret.data[i] = this->fpSaturate(A_digits[0] >> s_demote);
+    }
+    vector<double> real_ret = ret.get_native_type<double>();
+    uint64_t *tmp = new uint64_t[ret.size];
+
+    for (size_t i = 0; i < x.size; i++)
+    {
+        if (!msb_x.data[i]) // if = 1, x have x.signed =-, else x.signed= +
+        {
+            real_ret[i] = 1.0 / real_ret[i];
+        }
+        tmp[i] = sci::neg_mod(static_cast<int64_t>(real_ret[i] * (1ULL << scale_out)), (int64_t)(1ULL << ret.ell));
+    }
+    memcpy(ret.data, tmp, ret.size * sizeof(uint64_t));
+
+    delete[] A;
+    delete[] tmp;
     return ret;
 }

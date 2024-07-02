@@ -49,7 +49,7 @@ public:
                                 uint64_t *out, int32_t bw_dn, int32_t bw_out,
                                 int32_t s_dn, int32_t s_out);
 
-  // If compute_msnzb = false, dn = 1.y1y2y3....
+    // If compute_msnzb = false, dn = 1.y1y2y3....
   // Else if compute_msnzb = true, dn is always positive
   void div(int32_t dim,
            // numerator
@@ -86,6 +86,8 @@ public:
 
   void sqrt(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x, int32_t bw_y,
             int32_t s_x, int32_t s_y, bool inverse = false);
+
+  inline int64_t Saturate(int32_t inp) { return (int64_t)inp; }
 
   // bw_y = bw_x
   void ReLU(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
