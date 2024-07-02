@@ -59,6 +59,15 @@ public:
     vector<FixArray> standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean);
 
     double sqrt_(float x);
+
+    int64_t LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out);
+
+    // Exponentiation: returns y = e^{-x} in an l_y-bit fixed-point representation with scale s_y
+    // x must be PUBLIC and signed, and l_y should be >= s_y + 2
+    // digit_size is an optional parameter that should be <= 8. This parameter affects both efficiency and precision (the larger the better)
+    FixArray location_exp(const FixArray &x, int scale_in, int scale_out);
+
+    inline int64_t fpSaturate(int32_t inp) { return (int64_t)inp; }
 };
 
 #endif // FIXED_POINT_MATH_H__

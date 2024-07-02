@@ -225,6 +225,7 @@ FixArray FixOp::location_if_else(const BoolArray &cond, const FixArray &x, const
     int origin_party = cond_fix.party;
     cond_fix.party = sci::ALICE;
     ret = this->mul(cond_fix, diff, x.ell);
+    cond_fix.party = origin_party;
     ret = this->location_truncation(ret, y.s);
     return this->add(ret, y);
 }
@@ -1063,6 +1064,7 @@ FixArray FixOp::exp(const FixArray &x, int l_y, int s_y, int digit_size)
     pos_x.signed_ = false; // pos_x is unsigned
 
     vector<FixArray> digits = this->digit_decomposition(pos_x, digit_size);
+
     int num_digits = digits.size();
 
     vector<FixArray> digits_exp(num_digits);
