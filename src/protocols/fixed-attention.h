@@ -23,7 +23,8 @@ class Fixed_Multi_Head_Attention : public FixedProtocol {
     Fixed_Attention **attns;
 
 public:
-    Fixed_Multi_Head_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO, FPMath *fpmath, FPMath *fpmath_public, Conversion *conv);
+    Fixed_Multi_Head_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
+                               FPMath *fpmath_public, Conversion *conv);
     ~Fixed_Multi_Head_Attention();
     BFVLongCiphertext forward(const bfv_matrix &input) const;
 };

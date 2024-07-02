@@ -4,6 +4,7 @@
 #include "model.h"
 #include "protocols/fixed-protocol.h"
 #include "utils/he-bfv.h"
+#include "utils/mat-tools.h"
 #include <cstddef>
 
 Fixed_Attention::Fixed_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
@@ -11,21 +12,21 @@ Fixed_Attention::Fixed_Attention(int layer, BFVKey *party, BFVParm *parm, sci::N
     : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv), head(head_) {}
 
 bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
-
+    size_t total_comm = 0;
     sci::PRG128 prg;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(0, 1);
 
-    uint64_t *x = new uint64_t[input.size()];
-    for (size_t i = 0; i < input.size(); i++) {
-        x[i] = input[i];
-    }
-
+#ifdef LOG
+    INIT_TIMER
+    START_TIMER
+#endif
     if (party->party == sci::ALICE) {
         double ra = dist(gen);
         uint64_t fix_ra = sci::neg_mod(static_cast<int64_t>(ra * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
-        FixArray fix_xa = fpmath->fix->input(sci::ALICE, batch_size * d_module, x, true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_xa =
+            fpmath->fix->input(sci::ALICE, batch_size * d_module, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_wq = fpmath->fix->input(sci::ALICE, d_module * d_k, WQ.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_wk = fpmath->fix->input(sci::ALICE, d_module * d_k, WK.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_wv = fpmath->fix->input(sci::ALICE, d_module * d_k, WV.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
@@ -85,8 +86,6 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         bfv_matrix eScore_a(batch_size * batch_size);
         random_ell_mat(eScore_a, DEFAULT_ELL);
         double sqrt_d_k = sqrt(d_k);
-        // uint64_t *Q_div_rb1_ring = new uint64_t[Q_div_rb1.size()];
-        // uint64_t *K_div_rb1_ring = new uint64_t[K_div_rb1.size()];
         conv->Prime_to_Ring(Q_div_rb1.data(), Q_div_rb1.data(), Q_div_rb1.size(), DEFAULT_ELL, party->parm->plain_mod,
                             DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
         conv->Prime_to_Ring(K_div_rb1.data(), K_div_rb1.data(), K_div_rb1.size(), DEFAULT_ELL, party->parm->plain_mod,
@@ -104,7 +103,76 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         fix_K_div_rb1 = fpmath->fix->mul(fix_K_div_rb1, fix_div_ra);
         fix_Q_div_rb1.party = sci::ALICE;
         FixArray temp_Score = fpmath->dot(fix_Q_div_rb1, fix_K_div_rb1, batch_size, d_k, batch_size, DEFAULT_ELL, true);
+        uint64_t *tmp_score_prime = new uint64_t[temp_Score.size];
+        conv->Ring_to_Prime(temp_Score.data, tmp_score_prime, temp_Score.size, DEFAULT_ELL, party->parm->plain_mod);
+        BFVLongPlaintext Score_plain(parm, tmp_score_prime, temp_Score.size);
+        delete[] tmp_score_prime;
+        BFVLongCiphertext Score_b_secret_b = rb1_square_secret_b.multiply_plain(Score_plain, party->parm->evaluator);
+        bfv_matrix Score_a = conv->he_to_ss_server(io, party->parm, Score_b_secret_b);
+        conv->Prime_to_Ring(Score_a.data(), Score_a.data(), Score_a.size(), DEFAULT_ELL, party->parm->plain_mod,
+                            DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
+        FixArray fix_score_a =
+            fpmath->fix->input(sci::PUBLIC, Score_a.size(), Score_a.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_exp_score_a = fpmath->location_exp(fix_score_a, DEFAULT_SCALE, DEFAULT_SCALE);
+        uint64_t *fix_exp_score_a_prime = new uint64_t[fix_exp_score_a.size];
+        conv->Ring_to_Prime(fix_exp_score_a.data, fix_exp_score_a_prime, fix_exp_score_a.size, DEFAULT_ELL,
+                            party->parm->plain_mod);
+        BFVLongPlaintext exp_Score_a_plain(parm, fix_exp_score_a_prime, fix_exp_score_a.size);
+        delete[] fix_exp_score_a_prime;
+        BFVLongCiphertext exp_Score_a_secret_a(exp_Score_a_plain, party);
+        BFVLongCiphertext::send(io, &exp_Score_a_secret_a);
+
+        BFVLongCiphertext eScore_a_secret_a, raV_sec_a;
+        FixArray fix_exp_score_b(sci::PUBLIC, batch_size * batch_size, true, DEFAULT_ELL, DEFAULT_SCALE);
+        BFVLongCiphertext::recv(io, &eScore_a_secret_a, party->parm->context);
+        fpmath->fix->recv_fix_array(fix_exp_score_b);
+        BFVLongCiphertext::recv(io, &raV_sec_a, party->parm->context);
+
+        BFVLongPlaintext rs2_expScore_plain = eScore_a_secret_a.decrypt(party);
+        bfv_matrix rs2_expScore = rs2_expScore_plain.decode(parm);
+        conv->Prime_to_Ring(rs2_expScore.data(), rs2_expScore.data(), rs2_expScore.size(), DEFAULT_ELL,
+                            party->parm->plain_mod, DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
+        FixArray fix_rs2_exp_score =
+            fpmath->fix->input(sci::PUBLIC, rs2_expScore.size(), rs2_expScore.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+
+        BFVLongPlaintext Rb_V_plain = raV_sec_a.decrypt(party);
+        bfv_matrix Rb_V = Rb_V_plain.decode(parm);
+        conv->Prime_to_Ring(Rb_V.data(), Rb_V.data(), Rb_V.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE,
+                            DEFAULT_SCALE, fpmath);
+        FixArray fix_rb_v = fpmath->fix->input(sci::PUBLIC, Rb_V.size(), Rb_V.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        fix_rb_v = fpmath->fix->mul(fix_rb_v, fix_div_ra);
+
+        vector<FixArray> fix_rs2_exp_score_vec(batch_size,
+                                               FixArray(sci::ALICE, batch_size, true, DEFAULT_ELL, DEFAULT_SCALE));
+        for (size_t i = 0; i < batch_size; i++) {
+            for (size_t j = 0; j < batch_size; j++) {
+                fix_rs2_exp_score_vec[i].data[j] = fix_rs2_exp_score.data[i * batch_size + j];
+            }
+        }
+        FixArray exp_sum_ = fpmath->fix->tree_sum(fix_rs2_exp_score_vec);
+        FixArray exp_sum(sci::PUBLIC, batch_size * batch_size, true, DEFAULT_ELL, DEFAULT_SCALE);
+        for (size_t i = 0; i < batch_size; i++) {
+            for (size_t j = 1; j < batch_size; j++) {
+                exp_sum.data[i * batch_size + j] = exp_sum_.data[i];
+            }
+        }
+        fix_exp_score_a.party = sci::ALICE;
+        fix_exp_score_b = fpmath->fix->mul(fix_exp_score_b, fix_exp_score_a, DEFAULT_ELL);
+        fix_exp_score_b = fpmath->fix->location_truncation(fix_exp_score_b, DEFAULT_SCALE);
+        fix_exp_score_b = fpmath->fix->local_div(fix_exp_score_b, exp_sum);
+        fix_rb_v.party = sci::ALICE;
+        FixArray fix_output = fpmath->dot(fix_exp_score_b, fix_rb_v, batch_size, batch_size, d_k, DEFAULT_ELL);
+
         // Alice End
+#ifdef LOG
+        char *buf = new char[13];
+        sprintf(buf, "Attention-%-2d", head);
+        STOP_TIMER(buf)
+        total_comm += io->counter;
+        printf("%s Send data %ld Bytes. \n", buf, total_comm);
+        delete[] buf;
+#endif
+        return bfv_matrix(fix_output.data, fix_output.data + fix_output.size);
     } else {
         FixArray ra_xa_WQa(sci::PUBLIC, batch_size * d_k, true, DEFAULT_ELL, DEFAULT_SCALE),
             ra_xa_WKa(sci::PUBLIC, batch_size * d_k, true, DEFAULT_ELL, DEFAULT_SCALE),
@@ -170,6 +238,68 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         BFVLongCiphertext::send(io, &raQ_sec_a);
         BFVLongCiphertext::send(io, &raK_sec_a);
         BFVLongCiphertext::send(io, &rb1_square_secret_b);
+
+        BFVLongCiphertext exp_Score_a_secret_a;
+        bfv_matrix Score_b = conv->he_to_ss_client(io, party);
+        conv->Prime_to_Ring(Score_b.data(), Score_b.data(), Score_b.size(), DEFAULT_ELL, party->parm->plain_mod,
+                            DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
+        BFVLongCiphertext::recv(io, &exp_Score_a_secret_a, party->parm->context);
+
+        double rb2 = dist(gen);
+        uint64_t fix_rb2 = sci::neg_mod(static_cast<int64_t>(rb2 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        uint64_t fix_div_rb2 =
+            sci::neg_mod(static_cast<int64_t>(1. / rb2 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        bfv_matrix Db(batch_size * d_k), Rb(batch_size * d_k);
+        random_ell_mat(Db, DEFAULT_ELL);
+        random_modP_mat(Rb, party->parm->plain_mod);
+        for (size_t i = 1; i < batch_size; i++) {
+            for (size_t j = 0; j < d_k; j++) {
+                Db[i * d_k + j] = Db[j];
+                Rb[j * batch_size + i] = Rb[i];
+            }
+        }
+        FixArray fix_score_b =
+            fpmath->fix->input(sci::PUBLIC, Score_b.size(), Score_b.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_exp_score_b = fpmath->location_exp(fix_score_b, DEFAULT_SCALE, DEFAULT_SCALE);
+        fix_exp_score_b = fpmath->fix->mul(fix_exp_score_b, fix_rb2);
+        BFVLongPlaintext rb2_expZb_plain(parm, fix_exp_score_b.data, fix_exp_score_b.size);
+        exp_Score_a_secret_a.multiply_plain_inplace(rb2_expZb_plain, party->parm->evaluator);
+
+        FixArray O = fpmath->zero_sum_modP(batch_size, batch_size, party->parm->plain_mod, DEFAULT_ELL,
+        DEFAULT_SCALE); BFVLongPlaintext O_plain(parm, O.data, O.size); exp_Score_a_secret_a.add_plain_inplace(O_plain,
+        party->parm->evaluator);
+
+        uint64_t mask = fix_exp_score_b.ell_mask();
+        for (size_t i = 0; i < batch_size * batch_size; i++) {
+            fix_exp_score_b.data[i] = (fix_exp_score_b.data[i] * Db[i / batch_size]) & mask;
+        }
+        fix_exp_score_b = fpmath->fix->location_truncation(fix_exp_score_b, DEFAULT_SCALE);
+        fix_exp_score_b = fpmath->fix->mul(fix_exp_score_b, fix_div_rb2);
+        BFVLongPlaintext Rb_plain(parm, Rb);
+        raV_sec_a.multiply_plain_inplace(Rb_plain, party->parm->evaluator);
+        conv->Prime_to_Ring(Rb.data(), Rb.data(), Rb.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE,
+                            DEFAULT_SCALE, fpmath);
+        FixArray fix_db = fpmath->fix->input(sci::PUBLIC, Db.size(), Db.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_rb = fpmath->fix->input(sci::PUBLIC, Rb.size(), Rb.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray db_rb = fpmath->fix->mul(fix_db, fix_rb, DEFAULT_ELL);
+        db_rb = fpmath->fix->location_truncation(db_rb, DEFAULT_SCALE);
+        FixArray fix_rb2_long =
+            fpmath->fix->input(sci::BOB, batch_size * d_k, fix_rb2, true, DEFAULT_ELL, DEFAULT_SCALE);
+        db_rb.party = sci::PUBLIC;
+        FixArray fix_output = fpmath->fix->local_div(fix_rb2_long, db_rb);
+        // send H4 = {eScore_a_secret_a, eScore_b, raV_sec_a} to alice
+        BFVLongCiphertext::send(io, &exp_Score_a_secret_a);
+        fpmath->fix->send_fix_array(fix_exp_score_b);
+        BFVLongCiphertext::send(io, &raV_sec_a);
+#ifdef LOG
+        char *buf = new char[13];
+        sprintf(buf, "Attention-%-2d", head);
+        STOP_TIMER(buf)
+        total_comm += io->counter;
+        printf("%s Send data %ld Bytes. \n", buf, total_comm);
+        delete[] buf;
+#endif
+        return bfv_matrix(fix_output.data, fix_output.data + fix_output.size);
     }
     return bfv_matrix(batch_size * d_k, 1);
 }

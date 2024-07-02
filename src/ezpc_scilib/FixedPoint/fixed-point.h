@@ -75,7 +75,7 @@ public:
     ~FixArray() { delete[] data; }
 
     template <class T>
-    std::vector<T> get_native_type();
+    std::vector<T> get_native_type() const;
 
     // copy assignment
     FixArray &operator=(const FixArray &other)
@@ -469,5 +469,7 @@ public:
         x = x & mask_x;
         return int64_t(x - ((x >= (pow_x / 2)) * pow_x));
     }
+
+    FixArray local_div(const FixArray &nm, const FixArray &dn);
 };
 #endif
