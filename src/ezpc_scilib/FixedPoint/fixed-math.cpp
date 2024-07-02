@@ -1,4 +1,6 @@
 #include "fixed-math.h"
+#include "BuildingBlocks/linear-ot.h"
+#include "FixedPoint/fixed-point.h"
 #include "fixed-math-coeffs.h"
 
 using namespace std;
@@ -7,47 +9,36 @@ using namespace sci;
 #define FRAC_RANGE 9
 #define FP_INTMD_M_BITS 27
 #define FP_INTMD_E_BITS 8
-#define PI_DOUBLE \
-    3.1415926535897932384626433832795028841971693993751058209749445923078164062
-#define LOG2E \
-    1.44269504088896340735992468100189213742664595415298593413544940693110921918118507988552662289350634449699
-#define LOGE2 \
-    0.693147180559945309417232121458176568075500134360255254120680009493393621969694715605863326996418687
-#define TWO_INV_SQRT_PI \
-    1.128379167095512573896158903121545171688101258657997713688171443421284936882
-#define NEG_LOGE2_INV \
+#define PI_DOUBLE 3.1415926535897932384626433832795028841971693993751058209749445923078164062
+#define LOG2E 1.44269504088896340735992468100189213742664595415298593413544940693110921918118507988552662289350634449699
+#define LOGE2 0.693147180559945309417232121458176568075500134360255254120680009493393621969694715605863326996418687
+#define TWO_INV_SQRT_PI 1.128379167095512573896158903121545171688101258657997713688171443421284936882
+#define NEG_LOGE2_INV                                                                                                  \
     1.442695040888963423535598661526235116567603930130965898132921686199121361438241594804331289503955470328942932380383923264
 
-FixArray get_idx_from_input(FixOp *fix, const FixArray &delta_m,
-                            const FixArray &delta_e, int idx_m_bits,
-                            int idx_e_bits, int e_offset)
-{
+FixArray get_idx_from_input(FixOp *fix, const FixArray &delta_m, const FixArray &delta_e, int idx_m_bits,
+                            int idx_e_bits, int e_offset) {
     assert(delta_m.party != PUBLIC && delta_e.party != PUBLIC);
     assert(delta_m.size == delta_e.size);
     assert(idx_m_bits + idx_e_bits <= delta_e.ell);
-    FixArray idx_hi =
-        fix->reduce(fix->add(delta_e, e_offset), idx_m_bits + idx_e_bits);
+    FixArray idx_hi = fix->reduce(fix->add(delta_e, e_offset), idx_m_bits + idx_e_bits);
     idx_hi.signed_ = false;
-    if (idx_m_bits == 0)
-    {
+    if (idx_m_bits == 0) {
         return idx_hi;
     }
     idx_hi = fix->mul(idx_hi, 1 << idx_m_bits, idx_m_bits + idx_e_bits);
     FixArray idx_lo = fix->truncate_reduce(delta_m, delta_m.ell - 1 - idx_m_bits);
     idx_lo = fix->sub(idx_lo, 1 << idx_m_bits);
-    if (idx_m_bits + idx_e_bits < idx_m_bits + 1)
-    {
+    if (idx_m_bits + idx_e_bits < idx_m_bits + 1) {
         idx_lo = fix->reduce(idx_lo, idx_m_bits + idx_e_bits);
     }
     idx_lo.s = 0;
     BoolArray all_0 = fix->bool_op->input(ALICE, delta_m.size, uint8_t(0));
-    FixArray idx = fix->add(
-        idx_hi, fix->extend(idx_lo, idx_m_bits + idx_e_bits, all_0.data));
+    FixArray idx = fix->add(idx_hi, fix->extend(idx_lo, idx_m_bits + idx_e_bits, all_0.data));
     return idx;
 }
 
-std::tuple<FixArray, FixArray> FPMath::exp4(const FixArray &x)
-{
+std::tuple<FixArray, FixArray> FPMath::exp4(const FixArray &x) {
 
     /*
     l = np.floor((x / -math.log(2)))
@@ -113,15 +104,13 @@ std::tuple<FixArray, FixArray> FPMath::exp4(const FixArray &x)
     return make_tuple(ret, l_short_raw);
 }
 
-FixArray FPMath::lookup_table_exp(const FixArray &x)
-{
+FixArray FPMath::lookup_table_exp(const FixArray &x) {
     FixArray ret(party, x.size, x.signed_, x.ell, x.s);
     math->lookup_table_exp(x.size, x.data, ret.data, x.ell, x.ell, x.s, x.s);
     return ret;
 }
 
-FixArray FPMath::tanh_inner_preprocess(const FixArray &x)
-{
+FixArray FPMath::tanh_inner_preprocess(const FixArray &x) {
     int N = x.size;
     int ell = x.ell;
     int s = x.s;
@@ -171,8 +160,7 @@ FixArray FPMath::tanh_inner_preprocess(const FixArray &x)
     return p2;
 }
 
-FixArray FPMath::tanh_inner(const FixArray &x)
-{
+FixArray FPMath::tanh_inner(const FixArray &x) {
     int N = x.size;
     int ell = x.ell;
     int s = x.s;
@@ -225,8 +213,7 @@ FixArray FPMath::tanh_inner(const FixArray &x)
     return f;
 }
 
-FixArray FPMath::tanh_approx(const FixArray &x)
-{
+FixArray FPMath::tanh_approx(const FixArray &x) {
     int N = x.size;
     int ell = x.ell;
     int s = x.s;
@@ -256,49 +243,37 @@ FixArray FPMath::tanh_approx(const FixArray &x)
     return ret;
 }
 
-FixArray FPMath::sqrt_(const FixArray &x, bool recp_sqrt)
-{
+FixArray FPMath::sqrt_(const FixArray &x, bool recp_sqrt) {
     FixArray ret(party, x.size, x.signed_, x.ell, x.s);
     math->sqrt(x.size, x.data, ret.data, x.ell, x.ell, x.s, x.s, recp_sqrt);
     return ret;
 }
 
-FixArray FPMath::gt_p_sub(const FixArray &x, const FixArray &p)
-{
+FixArray FPMath::gt_p_sub(const FixArray &x, const FixArray &p) {
     BoolArray gt = fix->GT(x, p);
     FixArray sub = fix->sub(x, p);
     return fix->if_else(gt, sub, x);
 }
 
-FixArray FPMath::location_gt_p_sub(const FixArray &x, const FixArray &p)
-{
+FixArray FPMath::location_gt_p_sub(const FixArray &x, const FixArray &p) {
     BoolArray gt = fix->location_GT(x, p);
     FixArray sub = fix->sub(x, p);
     return fix->location_if_else(gt, sub, x); // use location_if_else, without mul multiplexer.
 }
 
-void FPMath::print(const FixArray &x)
-{
-    print_fix(x);
-}
+void FPMath::print(const FixArray &x) { print_fix(x); }
 
-BoolArray bitonic_reverse(const BoolArray &x, int array_size, int cur_depth)
-{
+BoolArray bitonic_reverse(const BoolArray &x, int array_size, int cur_depth) {
     BoolArray ret(x.party, x.size);
     int block_size = 2 * cur_depth;
     int num_block = array_size / block_size;
-    for (int i = 0; i < num_block; i++)
-    {
+    for (int i = 0; i < num_block; i++) {
 
-        for (int j = 0; j < cur_depth; j++)
-        {
+        for (int j = 0; j < cur_depth; j++) {
             int index = i * cur_depth + j;
-            if (i % 2 == 1)
-            {
+            if (i % 2 == 1) {
                 ret.data[index] = x.data[index] ^ ((x.party != BOB) ? 1 : 0);
-            }
-            else
-            {
+            } else {
                 ret.data[index] = x.data[index];
             }
         }
@@ -306,9 +281,8 @@ BoolArray bitonic_reverse(const BoolArray &x, int array_size, int cur_depth)
     return ret;
 }
 
-tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
-    const FixArray &x_, FixArray softmax_v_, FixArray h1_, bool swap)
-{
+tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(const FixArray &x_, FixArray softmax_v_, FixArray h1_,
+                                                                  bool swap) {
     FixArray x = x_;
     FixArray softmax_v = softmax_v_;
     FixArray h1 = h1_;
@@ -319,11 +293,9 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
 
     int common_dim;
 
-    while (cur_depth <= max_depth)
-    {
+    while (cur_depth <= max_depth) {
         int cur_iter = cur_depth;
-        while (cur_iter > 0)
-        {
+        while (cur_iter > 0) {
             int block_size = 2 * cur_iter;
             int num_block = array_size / block_size;
 
@@ -337,18 +309,16 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
             FixArray softmax_v_reverse;
             FixArray h1_reverse;
 
-            if (swap)
-            {
+            if (swap) {
                 common_dim = softmax_v.size / x.size;
                 assert(common_dim == 768);
 
-                softmax_v_reverse = fix->input(party, softmax_v.size, (uint64_t)0, softmax_v.signed_, softmax_v.ell, softmax_v.s);
+                softmax_v_reverse =
+                    fix->input(party, softmax_v.size, (uint64_t)0, softmax_v.signed_, softmax_v.ell, softmax_v.s);
                 h1_reverse = fix->input(party, h1.size, (uint64_t)0, h1.signed_, h1.ell, h1.s);
 
-                for (int i = 0; i < num_block; i++)
-                {
-                    for (int j = 0; j < cur_iter; j++)
-                    {
+                for (int i = 0; i < num_block; i++) {
+                    for (int j = 0; j < cur_iter; j++) {
                         int pos_x = i * block_size + j;
                         int pos_y = i * block_size + j + cur_iter;
                         index_left.push_back(pos_x);
@@ -356,34 +326,22 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
                         array_reverse.data[pos_x] = x.data[pos_y];
                         array_reverse.data[pos_y] = x.data[pos_x];
 
-                        memcpy(
-                            &softmax_v_reverse.data[pos_x * common_dim],
-                            &softmax_v.data[pos_y * common_dim],
-                            common_dim * sizeof(uint64_t));
+                        memcpy(&softmax_v_reverse.data[pos_x * common_dim], &softmax_v.data[pos_y * common_dim],
+                               common_dim * sizeof(uint64_t));
 
-                        memcpy(
-                            &softmax_v_reverse.data[pos_y * common_dim],
-                            &softmax_v.data[pos_x * common_dim],
-                            common_dim * sizeof(uint64_t));
+                        memcpy(&softmax_v_reverse.data[pos_y * common_dim], &softmax_v.data[pos_x * common_dim],
+                               common_dim * sizeof(uint64_t));
 
-                        memcpy(
-                            &h1_reverse.data[pos_x * common_dim],
-                            &h1.data[pos_y * common_dim],
-                            common_dim * sizeof(uint64_t));
+                        memcpy(&h1_reverse.data[pos_x * common_dim], &h1.data[pos_y * common_dim],
+                               common_dim * sizeof(uint64_t));
 
-                        memcpy(
-                            &h1_reverse.data[pos_y * common_dim],
-                            &h1.data[pos_x * common_dim],
-                            common_dim * sizeof(uint64_t));
+                        memcpy(&h1_reverse.data[pos_y * common_dim], &h1.data[pos_x * common_dim],
+                               common_dim * sizeof(uint64_t));
                     }
                 }
-            }
-            else
-            {
-                for (int i = 0; i < num_block; i++)
-                {
-                    for (int j = 0; j < cur_iter; j++)
-                    {
+            } else {
+                for (int i = 0; i < num_block; i++) {
+                    for (int j = 0; j < cur_iter; j++) {
                         index_left.push_back(i * block_size + j);
                         index_right.push_back(i * block_size + j + cur_iter);
                         array_reverse.data[i * block_size + j] = x.data[i * block_size + j + cur_iter];
@@ -392,8 +350,7 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
                 }
             }
 
-            for (int i = 0; i < array_size / 2; i++)
-            {
+            for (int i = 0; i < array_size / 2; i++) {
                 array_left.data[i] = x.data[index_left[i]];
                 array_right.data[i] = x.data[index_right[i]];
             }
@@ -407,14 +364,10 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
 
             // Reverse some comparisons
             BoolArray cmp = bitonic_reverse(lt, array_size, cur_depth);
-            for (int i = 0; i < num_block; i++)
-            {
-                for (int j = 0; j < cur_iter; j++)
-                {
-                    cmp_extend.data[i * block_size + j] =
-                        cmp.data[i * cur_iter + j];
-                    cmp_extend.data[i * block_size + j + cur_iter] =
-                        cmp.data[i * cur_iter + j];
+            for (int i = 0; i < num_block; i++) {
+                for (int j = 0; j < cur_iter; j++) {
+                    cmp_extend.data[i * block_size + j] = cmp.data[i * cur_iter + j];
+                    cmp_extend.data[i * block_size + j + cur_iter] = cmp.data[i * cur_iter + j];
                 }
             }
             // print_bool(lt);
@@ -426,11 +379,9 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(
             x = fix->if_else(cmp_extend, x, array_reverse);
             // print_fix(x);
 
-            if (swap)
-            {
+            if (swap) {
                 BoolArray cmp_flat = BoolArray(party, cmp_extend.size * common_dim);
-                for (int i = 0; i < cmp_flat.size; i++)
-                {
+                for (int i = 0; i < cmp_flat.size; i++) {
                     cmp_flat.data[i] = cmp_extend.data[i / common_dim];
                 }
 
@@ -452,8 +403,7 @@ double FPMath::sqrt_(float x)
 }
 
 // math function for FASTLMPI
-vector<FixArray> FPMath::mean(const vector<FixArray> &x)
-{
+vector<FixArray> FPMath::mean(const vector<FixArray> &x) {
     int party_origin = x[0].party;
     int N = x.size();
     int n = x[0].size;
@@ -469,8 +419,7 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     avg = fix->location_truncation(avg, s);
     avg.party = party_origin;
     vector<FixArray> ret(N);
-    for (int i = 0; i < N; i++)
-    {
+    for (int i = 0; i < N; i++) {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);
         memcpy(ret[i].data, &avg.data[i], sizeof(uint64_t));
     }
@@ -478,8 +427,7 @@ vector<FixArray> FPMath::mean(const vector<FixArray> &x)
     return ret;
 }
 
-vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean)
-{
+vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean) {
     int party_origin = x[0].party;
     int N = x.size();
     int n = x[0].size;
@@ -491,8 +439,7 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     FixArray fix_dn = fix->input(sci::PUBLIC, N, dn, true, ell, s);
     vector<FixArray> tmp_ret(N);
     vector<FixArray> tmp_y(N);
-    for (size_t i = 0; i < N; i++)
-    {
+    for (size_t i = 0; i < N; i++) {
         tmp_ret[i] = fix->sub(x[i], mean[i].data[0]);
         tmp_ret[i] = fix->public_mul(tmp_ret[i], tmp_ret[i], ell + 2 * s);
         tmp_ret[i] = fix->location_truncation(tmp_ret[i], s);
@@ -505,8 +452,7 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     avg = fix->location_truncation(avg, s);
     uint64_t unsig_fix_delta;
     vector<FixArray> ret(N);
-    for (size_t i = 0; i < N; i++)
-    {
+    for (size_t i = 0; i < N; i++) {
         ret[i] = FixArray(party_origin, 1, signed_, ell, s);
         double delta = double(avg.data[i]) / (1ULL << s);
         unsig_fix_delta = static_cast<int64_t>(1.0 / sqrt_(float(delta)) * (1ULL << s)); // (-5, 5)
@@ -594,5 +540,54 @@ FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
 
     delete[] A;
     delete[] tmp;
+    return ret;
+}
+
+FixArray FPMath::dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell, bool trans,
+                     uint8_t *msb_x, uint8_t *msb_y) {
+    assert(x.party != PUBLIC || y.party != PUBLIC);
+    assert(x.signed_ || (x.signed_ == y.signed_));
+    assert(ell >= x.ell && ell >= y.ell && ell <= x.ell + y.ell);
+    assert(ell < 64);
+    assert(x.size == dim1 * dim2 && y.size == dim2 * dim3);
+
+    FixArray ret(this->party, dim1 * dim3, x.signed_, ell, x.s + y.s);
+    if (x.party == PUBLIC || y.party == PUBLIC || x.party == y.party) {
+        FixArray x_ext = fix->extend(x, ell, msb_x);
+        FixArray y_ext = fix->extend(y, ell, msb_y);
+        uint64_t ret_mask = ret.ell_mask();
+        if (!trans) {
+#pragma omp parallel for
+            for (size_t i = 0; i < dim1; i++) {
+                const size_t base_idx1 = i * dim2;
+                const size_t base_idx2 = i * dim3;
+                for (size_t k = 0; k < dim2; k++) {
+                    const size_t base_idx3 = k * dim3;
+                    const auto tmp = x_ext.data[base_idx1 + k];
+                    for (size_t j = 0; j < dim3; j++) {
+                        ret.data[base_idx2 + j] += ((tmp * y_ext.data[base_idx3 + j]) & ret_mask);
+                    }
+                }
+            }
+        } else {
+#pragma omp parallel for
+            for (size_t i = 0; i < dim1; i++) {
+                const size_t base_idx1 = i * dim2;
+                const size_t base_idx2 = i * dim3;
+                for (size_t j = 0; j < dim3; j++) {
+                    const size_t base_idx3 = j * dim2;
+                    uint64_t sum = 0;
+                    for (size_t k = 0; k < dim2; k++) {
+                        sum += ((x_ext.data[base_idx1 + k] * y_ext.data[base_idx3 + k]) & ret_mask);
+                    }
+                    ret.data[base_idx2 + j] = sum;
+                }
+            }
+        }
+        fix->location_truncation(ret, x.s);
+    } else {
+        fix->mult->matrix_multiplication(dim1, dim2, dim3, x.data, y.data, ret.data, x.ell, y.ell, ret.ell, true, true,
+                                         true, MultMode::None, msb_x, msb_y);
+    }
     return ret;
 }
