@@ -440,6 +440,158 @@ BFVLongCiphertext BFVLongCiphertext::add(BFVLongCiphertext &lct, Evaluator *eval
     return lcct;
 }
 
+void BFVLongCiphertext::sub_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator)
+{
+    if (len == 1) // cipher text len =1
+    {
+        len = lpt.len;
+        Ciphertext ct(cipher_data[0]);
+        cipher_data.pop_back();
+        for (Plaintext pt : lpt.plain_data)
+        {
+            Ciphertext ctemp;
+            evaluator->sub_plain(ct, pt, ctemp);
+            cipher_data.push_back(ctemp);
+        }
+    }
+    else if (lpt.len == 1)
+    {
+        for (size_t i = 0; i < cipher_data.size(); i++)
+            evaluator->sub_plain_inplace(cipher_data[i], lpt.plain_data[0]);
+    }
+    else if (len == lpt.len)
+    {
+        for (size_t i = 0; i < cipher_data.size(); i++)
+            evaluator->sub_plain_inplace(cipher_data[i], lpt.plain_data[i]);
+    }
+    else
+    {
+        char buf[100];
+        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
+        throw bfv_lenth_error(buf);
+    }
+}
+
+BFVLongCiphertext BFVLongCiphertext::sub_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const
+{
+    {
+        BFVLongCiphertext lct;
+        lct.len = 0;
+        if (len == 1)
+        {
+            lct.len = lpt.len;
+            for (size_t i = 0; i < lpt.plain_data.size(); i++)
+            {
+                Ciphertext ct;
+                evaluator->sub_plain(cipher_data[0], lpt.plain_data[i], ct);
+                lct.cipher_data.push_back(ct);
+            }
+        }
+        else if (lpt.len == 1)
+        {
+            lct.len = len;
+            for (size_t i = 0; i < cipher_data.size(); i++)
+            {
+                Ciphertext ct;
+                evaluator->sub_plain(cipher_data[i], lpt.plain_data[0], ct);
+                lct.cipher_data.push_back(ct);
+            }
+        }
+        else if (len == lpt.len)
+        {
+            lct.len = len;
+            for (size_t i = 0; i < cipher_data.size(); i++)
+            {
+                Ciphertext ct;
+                evaluator->sub_plain(cipher_data[i], lpt.plain_data[i], ct);
+                lct.cipher_data.push_back(ct);
+            }
+        }
+        else
+        {
+            char buf[100];
+            sprintf(buf, "Length of BFVLongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
+            throw bfv_lenth_error(buf);
+        }
+        return lct;
+    }
+}
+
+void BFVLongCiphertext::sub_inplace(BFVLongCiphertext &lct, Evaluator *evaluator)
+{
+    if (len == 1)
+    {
+        len = lct.len;
+        Ciphertext ct(cipher_data[0]);
+        cipher_data.pop_back();
+        for (Ciphertext cct : lct.cipher_data)
+        {
+            Ciphertext ctemp;
+            evaluator->sub(ct, cct, ctemp);
+            cipher_data.push_back(ctemp);
+        }
+    }
+    else if (lct.len == 1)
+    {
+        for (size_t i = 0; i < cipher_data.size(); i++)
+            evaluator->sub_inplace(cipher_data[i], lct.cipher_data[0]);
+    }
+    else if (len == lct.len)
+    {
+        for (size_t i = 0; i < cipher_data.size(); i++)
+            evaluator->sub_inplace(cipher_data[i], lct.cipher_data[i]);
+    }
+    else
+    {
+        char buf[100];
+        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        throw bfv_lenth_error(buf);
+    }
+}
+
+BFVLongCiphertext BFVLongCiphertext::sub(BFVLongCiphertext &lct, Evaluator *evaluator) const
+{
+    BFVLongCiphertext lcct;
+    lcct.len = 0;
+    if (len == 1)
+    {
+        lcct.len = lct.len;
+        for (size_t i = 0; i < lct.cipher_data.size(); i++)
+        {
+            Ciphertext ct;
+            evaluator->sub(cipher_data[0], lct.cipher_data[i], ct);
+            lcct.cipher_data.push_back(ct);
+        }
+    }
+    else if (lct.len == 1)
+    {
+        lcct.len = len;
+        for (size_t i = 0; i < cipher_data.size(); i++)
+        {
+            Ciphertext ct;
+            evaluator->sub(cipher_data[i], lct.cipher_data[0], ct);
+            lcct.cipher_data.push_back(ct);
+        }
+    }
+    else if (len == lct.len)
+    {
+        lcct.len = len;
+        for (size_t i = 0; i < cipher_data.size(); i++)
+        {
+            Ciphertext ct;
+            evaluator->sub(cipher_data[i], lct.cipher_data[i], ct);
+            lcct.cipher_data.push_back(ct);
+        }
+    }
+    else
+    {
+        char buf[100];
+        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        throw bfv_lenth_error(buf);
+    }
+    return lcct;
+}
+
 void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys)
 {
 

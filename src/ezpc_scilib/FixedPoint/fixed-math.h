@@ -61,12 +61,16 @@ public:
 
     // Exponentiation: returns y = e^{-x} in an l_y-bit fixed-point representation with scale s_y
     // x must be PUBLIC and signed, and l_y should be >= s_y + 2
-    // digit_size is an optional parameter that should be <= 8. This parameter affects both efficiency and precision (the larger the better)
+    // digit_size is an optional parameter that should be <= 8. This parameter affects both efficiency and precision
+    // (the larger the better)
     FixArray location_exp(const FixArray &x, int scale_in, int scale_out);
 
     inline int64_t fpSaturate(int32_t inp) { return (int64_t)inp; }
-    FixArray dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell, bool trans = false,
-                 uint8_t *msb_x = nullptr, uint8_t *msb_y = nullptr); // remember to location_truncation
+
+    FixArray dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell,
+                 bool trans = false, uint8_t *msb_x = nullptr, uint8_t *msb_y = nullptr);
+
+    FixArray zero_sum_modP(size_t row, size_t column, uint64_t prime_mod, int ell, int scale);
 };
 
 #endif // FIXED_POINT_MATH_H__

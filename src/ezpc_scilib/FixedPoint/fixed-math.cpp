@@ -397,10 +397,7 @@ tuple<FixArray, FixArray, FixArray> FPMath::bitonic_sort_and_swap(const FixArray
     return make_tuple(x, softmax_v, h1);
 }
 
-double FPMath::sqrt_(float x)
-{
-    return std::sqrt(x);
-}
+double FPMath::sqrt_(float x) { return std::sqrt(x); }
 
 // math function for FASTLMPI
 vector<FixArray> FPMath::mean(const vector<FixArray> &x) {
@@ -462,10 +459,8 @@ vector<FixArray> FPMath::standard_deviation(const vector<FixArray> &x, const vec
     return ret;
 }
 
-int64_t FPMath::LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out)
-{
-    if (s_in < 0)
-    {
+int64_t FPMath::LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out) {
+    if (s_in < 0) {
         s_in *= -1;
         val_in *= (1 << (s_in));
         s_in = 0;
@@ -474,8 +469,7 @@ int64_t FPMath::LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out)
     return res_val;
 }
 
-FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
-{
+FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out) {
     assert(x.party == PUBLIC);
     int digit_limit = 8;
     BoolArray msb_x = fix->MSB(x, x.ell);
@@ -483,19 +477,15 @@ FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
     int64_t *A = new int64_t[x.size];
     for (size_t i = 0; i < x.size; i++) // FIX:: use location_if_else
     {
-        if (msb_x.data[i])
-        {
+        if (msb_x.data[i]) {
             neg_x.data[i] = x.data[i];
-        }
-        else
-        {
+        } else {
             neg_x.data[i] = x.data[i] * -1;
         }
     }
     vector<double> neg_x_double = neg_x.get_native_type<double>();
 
-    for (size_t i = 0; i < x.size; i++)
-    {
+    for (size_t i = 0; i < x.size; i++) {
         A[i] = neg_x_double[i] * (1ULL << x.s);
     }
 
@@ -507,19 +497,15 @@ FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
     FixArray ret(x.party, x.size, true, x.ell, x.s);
 
     int64_t error = 0;
-    for (size_t i = 0; i < x.size; i++)
-    {
+    for (size_t i = 0; i < x.size; i++) {
         assert(A[i] <= 0);
         int64_t neg_A = -1LL * (A[i]);
-        for (int j = 0; j < digit_limit; j++)
-        {
+        for (int j = 0; j < digit_limit; j++) {
             A_digits[j] = (neg_A >> (j * digit_limit)) & digit_mask;
             A_digits[j] = this->LUT_neg_exp(A_digits[j], scale_in - digit_limit * j, scale_out);
         }
-        for (int j = 1; j < digit_limit; j *= 2)
-        {
-            for (int k = 0; k < digit_limit and k + j < digit_limit; k += 2 * j)
-            {
+        for (int j = 1; j < digit_limit; j *= 2) {
+            for (int k = 0; k < digit_limit and k + j < digit_limit; k += 2 * j) {
                 A_digits[k] = (A_digits[k + j] * A_digits[k]) >> scale_out;
             }
         }
@@ -528,8 +514,7 @@ FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
     vector<double> real_ret = ret.get_native_type<double>();
     uint64_t *tmp = new uint64_t[ret.size];
 
-    for (size_t i = 0; i < x.size; i++)
-    {
+    for (size_t i = 0; i < x.size; i++) {
         if (!msb_x.data[i]) // if = 1, x have x.signed =-, else x.signed= +
         {
             real_ret[i] = 1.0 / real_ret[i];
@@ -588,6 +573,30 @@ FixArray FPMath::dot(const FixArray &x, const FixArray &y, size_t dim1, size_t d
     } else {
         fix->mult->matrix_multiplication(dim1, dim2, dim3, x.data, y.data, ret.data, x.ell, y.ell, ret.ell, true, true,
                                          true, MultMode::None, msb_x, msb_y);
+    }
+    return ret;
+}
+
+FixArray FPMath::zero_sum_modP(size_t row, size_t column, uint64_t prime_mod, int ell, int scale) {
+    FixArray ret(party, row * column, true, ell, scale);
+    sci::PRG128 prg;
+    prg.random_mod_p(ret.data, row * column, prime_mod);
+    size_t i, j;
+    int ell_mask = ret.ell_mask();
+    vector<FixArray> ret_vec(row, FixArray(ret.party, column, ret.signed_, ret.ell, ret.s));
+    for (i = 0; i < row; i++) {
+        for (j = 0; j < column; j++) {
+            ret_vec[i].data[j] = ret.data[i * column + j];
+        }
+    }
+    FixArray sum = fix->tree_sum(ret_vec);
+    FixArray last = FixArray(party, sum.size, true, ell, scale);
+    for (i = 0; i < row; i++) {
+        last.data[i] = ret.data[(i + 1) * column - 1];
+    }
+    last = fix->sub(last, sum);
+    for (i = 0; i < row; i++) {
+        ret.data[(i + 1) * column - 1] = last.data[i];
     }
     return ret;
 }
