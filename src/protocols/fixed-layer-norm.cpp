@@ -1,7 +1,7 @@
 #include "fixed-layer-norm.h"
 
 FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
-                               FPMath *fpmath_public, Conversion *conv, bool _before_attn) ////////////////////
+                               FPMath *fpmath_public, Conversion *conv, bool _before_attn)
     : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv), before_attn(_before_attn)
 {
     string layer_str = std::to_string(layer),
