@@ -1,6 +1,8 @@
 #ifndef FIXED_POINT_MATH_H__
 #define FIXED_POINT_MATH_H__
+#include "BuildingBlocks/linear-ot.h"
 #include "Math/math-functions.h"
+// #include "fixed-math-coeffs.h"
 #include "fixed-point.h"
 #include <cmath>
 class FPMath {

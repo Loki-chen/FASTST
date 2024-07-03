@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-#include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
+#include <Utils/emp-tool.h> // prg.h & io & arg
 #include <seal/seal.h>
 using std::string;
 using std::vector;

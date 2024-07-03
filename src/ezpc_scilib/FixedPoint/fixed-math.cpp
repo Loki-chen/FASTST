@@ -1,7 +1,4 @@
 #include "fixed-math.h"
-#include "BuildingBlocks/linear-ot.h"
-#include "FixedPoint/fixed-point.h"
-#include "fixed-math-coeffs.h"
 
 using namespace std;
 using namespace sci;

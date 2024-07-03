@@ -3,6 +3,7 @@
 
 #include "mat-tools.h"
 #include "he-bfv.h"
+#include <ezpc_scilib/ezpc_utils.h>
 
 class Conversion {
 public:

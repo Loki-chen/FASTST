@@ -1,9 +1,8 @@
 
 #ifndef FAST_FIXED_ATTENTION_H__
 #define FAST_FIXED_ATTENTION_H__
-#include "utils/he-bfv.h"
-#pragma once
 #include "fixed-protocol.h"
+
 class Fixed_Multi_Head_Attention;
 
 class Fixed_Attention : public FixedProtocol {

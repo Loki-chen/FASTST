@@ -1,10 +1,4 @@
 #include "fixed-layer-norm.h"
-#include "FixedPoint/fixed-point.h"
-#include "Utils/constants.h"
-#include "model.h"
-#include "protocols/fixed-protocol.h"
-#include "utils/he-bfv.h"
-#include <cstdint>
 
 FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
                                FPMath *fpmath_public, Conversion *conv, bool _before_attn) ////////////////////
@@ -59,11 +53,6 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
             (sci::neg_mod(static_cast<int64_t>((1.0 / ha) * (1ULL << (DEFAULT_SCALE))), 1ULL << (DEFAULT_ELL))), true,
             DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_xa = fpmath->fix->input(sci::ALICE, batch_size * d_module, x, true, DEFAULT_ELL, DEFAULT_SCALE);
-
-#ifdef LOG
-        INIT_TIMER
-        START_TIMER
-#endif
         fix_ha.party = sci::PUBLIC; // just to make the mul useful.
         FixArray fix_ha_xa = fpmath->fix->mul(fix_xa, fix_ha, DEFAULT_ELL);
         fix_ha_xa = fpmath->fix->location_truncation(fix_ha_xa, DEFAULT_SCALE);
@@ -157,7 +146,6 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         layernorm_secret_a.multiply_plain_inplace(tmp2_plain, parm->evaluator);
         auto ln_plain = layernorm_secret_a.decrypt(party);
         auto ln = ln_plain.decode(parm);
-        std::cout << ln[0] << "\n";
         io->send_data(tmp1, batch_size * d_module * sizeof(uint64_t));
         BFVLongCiphertext::send(io, &layernorm_secret_a);
 
@@ -167,13 +155,6 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         delete[] x_gb_ha_ring;
         delete[] tmp1;
         delete[] tmp2;
-
-#ifdef LOG
-        STOP_TIMER("Layer Norm")
-        total_comm += io->counter;
-        auto execute_party = fpmath->party == 1 ? "ALICE" : "BOB";
-        std::cout << execute_party << ": executes privacy Layer-Norm Send data " << total_comm << " Bytes. \n";
-#endif
         return BFVLongCiphertext();
     }
     else

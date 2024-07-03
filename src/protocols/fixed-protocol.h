@@ -3,7 +3,6 @@
 
 #include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
 #include <model.h>
-#include <string>
 
 #define DEFAULT_SCALE 12
 #define DEFAULT_ELL 37

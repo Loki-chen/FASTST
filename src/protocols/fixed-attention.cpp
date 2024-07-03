@@ -1,18 +1,11 @@
 #include "fixed-attention.h"
-#include "FixedPoint/fixed-point.h"
-#include "Utils/constants.h"
-#include "model.h"
-#include "protocols/fixed-protocol.h"
-#include "utils/he-bfv.h"
-#include "utils/mat-tools.h"
-#include <cstddef>
 
 Fixed_Attention::Fixed_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
                                  FPMath *fpmath_public, Conversion *conv, int head_)
     : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv), head(head_) {}
 
 bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
-    size_t total_comm = 0;
+    size_t total_comm = io->counter;
     sci::PRG128 prg;
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -168,7 +161,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
         STOP_TIMER(buf)
-        total_comm += io->counter;
+        total_comm = io->counter - total_comm;
         printf("%s Send data %ld Bytes. \n", buf, total_comm);
         delete[] buf;
 #endif
@@ -295,7 +288,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
         STOP_TIMER(buf)
-        total_comm += io->counter;
+        total_comm = io->counter - total_comm;
         printf("%s Send data %ld Bytes. \n", buf, total_comm);
         delete[] buf;
 #endif
