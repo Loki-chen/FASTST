@@ -23,7 +23,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(0, 1);
     size_t i, j;
-    size_t total_comm = 0;
+    size_t total_comm = io->counter;
     // uint64_t *x = new uint64_t[input.size()];
     // for (size_t i = 0; i < input.size(); i++) {
     //     x[i] = input[i];

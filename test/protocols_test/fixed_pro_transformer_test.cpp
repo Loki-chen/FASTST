@@ -31,8 +31,8 @@ int main(int argc, const char **argv) {
     bfv_matrix input(batch_size * d_module);
     random_ell_mat(input, DEFAULT_ELL);
 
-    FixedEncoder *transformer = new FixedEncoder(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
-    // Transformer *transformer = new Transformer(party, encoder, evaluator, io);
+    // FixedEncoder *transformer = new FixedEncoder(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
+    FixedTransformer *transformer = new FixedTransformer(party, bfv_parm, io, fpmath, fpmath_public, conv);
     
     INIT_TIMER;
     START_TIMER;
@@ -47,7 +47,7 @@ int main(int argc, const char **argv) {
     } else if (comm < 1024 * 1024 * 1024) {
         printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
     } else {
-        printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024. * 1024.));
+        printf("data size of communication: %.2lf GB\n", comm / (1024. * 1024. * 1024.));
     }
     std::cout << "rounds of communication: " << rounds << "\n";
 
