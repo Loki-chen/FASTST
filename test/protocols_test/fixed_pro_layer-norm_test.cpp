@@ -46,10 +46,7 @@ int main(int argc, const char **argv)
             BFVLongCiphertext::send(iopack->io, &attn_s_b);
         }
         printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
-        INIT_TIMER;
-        START_TIMER;
-        BFVLongCiphertext result = ln->forward(attn_secret_b, input);
-        STOP_TIMER("LayerNorm");
+        BFVLongCiphertext result = ln->forward(attn_secret_b, input);  
         size_t comm = iopack->get_comm();
         size_t rounds = iopack->get_rounds();
         if (comm < 1024)

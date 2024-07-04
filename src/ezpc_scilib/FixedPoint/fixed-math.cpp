@@ -527,7 +527,6 @@ FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out) {
 
 FixArray FPMath::dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell, bool trans,
                      uint8_t *msb_x, uint8_t *msb_y) {
-    assert(x.party != PUBLIC || y.party != PUBLIC);
     assert(x.signed_ || (x.signed_ == y.signed_));
     assert(ell >= x.ell && ell >= y.ell && ell <= x.ell + y.ell);
     assert(ell < 64);

@@ -5,6 +5,7 @@ add_subdirectory(protocols)
 add_subdirectory(ezpc_scilib)
 add_library(FASTST-SRC
   transformer.cpp
+  fixed-transformer.cpp
 )
 
 

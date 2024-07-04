@@ -25,10 +25,24 @@ int main(int argc, const char **argv) {
         bfv_matrix input(batch_size * d_module);
         random_bfv_mat(input);
 
-        Fixed_Multi_Head_Attention *attn =
-            new Fixed_Multi_Head_Attention(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
-        printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
-        BFVLongCiphertext result = attn->forward(input);
+        FixedFFN *ffn = new FixedFFN(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
+        BFVLongCiphertext ln_secret;
+        if (party_ == sci::ALICE) {
+            bfv_matrix ln(batch_size * d_module);
+            random_bfv_mat(ln);
+
+            BFVLongPlaintext ln_plain(bfv_parm, ln);
+            BFVLongCiphertext ln_s_a(ln_plain, party);
+            BFVLongCiphertext::send(iopack->io, &ln_s_a);
+
+        } else if (party_ == sci::BOB) {
+            BFVLongCiphertext::recv(iopack->io, &ln_secret, bfv_parm->context);
+        }
+        printf("batch size:       %d\nd_module:         %d\nFFN_dim:          %d\n", batch_size, d_module, ffn_dim);
+        INIT_TIMER;
+        START_TIMER;
+        BFVLongCiphertext result = ffn->forward(ln_secret);
+        STOP_TIMER("FFN");
         size_t comm = iopack->get_comm();
         size_t rounds = iopack->get_rounds();
         if (comm < 1024) {
@@ -42,7 +56,7 @@ int main(int argc, const char **argv) {
         }
         std::cout << "rounds of communication: " << rounds << "\n";
 
-        delete attn;
+        delete ffn;
         delete fix_public;
         delete fix_party;
         delete otpack;

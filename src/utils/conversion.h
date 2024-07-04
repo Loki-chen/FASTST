@@ -13,7 +13,7 @@ public:
 
     bfv_matrix he_to_ss_client(sci::NetIO *io, BFVKey *party);
 
-    bfv_matrix he_to_ss_server(sci::NetIO *io, BFVParm *parm, BFVLongCiphertext &in);
+    bfv_matrix he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVLongCiphertext &in);
 
     void Prime_to_Ring(int party, const uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_prime,
                        int s_in, int s_out, FPMath *fpmath);

@@ -1,4 +1,12 @@
 #include "fixed-attention.h"
+#include "FixedPoint/fixed-point.h"
+#include "Utils/constants.h"
+#include "model.h"
+#include "protocols/fixed-protocol.h"
+#include "utils.h"
+#include "utils/he-bfv.h"
+#include "utils/mat-tools.h"
+#include <cstdint>
 
 Fixed_Attention::Fixed_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
                                  FPMath *fpmath_public, Conversion *conv, int head_)
@@ -258,9 +266,9 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         BFVLongPlaintext rb2_expZb_plain(parm, fix_exp_score_b.data, fix_exp_score_b.size);
         exp_Score_a_secret_a.multiply_plain_inplace(rb2_expZb_plain, party->parm->evaluator);
 
-        FixArray O = fpmath->zero_sum_modP(batch_size, batch_size, party->parm->plain_mod, DEFAULT_ELL,
-        DEFAULT_SCALE); BFVLongPlaintext O_plain(parm, O.data, O.size); exp_Score_a_secret_a.add_plain_inplace(O_plain,
-        party->parm->evaluator);
+        FixArray O = fpmath->zero_sum_modP(batch_size, batch_size, party->parm->plain_mod, DEFAULT_ELL, DEFAULT_SCALE);
+        BFVLongPlaintext O_plain(parm, O.data, O.size);
+        exp_Score_a_secret_a.add_plain_inplace(O_plain, party->parm->evaluator);
 
         uint64_t mask = fix_exp_score_b.ell_mask();
         for (size_t i = 0; i < batch_size * batch_size; i++) {
@@ -301,13 +309,14 @@ Fixed_Multi_Head_Attention::Fixed_Multi_Head_Attention(int layer, BFVKey *party,
                                                        FPMath *fpmath, FPMath *fpmath_public, Conversion *conv)
     : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv) {
     attns = new Fixed_Attention *[n_heads];
-    string layer_str = std::to_string(layer),
-           WQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.weight.txt", "LAYER", layer_str),
+    string WQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.weight.txt", "LAYER", layer_str),
            WK_file = replace("bert.encoder.layer.LAYER.attention.self.key.weight.txt", "LAYER", layer_str),
            WV_file = replace("bert.encoder.layer.LAYER.attention.self.value.weight.txt", "LAYER", layer_str),
            bQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.bias.txt", "LAYER", layer_str),
            bK_file = replace("bert.encoder.layer.LAYER.attention.self.key.bias.txt", "LAYER", layer_str),
-           bV_file = replace("bert.encoder.layer.LAYER.attention.self.value.bias.txt", "LAYER", layer_str);
+           bV_file = replace("bert.encoder.layer.LAYER.attention.self.value.bias.txt", "LAYER", layer_str),
+           W_file = replace("bert.encoder.layer.LAYER.attention.output.dense.weight.txt", "LAYER", layer_str),
+           b_file = replace("bert.encoder.layer.LAYER.attention.output.dense.bias.txt", "LAYER", layer_str);
     bfv_matrix allWQ, allWK, allWV, bQ, bK, bV;
     load_bfv_mat(allWQ, dir_path + WQ_file);
     load_bfv_mat(allWK, dir_path + WK_file);
@@ -315,6 +324,8 @@ Fixed_Multi_Head_Attention::Fixed_Multi_Head_Attention(int layer, BFVKey *party,
     load_bfv_mat(bQ, dir_path + bQ_file);
     load_bfv_mat(bK, dir_path + bK_file);
     load_bfv_mat(bV, dir_path + bV_file);
+    load_bfv_mat(W, dir_path + W_file);
+    load_bfv_mat(b, dir_path + b_file);
     size_t size = d_module * d_k;
     for (int i = 0; i < n_heads; i++) {
         attns[i] = new Fixed_Attention(layer, party, parm, io, fpmath, fpmath_public, conv, i);
@@ -336,7 +347,11 @@ Fixed_Multi_Head_Attention::~Fixed_Multi_Head_Attention() {
 
 BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) const {
     bfv_matrix output(batch_size * d_module);
-
+#ifdef LOG
+    INIT_TIMER
+    START_TIMER
+#endif
+    size_t total_comm = io->counter;
     size_t i, j;
     for (int h = 0; h < n_heads; h++) {
         bfv_matrix output_h = attns[h]->forward(input);
@@ -347,14 +362,89 @@ BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) c
         }
     }
 
-    BFVLongCiphertext output_secret;
     if (party->party == sci::ALICE) {
-        BFVLongCiphertext::recv(io, &output_secret, party->parm->context);
-        BFVLongPlaintext output_plain = BFVLongPlaintext(party->parm, output);
-        output_secret.multiply_plain_inplace(output_plain, party->parm->evaluator);
+        FixArray fix_output_b(sci::PUBLIC, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE),
+            fix_weight_b(sci::PUBLIC, d_module * d_module, true, DEFAULT_ELL, DEFAULT_SCALE),
+            fix_attn_output_b(sci::PUBLIC, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
+        BFVLongCiphertext rb_secret_b;
+        fpmath->fix->recv_fix_array(fix_output_b);
+        fpmath->fix->recv_fix_array(fix_weight_b);
+        fpmath->fix->recv_fix_array(fix_attn_output_b);
+        BFVLongCiphertext::recv(io, &rb_secret_b, party->parm->context);
+
+        FixArray fix_output_ =
+            fpmath->fix->input(sci::ALICE, output.size(), output.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_weight = fpmath->fix->input(sci::PUBLIC, W.size(), W.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_attn_output = fpmath->dot(fix_output_, fix_weight, batch_size, d_module, d_module, DEFAULT_ELL);
+        fix_attn_output = fpmath->fix->location_truncation(fix_attn_output, DEFAULT_SCALE);
+
+        FixArray tmp1 = fpmath->dot(fix_output_, fix_weight_b, batch_size, d_module, d_module, DEFAULT_ELL);
+        FixArray tmp2 = fpmath->dot(fix_output_b, fix_weight, batch_size, d_module, d_module, DEFAULT_ELL);
+        tmp1 = fpmath->fix->location_truncation(tmp1, DEFAULT_SCALE);
+        tmp2 = fpmath->fix->location_truncation(tmp2, DEFAULT_SCALE);
+        uint64_t ell_mask_ = fix_attn_output.ell_mask();
+        for (size_t i = 0; i < batch_size; i++) {
+            for (size_t j = 0; j < d_module; j++) {
+                fix_attn_output.data[i * d_module + j] = fix_attn_output.data[i * d_module + j] +
+                                                         tmp1.data[i * d_module + j] + tmp2.data[i * d_module + j] +
+                                                         fix_attn_output_b.data[i * d_module + j] + b[j];
+                fix_attn_output.data[i * d_module + j] &= ell_mask_;
+            }
+        }
+        uint64_t *prime_fix_attn_output = new uint64_t[fix_attn_output.size];
+        conv->Ring_to_Prime(fix_attn_output.data, prime_fix_attn_output, fix_attn_output.size, DEFAULT_ELL,
+                            party->parm->plain_mod);
+        BFVLongPlaintext fix_attn_output_plain(parm, prime_fix_attn_output, fix_attn_output.size);
+        delete[] prime_fix_attn_output;
+        rb_secret_b.multiply_plain_inplace(fix_attn_output_plain, party->parm->evaluator);
+        return rb_secret_b; // alice hold it
     } else {
-        BFVLongCiphertext output_secret_b(BFVLongPlaintext(party->parm, output), party);
-        BFVLongCiphertext::send(io, &output_secret_b);
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<> dist(0, 1);
+        double rb = dist(gen);
+        uint64_t fix_rb = sci::neg_mod(static_cast<int64_t>(rb * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
+        uint64_t fix_div_rb = sci::neg_mod(static_cast<int64_t>(1. / rb * (1ULL << (party->parm->plain_mod))),
+                                           (1ULL << party->parm->plain_mod));
+        FixArray fix_output_ =
+            fpmath->fix->input(sci::BOB, output.size(), output.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_weight = fpmath->fix->input(sci::BOB, W.size(), W.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        fix_weight = fpmath->fix->mul(fix_weight, fix_rb);
+        fix_weight = fpmath->fix->location_truncation(fix_weight, DEFAULT_SCALE);
+        fix_weight.party = sci::PUBLIC;
+        FixArray fix_attn_output = fpmath->dot(fix_output_, fix_weight, batch_size, d_module, d_module, DEFAULT_ELL);
+        fix_attn_output = fpmath->fix->location_truncation(fix_attn_output, DEFAULT_SCALE);
+        uint64_t ell_mask_ = fix_attn_output.ell_mask();
+        for (size_t i = 0; i < batch_size; i++) {
+            for (size_t j = 0; j < d_module; j++) {
+                fix_attn_output.data[i * d_module + j] = fix_attn_output.data[i * d_module + j] + b[j];
+                fix_attn_output.data[i * d_module + j] &= ell_mask_;
+            }
+        }
+        fix_attn_output.party = sci::PUBLIC;
+        fix_output_ = fpmath->fix->mul(fix_output_, fix_rb);
+        fix_output_ = fpmath->fix->location_truncation(fix_output_, DEFAULT_SCALE);
+        fix_output_.party = sci::PUBLIC;
+
+        fpmath->fix->send_fix_array(fix_output_);
+        fpmath->fix->send_fix_array(fix_weight);
+        fpmath->fix->send_fix_array(fix_attn_output);
+        BFVLongCiphertext rb_secret_b(parm, fix_div_rb, party);
+        BFVLongCiphertext::send(io, &rb_secret_b);
     }
-    return output_secret;
+    // BFVLongCiphertext output_secret;
+    // if (party->party == sci::ALICE) {
+    //     BFVLongCiphertext::recv(io, &output_secret, party->parm->context);
+    //     BFVLongPlaintext output_plain = BFVLongPlaintext(party->parm, output);
+    //     output_secret.multiply_plain_inplace(output_plain, party->parm->evaluator);
+    // } else {
+    //     BFVLongCiphertext output_secret_b(BFVLongPlaintext(party->parm, output), party);
+    //     BFVLongCiphertext::send(io, &output_secret_b);
+    // }
+#ifdef LOG
+    STOP_TIMER("Multi-Head Attention")
+    total_comm = io->counter - total_comm;
+    printf("Multi-Head Attention Send data %ld Bytes. \n", total_comm);
+#endif
+    return BFVLongCiphertext();
 }

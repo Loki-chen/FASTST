@@ -2,6 +2,7 @@
 #ifndef FAST_FIXED_ATTENTION_H__
 #define FAST_FIXED_ATTENTION_H__
 #include "fixed-protocol.h"
+#include "utils/he-bfv.h"
 
 class Fixed_Multi_Head_Attention;
 
@@ -19,6 +20,7 @@ public:
 
 class Fixed_Multi_Head_Attention : public FixedProtocol {
     int layer;
+    bfv_matrix W, b;
     Fixed_Attention **attns;
 
 public:
