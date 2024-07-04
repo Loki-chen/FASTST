@@ -39,10 +39,7 @@ int main(int argc, const char **argv) {
             BFVLongCiphertext::recv(iopack->io, &ln_secret, bfv_parm->context);
         }
         printf("batch size:       %d\nd_module:         %d\nFFN_dim:          %d\n", batch_size, d_module, ffn_dim);
-        INIT_TIMER;
-        START_TIMER;
         BFVLongCiphertext result = ffn->forward(ln_secret);
-        STOP_TIMER("FFN");
         size_t comm = iopack->get_comm();
         size_t rounds = iopack->get_rounds();
         if (comm < 1024) {

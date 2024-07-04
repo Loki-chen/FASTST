@@ -367,7 +367,6 @@ LongCiphertext FFN::forward(const LongCiphertext &ln1) {
         B2a_secret_a.mod_switch_to_inplace(x2_secret_a.parms_id(), evaluator);
         x2_secret_a.add_inplace(B2a_secret_a, evaluator);
 
-        div_vb_plain.mod_switch_to_inplace(x2_secret_a.parms_id(), evaluator);
         x2_secret_a.add_plain_inplace(div_vb_plain, evaluator);
         // send x2_secret_a, vs_secret_b to bob
         LongCiphertext::send(io, &x2_secret_a);

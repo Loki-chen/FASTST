@@ -1,6 +1,7 @@
 #include "fixed-ffn.h"
 #include "FixedPoint/fixed-point.h"
 #include "Utils/constants.h"
+#include "Utils/ezpc_scilib_tool.h"
 #include "Utils/prg.h"
 #include "model.h"
 #include "protocols/fixed-protocol.h"
@@ -18,7 +19,8 @@ bfv_matrix random_sgn(size_t size, uint64_t ell_) {
     return ret;
 }
 
-BFVLongCiphertext FixedFFN::f3(const BFVLongCiphertext &x1, const BFVLongCiphertext &x2, const BFVLongCiphertext &x3) const {
+BFVLongCiphertext FixedFFN::f3(const BFVLongCiphertext &x1, const BFVLongCiphertext &x2,
+                               const BFVLongCiphertext &x3) const {
     uint64_t prime_parm0 = sci::neg_mod(static_cast<int64_t>(-0.438406187 * parm->plain_mod), parm->plain_mod),
              prime_parm1 = sci::neg_mod(static_cast<int64_t>(1.340789252 * parm->plain_mod), parm->plain_mod),
              prime_parm2 = sci::neg_mod(static_cast<int64_t>(-0.087184212 * parm->plain_mod), parm->plain_mod),
@@ -34,7 +36,8 @@ BFVLongCiphertext FixedFFN::f3(const BFVLongCiphertext &x1, const BFVLongCiphert
     return f3_;
 }
 
-BFVLongCiphertext FixedFFN::f2(const BFVLongCiphertext &x1, const BFVLongCiphertext &x2, const BFVLongCiphertext &x4) const {
+BFVLongCiphertext FixedFFN::f2(const BFVLongCiphertext &x1, const BFVLongCiphertext &x2,
+                               const BFVLongCiphertext &x4) const {
     uint64_t prime_parm0 = sci::neg_mod(static_cast<int64_t>(0.001193207 * parm->plain_mod), parm->plain_mod),
              prime_parm1 = sci::neg_mod(static_cast<int64_t>(0.5 * parm->plain_mod), parm->plain_mod),
              prime_parm2 = sci::neg_mod(static_cast<int64_t>(0.385858026 * parm->plain_mod), parm->plain_mod),
@@ -98,7 +101,12 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(0, 1);
+    size_t total_comm = io->counter;
     if (party->party == sci::ALICE) {
+#ifdef LOG
+        INIT_TIMER
+        START_TIMER
+#endif
         double va = dist(gen);
         uint64_t fix_va = sci::neg_mod(static_cast<int64_t>(va * (1ULL << (DEFAULT_ELL))), (1ULL << DEFAULT_ELL));
         bfv_matrix va_xa = conv->he_to_ss_client(io, party);
@@ -178,25 +186,52 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
         BFVLongCiphertext::send(io, &div_ra_4_secret_a);
 
         bfv_matrix gelu_c = conv->he_to_ss_client(io, party);
-        /*
-        LongPlaintext x1a_plain = gelu_secret_a.decrypt(party);
-        matrix v1a_x1a = x1a_plain.decode(encoder);
+        double v1a = dist(gen);
+        uint64_t fix_v1a = sci::neg_mod(static_cast<int64_t>(v1a * (1ULL << (DEFAULT_ELL))), (1ULL << DEFAULT_ELL));
+        FixArray fix_v1a_x1a =
+            fpmath->fix->input(sci::ALICE, gelu_c.size(), gelu_c.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        fix_v1a_x1a = fpmath->fix->mul(fix_v1a_x1a, fix_v1a);
+        fix_v1a_x1a = fpmath->fix->location_truncation(fix_v1a_x1a, DEFAULT_SCALE);
+        fix_v1a_x1a.party = sci::PUBLIC;
+        FixArray fix_w2 = fpmath->fix->input(sci::ALICE, W1.size(), W1.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray v1a_x1_W2a = fpmath->dot(fix_v1a_x1a, fix_w2, batch_size, ffn_dim, d_module, DEFAULT_ELL);
+        v1a_x1_W2a = fpmath->fix->location_truncation(v1a_x1_W2a, DEFAULT_SCALE);
+        v1a_x1_W2a.party = sci::PUBLIC;
+        fix_w2 = fpmath->fix->mul(fix_w2, fix_v1a);
+        fix_w2 = fpmath->fix->location_truncation(fix_w2, DEFAULT_SCALE);
+        fix_w2.party = sci::PUBLIC;
+        uint64_t prime_div_v1a = sci::neg_mod(static_cast<int64_t>(v1a * parm->plain_mod), parm->plain_mod);
+        uint64_t *prime_b2 = new uint64_t[b2.size()];
+        conv->Ring_to_Prime(b2.data(), prime_b2, b2.size(), DEFAULT_ELL, party->parm->plain_mod);
+        BFVLongPlaintext b2_plain(parm, prime_b2, b2.size());
+        delete[] prime_b2;
+        BFVLongCiphertext b2_secret_a(b2_plain, party), div_v1a_secret_a(party->parm, prime_div_v1a, party);
 
-        for (i = 0; i < batch_size * ffn_dim; i++) {
-            v1a_x1a[i] *= v1a;
-        }
-        matrix v1a_x1a_W2a = matmul(v1a_x1a, W2, batch_size, ffn_dim, d_module);
-        for (i = 0; i < ffn_dim * d_module; i++) {
-            W2[i] *= v1a;
-        }
         // send v1a_x1a, v1a_x1a_W2a, W2, B2a_secret_a, div_v1a_secret_a to bob
-        send_mat(io, &v1a_x1a);
-        send_mat(io, &v1a_x1a_W2a);
-        send_mat(io, &W2);
-        LongCiphertext::send(io, &B2a_secret_a);
-        LongCiphertext::send(io, &div_v1a_secret_a);
-        */
+        fpmath->fix->send_fix_array(fix_v1a_x1a);
+        fpmath->fix->send_fix_array(v1a_x1_W2a);
+        fpmath->fix->send_fix_array(fix_w2);
+        BFVLongCiphertext::send(io, &b2_secret_a);
+        BFVLongCiphertext::send(io, &div_v1a_secret_a);
+
+        BFVLongCiphertext x2_secret_a, vb_secert_b;
+        // alice receive x2_secert_a, vb_secret_b;
+        BFVLongCiphertext::recv(io, &x2_secret_a, parm->context);
+        BFVLongCiphertext::recv(io, &vb_secert_b, parm->context);
+        BFVLongPlaintext x2_plain_ = x2_secret_a.decrypt(party);
+        // bfv_matrix x2 = x2_plain_.decode(parm);
+        vb_secert_b.add_plain_inplace(x2_plain_, parm->evaluator);
+#ifdef LOG
+        STOP_TIMER("Feed Forward")
+        total_comm += io->counter;
+        std::cout << "Feed Forward Send data " << total_comm << " Bytes. \n";
+#endif
+        return vb_secert_b;
     } else {
+#ifdef LOG
+        INIT_TIMER
+        START_TIMER
+#endif
         bfv_matrix xb = conv->he_to_ss_server(io, party->parm, input);
 
         FixArray fix_va_xa(sci::PUBLIC, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE),
@@ -293,13 +328,13 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
         fixed_x1_3 = fpmath->fix->location_truncation(fixed_x1_3, DEFAULT_SCALE);
         FixArray fixed_x1_4 = fpmath->fix->mul(fixed_x1_3, fixed_x1, DEFAULT_ELL);
         fixed_x1_4 = fpmath->fix->location_truncation(fixed_x1_4, DEFAULT_SCALE);
-        bfv_matrix b1(batch_size * ffn_dim), b2(batch_size * ffn_dim), b3(batch_size * ffn_dim),
-            b4(batch_size * ffn_dim);
+        bfv_matrix b1_(batch_size * ffn_dim), b2_(batch_size * ffn_dim), b3_(batch_size * ffn_dim),
+            b4_(batch_size * ffn_dim);
         for (size_t i = 0; i < batch_size * ffn_dim; i++) {
-            b1[i] = (s0_sgn[i] == 1 && s1_sgn[i] == 0) ? 1 : 0;
-            b2[i] = (s1_sgn[i] == 1 && s2_sgn[i] == 0) ? 1 : 0;
-            b3[i] = (s2_sgn[i] == 1 && s3_sgn[i] == 0) ? 1 : 0;
-            b4[i] = s3_sgn[i] == 1 ? 1 : 0;
+            b1_[i] = (s0_sgn[i] == 1 && s1_sgn[i] == 0) ? 1 : 0;
+            b2_[i] = (s1_sgn[i] == 1 && s2_sgn[i] == 0) ? 1 : 0;
+            b3_[i] = (s2_sgn[i] == 1 && s3_sgn[i] == 0) ? 1 : 0;
+            b4_[i] = s3_sgn[i] == 1 ? 1 : 0;
         }
         conv->Ring_to_Prime(fixed_x1.data, fixed_x1.data, fixed_x1.size, DEFAULT_ELL, parm->plain_mod);
         conv->Ring_to_Prime(fixed_x1_2.data, fixed_x1_2.data, fixed_x1.size, DEFAULT_ELL, parm->plain_mod);
@@ -312,19 +347,64 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
         x1_2_secret_a_.multiply_plain_inplace(x1_2_plain, parm->evaluator);
         x1_3_secret_a_.multiply_plain_inplace(x1_3_plain, parm->evaluator);
         x1_4_secret_a_.multiply_plain_inplace(x1_4_plain, parm->evaluator);
-        BFVLongPlaintext b1_plain(parm, b1), b2_plain(parm, b2), b3_plain(parm, b3), b4_plain(parm, b4);
-        BFVLongCiphertext f4_ = x1_secret_a_.multiply_plain(b4_plain, parm->evaluator),
+        BFVLongPlaintext b1_plain_(parm, b1_), b2_plain_(parm, b2_), b3_plain_(parm, b3_), b4_plain_(parm, b4_);
+        BFVLongCiphertext f4_ = x1_secret_a_.multiply_plain(b4_plain_, parm->evaluator),
                           f3_ = f3(x1_secret_a_, x1_2_secret_a_, x1_3_secret_a_),
                           f2_ = f2(x1_secret_a_, x1_2_secret_a_, x1_4_secret_a_),
                           f1_ = f1(x1_secret_a_, x1_2_secret_a_, x1_3_secret_a_, x1_4_secret_a_);
-        f3_.multiply_plain_inplace(b3_plain, parm->evaluator);
-        f2_.multiply_plain_inplace(b2_plain, parm->evaluator);
-        f1_.multiply_plain_inplace(b1_plain, parm->evaluator);
+        f3_.multiply_plain_inplace(b3_plain_, parm->evaluator);
+        f2_.multiply_plain_inplace(b2_plain_, parm->evaluator);
+        f1_.multiply_plain_inplace(b1_plain_, parm->evaluator);
         f1_.add_inplace(f3_, parm->evaluator);
         f1_.add_inplace(f2_, parm->evaluator);
         f4_.mod_switch_to_inplace(f1_.parms_id(), parm->evaluator);
         f1_.add_inplace(f4_, parm->evaluator); // f1_ is gelu
         bfv_matrix gelu_s = conv->he_to_ss_server(io, parm, f1_);
+
+        FixArray fix_v1a_x1a(sci::PUBLIC, batch_size * ffn_dim, true, DEFAULT_ELL, DEFAULT_SCALE),
+            v1a_x1_W2a(sci::PUBLIC, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE),
+            fix_w2a(sci::PUBLIC, ffn_dim * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
+        BFVLongCiphertext b2_secret_a, div_v1a_secret_a;
+        fpmath->fix->recv_fix_array(fix_v1a_x1a);
+        fpmath->fix->recv_fix_array(v1a_x1_W2a);
+        fpmath->fix->recv_fix_array(fix_w2a);
+        BFVLongCiphertext::recv(io, &b2_secret_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &div_v1a_secret_a, party->parm->context);
+        FixArray fix_w2 = fpmath->fix->input(sci::BOB, W2.size(), W2.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_x1 = fpmath->fix->input(sci::BOB, gelu_s.size(), gelu_s.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray tmp21 = fpmath->dot(fix_v1a_x1a, fix_w2, batch_size, ffn_dim, d_module, DEFAULT_ELL);
+        FixArray tmp22 = fpmath->dot(fix_x1, fix_w2a, batch_size, ffn_dim, d_module, DEFAULT_ELL);
+        FixArray x1b_W2b = fpmath->dot(fix_x1, fix_w2, batch_size, ffn_dim, d_module, DEFAULT_ELL);
+        ell_mask = tmp21.ell_mask();
+        for (size_t i = 0; i < batch_size * d_module; i++) {
+            tmp21.data[i] = (tmp21.data[i] + tmp22.data[i] + v1a_x1_W2a.data[i]) & ell_mask;
+        }
+        uint64_t *prime_b2 = new uint64_t[b2.size()];
+        conv->Ring_to_Prime(tmp21.data, tmp21.data, tmp21.size, DEFAULT_ELL, parm->plain_mod);
+        conv->Ring_to_Prime(x1b_W2b.data, x1b_W2b.data, x1b_W2b.size, DEFAULT_ELL, parm->plain_mod);
+        conv->Ring_to_Prime(b2.data(), prime_b2, b2.size(), DEFAULT_ELL, parm->plain_mod);
+        BFVLongPlaintext tmp21_plain(parm, tmp21.data, tmp21.size), x1b_W2b_plain(parm, x1b_W2b.data, x1b_W2b.size),
+            B2b_plain(parm, prime_b2, b2.size());
+        delete[] prime_b2;
+        BFVLongCiphertext x2_secret_a = div_v1a_secret_a.multiply_plain(tmp21_plain, parm->evaluator);
+        x2_secret_a.add_plain_inplace(x1b_W2b_plain, parm->evaluator);
+        b2_secret_a.add_plain_inplace(B2b_plain, parm->evaluator);
+        x2_secret_a.add_inplace(b2_secret_a, parm->evaluator);
+
+        double vb = dist(gen);
+        uint64_t prime_vb = sci::neg_mod(static_cast<int64_t>(vb * parm->plain_mod), int64_t(parm->plain_mod)),
+                 prime_div_vb = sci::neg_mod(static_cast<int64_t>(1. / vb * parm->plain_mod), int64_t(parm->plain_mod));
+        BFVLongPlaintext div_vb_plain(parm, prime_div_vb);
+        x2_secret_a.multiply_plain_inplace(div_vb_plain, parm->evaluator);
+        BFVLongCiphertext vb_secret_b(parm, prime_vb, party);
+        // send x2_secret_a, vs_secret_b to alice
+        BFVLongCiphertext::send(io, &x2_secret_a);
+        BFVLongCiphertext::send(io, &vb_secret_b);
+#ifdef LOG
+        STOP_TIMER("Feed Forward")
+        total_comm += io->counter;
+        std::cout << "Feed Forward Send data " << total_comm << " Bytes. \n";
+#endif
     }
     return BFVLongCiphertext();
 }
