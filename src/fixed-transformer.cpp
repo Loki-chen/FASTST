@@ -1,4 +1,5 @@
 #include "fixed-transformer.h"
+#include "model.h"
 #include "utils/he-bfv.h"
 
 FixedEncoder::FixedEncoder(int _layer, BFVKey *_party, BFVParm *parm, sci::NetIO *_io, FPMath *fpmath,
@@ -19,7 +20,7 @@ FixedEncoder::~FixedEncoder() {
 
 bfv_matrix FixedEncoder::forward(const bfv_matrix &input) {
     size_t total_comm = io->counter;
-#ifdef LOG
+#ifdef ENCODER_LOG
     INIT_TIMER
     START_TIMER
 #endif
@@ -33,36 +34,54 @@ bfv_matrix FixedEncoder::forward(const bfv_matrix &input) {
     } else {
         ret = conv->he_to_ss_server(io, party->parm, output4);
     }
-#ifdef LOG
+#ifdef ENCODER_LOG
     char *buf = new char[9];
     sprintf(buf, "Layer-%-2d", layer);
     STOP_TIMER(buf)
-    total_comm += io->counter;
+    total_comm = io->counter - total_comm;
     printf("%s Send data %ld Bytes. \n", buf, total_comm);
     delete[] buf;
 #endif
     return ret;
 }
 
-FixedTransformer::FixedTransformer(BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath, FPMath *fpmath_public,
-                                   Conversion *conv) {
+FixedTransformer::FixedTransformer(BFVKey *party, BFVParm *parm, sci::NetIO *_io, FPMath *fpmath, FPMath *fpmath_public,
+                                   Conversion *conv)
+    : io(_io) {
+#ifdef TRANSFORMER_LOG
+    INIT_TIMER
+    START_TIMER
+#endif
     layer = new FixedEncoder *[n_layer];
     for (int i = 0; i < n_layer; i++) {
         layer[i] = new FixedEncoder(i, party, parm, io, fpmath, fpmath_public, conv);
     }
+#ifdef TRANSFORMER_LOG
+    STOP_TIMER("Transformer INIT")
+#endif
 }
 
 FixedTransformer::~FixedTransformer() {
-    for (int i = 0; i < n_heads; i++) {
+    for (int i = 0; i < n_layer; i++) {
         delete layer[i];
     }
     delete[] layer;
 }
 
 bfv_matrix FixedTransformer::forward(const bfv_matrix &input) {
+    size_t total_comm = io->counter;
+#ifdef TRANSFORMER_LOG
+    INIT_TIMER
+    START_TIMER
+#endif
     bfv_matrix output = layer[0]->forward(input);
-    for (int i = 1; i < n_heads; i++) {
+    for (int i = 1; i < n_layer; i++) {
         output = layer[i]->forward(output);
     }
+#ifdef TRANSFORMER_LOG
+    STOP_TIMER("Transformer")
+    total_comm = io->counter - total_comm;
+    printf("Transformer Send data %ld Bytes. \n", total_comm);
+#endif
     return output;
 }

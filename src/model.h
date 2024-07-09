@@ -1,7 +1,11 @@
 #ifndef FAST_MODEL_H__
 #define FAST_MODEL_H__
 #include "utils.h"
-#define LOG
+#define M_H_ATTN_LOG
+#define FFN_LOG
+#define LN_LOG
+#define ENCODER_LOG
+#define TRANSFORMER_LOG
 #define WARNING
 
 // Bert base

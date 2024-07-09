@@ -8,6 +8,7 @@
 #include "utils/he-bfv.h"
 #include "utils/mat-tools.h"
 #include <cstdint>
+#include <stdexcept>
 
 bfv_matrix random_sgn(size_t size, uint64_t ell_) {
     bfv_matrix ret(size);
@@ -80,20 +81,32 @@ FixedFFN::FixedFFN(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMa
            W2_file = replace("bert.encoder.layer.LAYER.output.dense.weight.txt", "LAYER", layer_str),
            b1_file = replace("bert.encoder.layer.LAYER.intermediate.dense.bias.txt", "LAYER", layer_str),
            b2_file = replace("bert.encoder.layer.LAYER.output.dense.bias.txt", "LAYER", layer_str);
-    bfv_matrix tmp_b1, tmp_b2;
-    load_bfv_mat(W1, dir_path + W1_file);
-    load_bfv_mat(W2, dir_path + W2_file);
-    load_bfv_mat(tmp_b1, dir_path + b1_file);
-    load_bfv_mat(tmp_b2, dir_path + b2_file);
-    b1 = bfv_matrix(batch_size * ffn_dim);
-    b2 = bfv_matrix(batch_size * d_module);
-    for (size_t i = 0; i < batch_size; i++) {
-        for (size_t j = 0; j < ffn_dim; j++) {
-            b1[i * ffn_dim + j] = tmp_b1[j];
+    try {
+        bfv_matrix tmp_b1, tmp_b2;
+        load_bfv_mat(W1, dir_path + W1_file);
+        load_bfv_mat(W2, dir_path + W2_file);
+        load_bfv_mat(tmp_b1, dir_path + b1_file);
+        load_bfv_mat(tmp_b2, dir_path + b2_file);
+        b1 = bfv_matrix(batch_size * ffn_dim);
+        b2 = bfv_matrix(batch_size * d_module);
+        for (size_t i = 0; i < batch_size; i++) {
+            for (size_t j = 0; j < ffn_dim; j++) {
+                b1[i * ffn_dim + j] = tmp_b1[j];
+            }
+            for (size_t j = 0; j < d_module; j++) {
+                b2[i * d_module + j] = tmp_b2[j];
+            }
         }
-        for (size_t j = 0; j < d_module; j++) {
-            b2[i * d_module + j] = tmp_b2[j];
-        }
+    } catch (std::runtime_error e) {
+        std::cout << "[FFN] WARNINE: cannot open data file, generate data randonly\n";
+        W1 = bfv_matrix(d_module * ffn_dim);
+        W2 = bfv_matrix(ffn_dim * d_module);
+        b1 = bfv_matrix(batch_size * ffn_dim);
+        b2 = bfv_matrix(batch_size * d_module);
+        random_ell_mat(W1, DEFAULT_ELL);
+        random_ell_mat(W2, DEFAULT_ELL);
+        random_ell_mat(b1, DEFAULT_ELL);
+        random_ell_mat(b2, DEFAULT_ELL);
     }
 }
 
@@ -103,7 +116,7 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
     std::uniform_real_distribution<> dist(0, 1);
     size_t total_comm = io->counter;
     if (party->party == sci::ALICE) {
-#ifdef LOG
+#ifdef FFN_LOG
         INIT_TIMER
         START_TIMER
 #endif
@@ -221,14 +234,14 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
         BFVLongPlaintext x2_plain_ = x2_secret_a.decrypt(party);
         // bfv_matrix x2 = x2_plain_.decode(parm);
         vb_secert_b.add_plain_inplace(x2_plain_, parm->evaluator);
-#ifdef LOG
+#ifdef FFN_LOG
         STOP_TIMER("Feed Forward")
-        total_comm += io->counter;
+        total_comm = io->counter - total_comm;
         std::cout << "Feed Forward Send data " << total_comm << " Bytes. \n";
 #endif
         return vb_secert_b;
     } else {
-#ifdef LOG
+#ifdef FFN_LOG
         INIT_TIMER
         START_TIMER
 #endif
@@ -400,9 +413,9 @@ BFVLongCiphertext FixedFFN::forward(const BFVLongCiphertext &input) const {
         // send x2_secret_a, vs_secret_b to alice
         BFVLongCiphertext::send(io, &x2_secret_a);
         BFVLongCiphertext::send(io, &vb_secret_b);
-#ifdef LOG
+#ifdef FFN_LOG
         STOP_TIMER("Feed Forward")
-        total_comm += io->counter;
+        total_comm = io->counter - total_comm;
         std::cout << "Feed Forward Send data " << total_comm << " Bytes. \n";
 #endif
     }

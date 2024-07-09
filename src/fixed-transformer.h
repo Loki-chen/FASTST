@@ -24,6 +24,7 @@ public:
 
 class FixedTransformer {
     FixedEncoder **layer;
+    sci::NetIO *io;
 
 public:
     FixedTransformer(BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath, FPMath *fpmath_public,

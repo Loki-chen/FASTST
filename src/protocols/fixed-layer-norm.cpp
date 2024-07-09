@@ -1,4 +1,8 @@
 #include "fixed-layer-norm.h"
+#include "model.h"
+#include "protocols/fixed-protocol.h"
+#include "utils/he-bfv.h"
+#include "utils/mat-tools.h"
 
 FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
                                FPMath *fpmath_public, Conversion *conv, bool _after_attn)
@@ -11,8 +15,16 @@ FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::Net
                            ? replace("bert.encoder.layer.LAYER.attention.output.LayerNorm.bias.txt", "LAYER", layer_str)
                            : replace("bert.encoder.layer.LAYER.output.LayerNorm.bias.txt", "LAYER", layer_str);
     if (party->party == sci::BOB) {
-        load_bfv_mat(gamma, dir_path + gamma_file);
-        load_bfv_mat(beta, dir_path + beta_file);
+        try {
+            load_bfv_mat(gamma, dir_path + gamma_file);
+            load_bfv_mat(beta, dir_path + beta_file);
+        } catch (std::runtime_error e) {
+            std::cout << "[LayerNorm] WARNINE: cannot open data file, generate data randonly\n";
+            gamma = bfv_matrix(d_module);
+            beta = bfv_matrix(d_module);
+            random_ell_mat(gamma, DEFAULT_ELL);
+            random_ell_mat(beta, DEFAULT_ELL);
+        }
     }
 }
 
@@ -38,7 +50,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         double ha = dist(gen);
         uint64_t *prime_ha_xa = new uint64_t[batch_size * d_module];
         uint64_t *prime_ha = new uint64_t[batch_size * d_module];
-#ifdef LOG
+#ifdef LN_LOG
         INIT_TIMER
         START_TIMER
 #endif
@@ -144,7 +156,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         auto ln = ln_plain.decode(parm);
         io->send_data(tmp1, batch_size * d_module * sizeof(uint64_t));
         BFVLongCiphertext::send(io, &layernorm_secret_a);
-#ifdef LOG
+#ifdef LN_LOG
         STOP_TIMER("LayerNorm")
         total_comm = io->counter - total_comm;
         printf("LayerNorm Send data %ld Bytes. \n", total_comm);
@@ -161,7 +173,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         FixArray fix_ha_xa =
             fpmath->fix->input(sci::ALICE, batch_size * d_module, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         BFVLongCiphertext ha_secret_a, attn_ha_secret_b;
-#ifdef LOG
+#ifdef LN_LOG
         INIT_TIMER
         START_TIMER
 #endif
@@ -226,7 +238,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         layernorm_secret_a.mod_switch_to_next_inplace(party->parm->evaluator);
         BFVLongPlaintext beta_plain(party->parm, beta_array, batch_size * d_module);
         layernorm_secret_a.add_plain_inplace(beta_plain, party->parm->evaluator);
-#ifdef LOG
+#ifdef LN_LOG
         STOP_TIMER("LayerNorm")
         total_comm = io->counter - total_comm;
         printf("LayerNorm Send data %ld Bytes. \n", total_comm);

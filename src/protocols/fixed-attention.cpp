@@ -7,6 +7,7 @@
 #include "utils/he-bfv.h"
 #include "utils/mat-tools.h"
 #include <cstdint>
+#include <stdexcept>
 
 Fixed_Attention::Fixed_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io, FPMath *fpmath,
                                  FPMath *fpmath_public, Conversion *conv, int head_)
@@ -19,7 +20,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dist(0, 1);
 
-#ifdef LOG
+#ifdef ATTN_LOG
     INIT_TIMER
     START_TIMER
 #endif
@@ -165,7 +166,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         FixArray fix_output = fpmath->dot(fix_exp_score_b, fix_rb_v, batch_size, batch_size, d_k, DEFAULT_ELL);
 
         // Alice End
-#ifdef LOG
+#ifdef ATTN_LOG
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
         STOP_TIMER(buf)
@@ -292,7 +293,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         BFVLongCiphertext::send(io, &exp_Score_a_secret_a);
         fpmath->fix->send_fix_array(fix_exp_score_b);
         BFVLongCiphertext::send(io, &raV_sec_a);
-#ifdef LOG
+#ifdef ATTN_LOG
         char *buf = new char[13];
         sprintf(buf, "Attention-%-2d", head);
         STOP_TIMER(buf)
@@ -318,14 +319,34 @@ Fixed_Multi_Head_Attention::Fixed_Multi_Head_Attention(int layer, BFVKey *party,
            W_file = replace("bert.encoder.layer.LAYER.attention.output.dense.weight.txt", "LAYER", layer_str),
            b_file = replace("bert.encoder.layer.LAYER.attention.output.dense.bias.txt", "LAYER", layer_str);
     bfv_matrix allWQ, allWK, allWV, bQ, bK, bV;
-    load_bfv_mat(allWQ, dir_path + WQ_file);
-    load_bfv_mat(allWK, dir_path + WK_file);
-    load_bfv_mat(allWV, dir_path + WV_file);
-    load_bfv_mat(bQ, dir_path + bQ_file);
-    load_bfv_mat(bK, dir_path + bK_file);
-    load_bfv_mat(bV, dir_path + bV_file);
-    load_bfv_mat(W, dir_path + W_file);
-    load_bfv_mat(b, dir_path + b_file);
+    try {
+        load_bfv_mat(allWQ, dir_path + WQ_file);
+        load_bfv_mat(allWK, dir_path + WK_file);
+        load_bfv_mat(allWV, dir_path + WV_file);
+        load_bfv_mat(bQ, dir_path + bQ_file);
+        load_bfv_mat(bK, dir_path + bK_file);
+        load_bfv_mat(bV, dir_path + bV_file);
+        load_bfv_mat(W, dir_path + W_file);
+        load_bfv_mat(b, dir_path + b_file);
+    } catch (std::runtime_error e) {
+        std::cout << "[Attention] WARNINE: cannot open data file, generate data randonly\n";
+        allWQ = bfv_matrix(batch_size * d_module);
+        allWK = bfv_matrix(batch_size * d_module);
+        allWV = bfv_matrix(batch_size * d_module);
+        bQ = bfv_matrix(d_module);
+        bK = bfv_matrix(d_module);
+        bV = bfv_matrix(d_module);
+        W = bfv_matrix(d_module * d_module);
+        b = bfv_matrix(d_module);
+        random_ell_mat(allWQ, DEFAULT_ELL);
+        random_ell_mat(allWK, DEFAULT_ELL);
+        random_ell_mat(allWV, DEFAULT_ELL);
+        random_ell_mat(bQ, DEFAULT_ELL);
+        random_ell_mat(bK, DEFAULT_ELL);
+        random_ell_mat(bV, DEFAULT_ELL);
+        random_ell_mat(W, DEFAULT_ELL);
+        random_ell_mat(bV, DEFAULT_ELL);
+    };
     size_t size = d_module * d_k;
     for (int i = 0; i < n_heads; i++) {
         attns[i] = new Fixed_Attention(layer, party, parm, io, fpmath, fpmath_public, conv, i);
@@ -347,7 +368,7 @@ Fixed_Multi_Head_Attention::~Fixed_Multi_Head_Attention() {
 
 BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) const {
     bfv_matrix output(batch_size * d_module);
-#ifdef LOG
+#ifdef M_H_ATTN_LOG
     INIT_TIMER
     START_TIMER
 #endif
@@ -397,6 +418,11 @@ BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) c
         BFVLongPlaintext fix_attn_output_plain(parm, prime_fix_attn_output, fix_attn_output.size);
         delete[] prime_fix_attn_output;
         rb_secret_b.multiply_plain_inplace(fix_attn_output_plain, party->parm->evaluator);
+#ifdef M_H_ATTN_LOG
+        STOP_TIMER("Multi-Head Attention")
+        total_comm = io->counter - total_comm;
+        printf("Multi-Head Attention Send data %ld Bytes. \n", total_comm);
+#endif
         return rb_secret_b; // alice hold it
     } else {
         std::random_device rd;
@@ -431,6 +457,11 @@ BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) c
         fpmath->fix->send_fix_array(fix_attn_output);
         BFVLongCiphertext rb_secret_b(parm, fix_div_rb, party);
         BFVLongCiphertext::send(io, &rb_secret_b);
+#ifdef M_H_ATTN_LOG
+        STOP_TIMER("Multi-Head Attention")
+        total_comm = io->counter - total_comm;
+        printf("Multi-Head Attention Send data %ld Bytes. \n", total_comm);
+#endif
     }
     // BFVLongCiphertext output_secret;
     // if (party->party == sci::ALICE) {
@@ -441,10 +472,5 @@ BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) c
     //     BFVLongCiphertext output_secret_b(BFVLongPlaintext(party->parm, output), party);
     //     BFVLongCiphertext::send(io, &output_secret_b);
     // }
-#ifdef LOG
-    STOP_TIMER("Multi-Head Attention")
-    total_comm = io->counter - total_comm;
-    printf("Multi-Head Attention Send data %ld Bytes. \n", total_comm);
-#endif
     return BFVLongCiphertext();
 }

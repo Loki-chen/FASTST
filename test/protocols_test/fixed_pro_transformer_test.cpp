@@ -33,11 +33,7 @@ int main(int argc, const char **argv) {
 
     // FixedEncoder *transformer = new FixedEncoder(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
     FixedTransformer *transformer = new FixedTransformer(party, bfv_parm, io, fpmath, fpmath_public, conv);
-    
-    INIT_TIMER;
-    START_TIMER;
     transformer->forward(input);
-    STOP_TIMER("Transformer");
     size_t comm = iopack->get_comm();
     size_t rounds = iopack->get_rounds();
     if (comm < 1024) {
