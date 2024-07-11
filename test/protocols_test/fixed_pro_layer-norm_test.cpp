@@ -16,10 +16,9 @@ int main(int argc, const char **argv)
             std::cout << "Party: BOB"
                       << "\n";
         }
+        string ip = "127.0.0.1";
         if (argc > 2) {
             ip = argv[2];
-        } else {
-            ip = "127.0.0.1";
         }
         BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
         BFVKey *party = new BFVKey(party_, bfv_parm);
