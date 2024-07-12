@@ -25,3 +25,4 @@ const std::map<int32_t, uint64_t> default_prime_mod{
     {41, 2198100901889},
 };
 '''
+
