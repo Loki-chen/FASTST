@@ -6,6 +6,7 @@ add_library(FASTST-PROTOCOLS
     ffn.cpp
     layer-norm.cpp
     fixed-attention.cpp
+    fixed-ffn.cpp
     fixed-layer-norm.cpp
 )
  

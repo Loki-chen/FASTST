@@ -27,6 +27,7 @@ macro(add_fixed_pro_test _name)
     target_link_libraries(fixed_pro_${_name} PUBLIC FASTST-SRC)
 endmacro()
 
-add_fixed_pro_test(layer-norm)
 add_fixed_pro_test(attention)
-
+add_fixed_pro_test(ffn)
+add_fixed_pro_test(layer-norm)
+add_fixed_pro_test(transformer)

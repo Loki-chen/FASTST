@@ -37,24 +37,16 @@ LongCiphertext RFCP_matmul(const LongCiphertext *A_secret, const matrix &B,
                            size_t dim1, size_t dim2, size_t dim3,
                            CKKSEncoder *encoder, Evaluator *evaluator);
 
-inline void send_mat(sci::NetIO *io, const matrix *mat, bool count_comm = true)
+template <class T>
+inline void send_mat(sci::NetIO *io, const vector<T> *mat, bool count_comm = true)
 {
     io->send_data(mat->data(), mat->size() * sizeof(double), count_comm);
 }
 
-inline void send_mat(sci::NetIO *io, const uint64_t *mat, int length, bool count_comm = true)
-{
-    io->send_data(mat, length * sizeof(uint64_t), count_comm);
-}
-
-inline void recv_mat(sci::NetIO *io, matrix *mat, bool count_comm = true)
+template <class T>
+inline void recv_mat(sci::NetIO *io, vector<T> *mat, bool count_comm = true)
 {
     io->recv_data(mat->data(), mat->size() * sizeof(double), count_comm);
-}
-
-inline void recv_mat(sci::NetIO *io, uint64_t *mat, int length, bool count_comm = true)
-{
-    io->recv_data(mat, length * sizeof(uint64_t), count_comm);
 }
 
 #endif

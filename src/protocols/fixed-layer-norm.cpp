@@ -18,7 +18,8 @@ FixedLayerNorm::FixedLayerNorm(int layer, BFVKey *party, BFVParm *parm, sci::Net
            beta_file = before_attn
                            ? replace("bert.encoder.layer.LAYER.attention.output.LayerNorm.bias.txt", "LAYER", layer_str)
                            : replace("bert.encoder.layer.LAYER.output.LayerNorm.bias.txt", "LAYER", layer_str);
-    if (party->party == sci::BOB) {
+    if (party->party == sci::BOB)
+    {
         load_bfv_mat(gamma, dir_path + gamma_file);
         load_bfv_mat(beta, dir_path + beta_file);
     }
@@ -78,7 +79,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
 
         // Alice : send H1 = {ha_xa, ha_secret_a, attn_ha_secret_b} to bob
         io->send_data(prime_ha_xa, batch_size * d_module * sizeof(uint64_t));
-        send_mat(io, fix_ha_xa.data, fix_ha_xa.size);
+        io->send_data(fix_ha_xa.data, fix_ha_xa.size * sizeof(uint64_t));
         BFVLongCiphertext::send(io, &ha_secret_a);
         BFVLongCiphertext::send(io, &attn_ha_secret_b);
         /*
@@ -188,7 +189,7 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
 #endif
 
         io->recv_data(prime_ha_xa, batch_size * d_module * sizeof(uint64_t));
-        recv_mat(io, fix_ha_xa.data, fix_ha_xa.size);
+        io->recv_data(fix_ha_xa.data, fix_ha_xa.size * sizeof(uint64_t));
         BFVLongCiphertext::recv(io, &ha_secret_a, parm->context);
         BFVLongCiphertext::recv(io, &attn_ha_secret_b, parm->context);
 
