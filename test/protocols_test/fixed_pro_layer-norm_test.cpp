@@ -16,9 +16,13 @@ int main(int argc, const char **argv)
             std::cout << "Party: BOB"
                       << "\n";
         }
+        string ip = "127.0.0.1";
+        if (argc > 2) {
+            ip = argv[2];
+        }
         BFVParm *bfv_parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
         BFVKey *party = new BFVKey(party_, bfv_parm);
-        sci::IOPack *iopack = new sci::IOPack(party_, 56789);
+        sci::IOPack *iopack = new sci::IOPack(party_, 56789, ip);
         sci::OTPack *otpack = new sci::OTPack(iopack, party_);
         sci::NetIO *io = iopack->io;
         Conversion *conv = new Conversion();
@@ -46,10 +50,7 @@ int main(int argc, const char **argv)
             BFVLongCiphertext::send(iopack->io, &attn_s_b);
         }
         printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
-        INIT_TIMER;
-        START_TIMER;
-        BFVLongCiphertext result = ln->forward(attn_secret_b, input);
-        STOP_TIMER("LayerNorm");
+        BFVLongCiphertext result = ln->forward(attn_secret_b, input);  
         size_t comm = iopack->get_comm();
         size_t rounds = iopack->get_rounds();
         if (comm < 1024)

@@ -1,6 +1,4 @@
 #include "transformer.h"
-#include "utils/he-tools.h"
-#include <seal/context.h>
 
 Encoder::Encoder(CKKSKey *party, CKKSEncoder *encoder, Evaluator *evaluator, sci::NetIO *io, int _layer) : layer(_layer) {
     this->multi_head_attn = new Multi_Head_Attention(party, encoder, evaluator, io, layer);

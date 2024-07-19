@@ -1,5 +1,6 @@
 .*
 *build*
+*tmp*
 data/
 Protocols.md
 Problem.md

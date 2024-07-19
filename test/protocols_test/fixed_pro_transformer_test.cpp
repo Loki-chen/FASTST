@@ -1,4 +1,8 @@
-#include <protocols.h>
+#include "fixed-transformer.h"
+#include <transformer.h>
+
+double n_rounds = 0;
+double n_comm = 0;
 
 int main(int argc, const char **argv) {
     if (argc > 1) {
@@ -26,33 +30,27 @@ int main(int argc, const char **argv) {
 
         FixOp *fix_party = new FixOp(party_, iopack, otpack);
         FixOp *fix_public = new FixOp(sci::PUBLIC, iopack, otpack);
-        bfv_matrix input(batch_size * d_module);
-        random_bfv_mat(input);
 
-        Fixed_Multi_Head_Attention *attn =
-            new Fixed_Multi_Head_Attention(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
-        printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
-        BFVLongCiphertext result = attn->forward(input);
-        size_t comm = iopack->get_comm();
-        size_t rounds = iopack->get_rounds();
-        if (comm < 1024) {
-            printf("data size of communication: %ld B\n", comm);
-        } else if (comm < 1024 * 1024) {
-            printf("data size of communication: %.2lf KB\n", comm / 1024.);
-        } else if (comm < 1024 * 1024 * 1024) {
-            printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
-        } else {
-            printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024. * 1024.));
-        }
-        std::cout << "rounds of communication: " << rounds << "\n";
+    printf("batch size:       %d\nd_module:         %d\nnumber of heads:  %d\n", batch_size, d_module, n_heads);
+    bfv_matrix input(batch_size * d_module);
+    random_ell_mat(input, DEFAULT_ELL);
 
-        delete attn;
-        delete fix_public;
-        delete fix_party;
-        delete otpack;
-        delete iopack;
-        delete party;
-        delete bfv_parm;
+    // FixedEncoder *transformer = new FixedEncoder(0, party, bfv_parm, io, fpmath, fpmath_public, conv);
+    FixedTransformer *transformer = new FixedTransformer(party, bfv_parm, io, fpmath, fpmath_public, conv);
+    transformer->forward(input);
+    size_t comm = iopack->get_comm();
+    size_t rounds = iopack->get_rounds();
+    if (comm < 1024) {
+        printf("data size of communication: %ld B\n", comm);
+    } else if (comm < 1024 * 1024) {
+        printf("data size of communication: %.2lf KB\n", comm / 1024.);
+    } else if (comm < 1024 * 1024 * 1024) {
+        printf("data size of communication: %.2lf MB\n", comm / (1024. * 1024.));
+    } else {
+        printf("data size of communication: %.2lf GB\n", comm / (1024. * 1024. * 1024.));
+    }
+    std::cout << "rounds of communication: " << rounds << "\n";
+
     } else {
         std::cout << "No party input\n";
     }

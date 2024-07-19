@@ -6,7 +6,7 @@
 #include <string>
 
 #include <seal/seal.h>
-#include "ezpc_scilib/ezpc_utils.h" // prg.h & io & arg
+#include <Utils/emp-tool.h> // prg.h & io & arg
 
 using std::map;
 using std::string;

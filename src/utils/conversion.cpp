@@ -1,4 +1,5 @@
 #include "conversion.h"
+#include "utils/he-bfv.h"
 
 bfv_matrix Conversion::he_to_ss_client(sci::NetIO *io, BFVKey *party) {
     BFVLongCiphertext lct;
@@ -7,14 +8,14 @@ bfv_matrix Conversion::he_to_ss_client(sci::NetIO *io, BFVKey *party) {
     return lpt.decode(party->parm);
 }
 
-bfv_matrix Conversion::he_to_ss_server(sci::NetIO *io, BFVParm *parm, BFVLongCiphertext &in) {
+bfv_matrix Conversion::he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVLongCiphertext &in) {
     int len = in.len;
     int slot_count = parm->poly_modulus_degree;
     bfv_matrix output(len);
     random_modP_mat(output, parm->plain_mod);
     BFVLongPlaintext output_plain(parm, output);
-    in.sub_plain_inplace(output_plain, parm->evaluator);
-    BFVLongCiphertext::send(io, &in);
+    BFVLongCiphertext cli_data = in.sub_plain(output_plain, parm->evaluator);
+    BFVLongCiphertext::send(io, &cli_data);
     return output;
 }
 
