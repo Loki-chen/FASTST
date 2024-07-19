@@ -23,6 +23,19 @@ protected:
     string dir_path;
 
 public:
+<<<<<<< HEAD
+  FixedProtocol(int _layer, BFVKey *_party, BFVParm *_parm, sci::NetIO *_io, FPMath *_fpmath, FPMath *_fpmath_public,
+                Conversion *_conv)
+      : layer(_layer), party(_party), parm(_parm), io(_io), fpmath(_fpmath), fpmath_public(_fpmath_public),
+        conv(_conv)
+  {
+    assert(party->party == fpmath->fix->party);
+    layer_str = std::to_string(layer);
+    dir_path = party->party == sci::ALICE ? "/home/FASTST/data/bolt/quantize/mrpc/alice_weights_txt/"
+                                          : "/home/FASTST/data/bolt/quantize/mrpc/bob_weights_txt/";
+  }
+  ~FixedProtocol() {}
+=======
     FixedProtocol(int _layer, BFVKey *_party, BFVParm *_parm, sci::NetIO *_io, FPMath *_fpmath, FPMath *_fpmath_public,
                   Conversion *_conv)
         : layer(_layer), party(_party), parm(_parm), io(_io), fpmath(_fpmath), fpmath_public(_fpmath_public),
@@ -33,5 +46,6 @@ public:
                                               : "/data/BOLT/bolt/prune/mrpc/bob_weights_txt/";
     }
     ~FixedProtocol() {}
+>>>>>>> szy
 };
 #endif
