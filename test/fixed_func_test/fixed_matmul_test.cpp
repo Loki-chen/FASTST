@@ -40,9 +40,9 @@ int main()
     BFVKey *party = new BFVKey(1, bfv_parm);
 
     vector<int64_t> x_a(dim_a * dim_b);
-    vector<int64_t> w_a(dim_b, dim_c);
+    vector<int64_t> w_a(dim_b * dim_c);
     vector<int64_t> x_b(dim_a * dim_b);
-    vector<int64_t> w_b(dim_b, dim_c);
+    vector<int64_t> w_b(dim_b * dim_c);
     for (size_t i = 0; i < dim_a * dim_b; i++)
     {
         /* code */
