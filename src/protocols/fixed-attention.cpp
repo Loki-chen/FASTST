@@ -24,7 +24,8 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
     INIT_TIMER
     START_TIMER
 #endif
-    if (party->party == sci::ALICE) {
+    if (party->party == sci::ALICE)
+    {
         double ra = dist(gen);
         uint64_t fix_ra = sci::neg_mod(static_cast<int64_t>(ra * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
         FixArray fix_xa =
@@ -53,8 +54,10 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         FixArray fix_bq = fpmath->fix->input(sci::ALICE, bQ.size(), bQ.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_bk = fpmath->fix->input(sci::ALICE, bK.size(), bK.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_bv = fpmath->fix->input(sci::ALICE, bV.size(), bV.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-        for (size_t i = 0; i < batch_size; i++) {
-            for (size_t j = 0; j < d_k; j++) {
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            for (size_t j = 0; j < d_k; j++)
+            {
                 ra_xa_WQa.data[i * d_k + j] += fix_bq.data[j];
                 ra_xa_WQa.data[i * d_k + j] &= ell_mask_;
                 ra_xa_WKa.data[i * d_k + j] += fix_bq.data[j];
@@ -74,17 +77,17 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         fpmath->fix->send_fix_array(fix_ra_wq);
         fpmath->fix->send_fix_array(fix_ra_wk);
         fpmath->fix->send_fix_array(fix_ra_wv);
-        BFVLongCiphertext::send(io, &ra_secret_a);
+        BFVLongCiphertext::send(io, &ra_secret_a, true);
 
         BFVLongCiphertext raQ_sec_a, raK_sec_a, rb1_square_secret_b;
-        BFVLongCiphertext::recv(io, &raQ_sec_a, party->parm->context);
-        BFVLongCiphertext::recv(io, &raK_sec_a, party->parm->context);
-        BFVLongCiphertext::recv(io, &rb1_square_secret_b, party->parm->context);
+        BFVLongCiphertext::recv(io, &raQ_sec_a, party->parm->context, true);
+        BFVLongCiphertext::recv(io, &raK_sec_a, party->parm->context, true);
+        BFVLongCiphertext::recv(io, &rb1_square_secret_b, party->parm->context, true);
 
         BFVLongPlaintext raQ_div_rb1_plain = raQ_sec_a.decrypt(party);
         BFVLongPlaintext raK_div_rb1_plain = raK_sec_a.decrypt(party);
-        bfv_matrix Q_div_rb1 = raQ_div_rb1_plain.decode(parm);
-        bfv_matrix K_div_rb1 = raK_div_rb1_plain.decode(parm);
+        bfv_matrix Q_div_rb1 = raQ_div_rb1_plain.decode_uint(parm);
+        bfv_matrix K_div_rb1 = raK_div_rb1_plain.decode_uint(parm);
         bfv_matrix eScore_a(batch_size * batch_size);
         random_ell_mat(eScore_a, DEFAULT_ELL);
         double sqrt_d_k = sqrt(d_k);
@@ -122,23 +125,23 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         BFVLongPlaintext exp_Score_a_plain(parm, fix_exp_score_a_prime, fix_exp_score_a.size);
         delete[] fix_exp_score_a_prime;
         BFVLongCiphertext exp_Score_a_secret_a(exp_Score_a_plain, party);
-        BFVLongCiphertext::send(io, &exp_Score_a_secret_a);
+        BFVLongCiphertext::send(io, &exp_Score_a_secret_a, true);
 
         BFVLongCiphertext eScore_a_secret_a, raV_sec_a;
         FixArray fix_exp_score_b(sci::PUBLIC, batch_size * batch_size, true, DEFAULT_ELL, DEFAULT_SCALE);
-        BFVLongCiphertext::recv(io, &eScore_a_secret_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &eScore_a_secret_a, party->parm->context, true);
         fpmath->fix->recv_fix_array(fix_exp_score_b);
-        BFVLongCiphertext::recv(io, &raV_sec_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &raV_sec_a, party->parm->context, true);
 
         BFVLongPlaintext rs2_expScore_plain = eScore_a_secret_a.decrypt(party);
-        bfv_matrix rs2_expScore = rs2_expScore_plain.decode(parm);
+        bfv_matrix rs2_expScore = rs2_expScore_plain.decode_uint(parm);
         conv->Prime_to_Ring(rs2_expScore.data(), rs2_expScore.data(), rs2_expScore.size(), DEFAULT_ELL,
                             party->parm->plain_mod, DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
         FixArray fix_rs2_exp_score =
             fpmath->fix->input(sci::PUBLIC, rs2_expScore.size(), rs2_expScore.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
 
         BFVLongPlaintext Rb_V_plain = raV_sec_a.decrypt(party);
-        bfv_matrix Rb_V = Rb_V_plain.decode(parm);
+        bfv_matrix Rb_V = Rb_V_plain.decode_uint(parm);
         conv->Prime_to_Ring(Rb_V.data(), Rb_V.data(), Rb_V.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE,
                             DEFAULT_SCALE, fpmath);
         FixArray fix_rb_v = fpmath->fix->input(sci::PUBLIC, Rb_V.size(), Rb_V.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
@@ -146,15 +149,19 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
 
         vector<FixArray> fix_rs2_exp_score_vec(batch_size,
                                                FixArray(sci::ALICE, batch_size, true, DEFAULT_ELL, DEFAULT_SCALE));
-        for (size_t i = 0; i < batch_size; i++) {
-            for (size_t j = 0; j < batch_size; j++) {
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            for (size_t j = 0; j < batch_size; j++)
+            {
                 fix_rs2_exp_score_vec[i].data[j] = fix_rs2_exp_score.data[i * batch_size + j];
             }
         }
         FixArray exp_sum_ = fpmath->fix->tree_sum(fix_rs2_exp_score_vec);
         FixArray exp_sum(sci::PUBLIC, batch_size * batch_size, true, DEFAULT_ELL, DEFAULT_SCALE);
-        for (size_t i = 0; i < batch_size; i++) {
-            for (size_t j = 1; j < batch_size; j++) {
+        for (size_t i = 0; i < batch_size; i++)
+        {
+            for (size_t j = 1; j < batch_size; j++)
+            {
                 exp_sum.data[i * batch_size + j] = exp_sum_.data[i];
             }
         }
@@ -175,7 +182,9 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         delete[] buf;
 #endif
         return bfv_matrix(fix_output.data, fix_output.data + fix_output.size);
-    } else {
+    }
+    else
+    {
         FixArray ra_xa_WQa(sci::PUBLIC, batch_size * d_k, true, DEFAULT_ELL, DEFAULT_SCALE),
             ra_xa_WKa(sci::PUBLIC, batch_size * d_k, true, DEFAULT_ELL, DEFAULT_SCALE),
             ra_xa_WVa(sci::PUBLIC, batch_size * d_k, true, DEFAULT_ELL, DEFAULT_SCALE),
@@ -191,10 +200,11 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         fpmath->fix->recv_fix_array(fix_ra_wqa);
         fpmath->fix->recv_fix_array(fix_ra_wka);
         fpmath->fix->recv_fix_array(fix_ra_wva);
-        BFVLongCiphertext::recv(io, &ra_secret_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &ra_secret_a, party->parm->context, true);
 
         auto cal_raI = [this, &fix_ra_xa, &ra_secret_a](FixArray &fix_input, FixArray &ra_xa_WIa, const bfv_matrix &WIb,
-                                                        FixArray &ra_WIa, const bfv_matrix &bI) {
+                                                        FixArray &ra_WIa, const bfv_matrix &bI)
+        {
             FixArray fix_wib = fpmath->fix->input(sci::BOB, WIb.size(), WIb.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
             FixArray xb_wib = fpmath->dot(fix_input, fix_wib, batch_size, d_module, d_k, DEFAULT_ELL);
             uint64_t *prime_xb_wib = new uint64_t[d_module * d_k];
@@ -205,8 +215,10 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
             FixArray temp_raI1 = fpmath->dot(fix_ra_xa, fix_wib, batch_size, d_module, d_k, DEFAULT_ELL);
             FixArray temp_raI2 = fpmath->dot(fix_input, ra_WIa, batch_size, d_module, d_k, DEFAULT_ELL);
             uint64_t ell_mask_ = temp_raI1.ell_mask();
-            for (size_t i = 0; i < batch_size; i++) {
-                for (size_t j = 0; j < d_k; j++) {
+            for (size_t i = 0; i < batch_size; i++)
+            {
+                for (size_t j = 0; j < d_k; j++)
+                {
                     temp_raI[i * d_k + j] =
                         ra_xa_WIa.data[i * d_k + j] + temp_raI1.data[i * d_k + j] + temp_raI2.data[i * d_k + j] + bI[j];
                     temp_raI[i * d_k + j] &= ell_mask_;
@@ -237,15 +249,15 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         raQ_sec_a.multiply_plain_inplace(div_rb1_plain, party->parm->evaluator);
         raK_sec_a.multiply_plain_inplace(div_rb1_plain, party->parm->evaluator);
 
-        BFVLongCiphertext::send(io, &raQ_sec_a);
-        BFVLongCiphertext::send(io, &raK_sec_a);
-        BFVLongCiphertext::send(io, &rb1_square_secret_b);
+        BFVLongCiphertext::send(io, &raQ_sec_a, true);
+        BFVLongCiphertext::send(io, &raK_sec_a, true);
+        BFVLongCiphertext::send(io, &rb1_square_secret_b, true);
 
         BFVLongCiphertext exp_Score_a_secret_a;
         bfv_matrix Score_b = conv->he_to_ss_client(io, party);
         conv->Prime_to_Ring(Score_b.data(), Score_b.data(), Score_b.size(), DEFAULT_ELL, party->parm->plain_mod,
                             DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
-        BFVLongCiphertext::recv(io, &exp_Score_a_secret_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &exp_Score_a_secret_a, party->parm->context, true);
 
         double rb2 = dist(gen);
         uint64_t fix_rb2 = sci::neg_mod(static_cast<int64_t>(rb2 * (1ULL << (DEFAULT_SCALE))), (1ULL << DEFAULT_ELL));
@@ -254,8 +266,10 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         bfv_matrix Db(batch_size * d_k), Rb(batch_size * d_k);
         random_ell_mat(Db, DEFAULT_ELL);
         random_modP_mat(Rb, party->parm->plain_mod);
-        for (size_t i = 1; i < batch_size; i++) {
-            for (size_t j = 0; j < d_k; j++) {
+        for (size_t i = 1; i < batch_size; i++)
+        {
+            for (size_t j = 0; j < d_k; j++)
+            {
                 Db[i * d_k + j] = Db[j];
                 Rb[j * batch_size + i] = Rb[i];
             }
@@ -272,7 +286,8 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         exp_Score_a_secret_a.add_plain_inplace(O_plain, party->parm->evaluator);
 
         uint64_t mask = fix_exp_score_b.ell_mask();
-        for (size_t i = 0; i < batch_size * batch_size; i++) {
+        for (size_t i = 0; i < batch_size * batch_size; i++)
+        {
             fix_exp_score_b.data[i] = (fix_exp_score_b.data[i] * Db[i / batch_size]) & mask;
         }
         fix_exp_score_b = fpmath->fix->location_truncation(fix_exp_score_b, DEFAULT_SCALE);
@@ -290,7 +305,7 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
         db_rb.party = sci::PUBLIC;
         FixArray fix_output = fpmath->fix->local_div(fix_rb2_long, db_rb);
         // send H4 = {eScore_a_secret_a, eScore_b, raV_sec_a} to alice
-        BFVLongCiphertext::send(io, &exp_Score_a_secret_a);
+        BFVLongCiphertext::send(io, &exp_Score_a_secret_a, true);
         fpmath->fix->send_fix_array(fix_exp_score_b);
         BFVLongCiphertext::send(io, &raV_sec_a);
 #ifdef ATTN_LOG
@@ -308,7 +323,8 @@ bfv_matrix Fixed_Attention::forward(const bfv_matrix &input) const {
 
 Fixed_Multi_Head_Attention::Fixed_Multi_Head_Attention(int layer, BFVKey *party, BFVParm *parm, sci::NetIO *io,
                                                        FPMath *fpmath, FPMath *fpmath_public, Conversion *conv)
-    : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv) {
+    : FixedProtocol(layer, party, parm, io, fpmath, fpmath_public, conv)
+{
     attns = new Fixed_Attention *[n_heads];
     string WQ_file = replace("bert.encoder.layer.LAYER.attention.self.query.weight.txt", "LAYER", layer_str),
            WK_file = replace("bert.encoder.layer.LAYER.attention.self.key.weight.txt", "LAYER", layer_str),
@@ -348,7 +364,8 @@ Fixed_Multi_Head_Attention::Fixed_Multi_Head_Attention(int layer, BFVKey *party,
         random_ell_mat(bV, DEFAULT_ELL);
     };
     size_t size = d_module * d_k;
-    for (int i = 0; i < n_heads; i++) {
+    for (int i = 0; i < n_heads; i++)
+    {
         attns[i] = new Fixed_Attention(layer, party, parm, io, fpmath, fpmath_public, conv, i);
         attns[i]->WQ = bfv_matrix(allWQ.begin() + i * size, allWQ.begin() + (i + 1) * size);
         attns[i]->WK = bfv_matrix(allWK.begin() + i * size, allWK.begin() + (i + 1) * size);
@@ -359,14 +376,17 @@ Fixed_Multi_Head_Attention::Fixed_Multi_Head_Attention(int layer, BFVKey *party,
     }
 }
 
-Fixed_Multi_Head_Attention::~Fixed_Multi_Head_Attention() {
-    for (int i = 0; i < n_heads; i++) {
+Fixed_Multi_Head_Attention::~Fixed_Multi_Head_Attention()
+{
+    for (int i = 0; i < n_heads; i++)
+    {
         delete attns[i];
     }
     delete[] attns;
 }
 
-BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) const {
+BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) const
+{
     bfv_matrix output(batch_size * d_module);
 #ifdef M_H_ATTN_LOG
     INIT_TIMER
@@ -374,10 +394,13 @@ BFVLongCiphertext Fixed_Multi_Head_Attention::forward(const bfv_matrix &input) c
 #endif
     size_t total_comm = io->counter;
     size_t i, j;
-    for (int h = 0; h < n_heads; h++) {
+    for (int h = 0; h < n_heads; h++)
+    {
         bfv_matrix output_h = attns[h]->forward(input);
-        for (i = 0; i < batch_size; i++) {
-            for (j = 0; j < d_k; j++) {
+        for (i = 0; i < batch_size; i++)
+        {
+            for (j = 0; j < d_k; j++)
+            {
                 output[i * d_module + h * d_k + j] = output_h[i * d_k + j];
             }
         }

@@ -123,7 +123,7 @@ public:
 
         // Alice: alice receive message and get x * gb;
         BFVLongPlaintext xgb_ha_plain = xb_ha_secret_a.decrypt(alice);
-        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode(bfv_parm); // something wrong here
+        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode_uint(bfv_parm); // something wrong here
 
         FixArray fix_x_gb(sci::BOB, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
         uint64_t *x_gb_ha_prime = new uint64_t[batch_size * d_module];
@@ -209,7 +209,7 @@ public:
         layernorm_secret_a.add_plain_inplace(beta_plain, bfv_parm->evaluator);
 
         BFVLongPlaintext layernorm_plain = layernorm_secret_a.decrypt(alice);
-        bfv_matrix layernorm = layernorm_plain.decode(bfv_parm); // something wrong here
+        bfv_matrix layernorm = layernorm_plain.decode_uint(bfv_parm); // something wrong here
         for (size_t i = 0; i < batch_size * d_module; i++)
         {
             if (layernorm[i] == 0)

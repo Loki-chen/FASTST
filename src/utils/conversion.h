@@ -5,12 +5,12 @@
 #include "he-bfv.h"
 #include <ezpc_scilib/ezpc_utils.h>
 
-class Conversion {
+class Conversion
+{
 public:
     Conversion() {}
 
     ~Conversion() {}
-
     bfv_matrix he_to_ss_client(sci::NetIO *io, BFVKey *party);
 
     bfv_matrix he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVLongCiphertext &in);

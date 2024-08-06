@@ -13,8 +13,6 @@ using std::string;
 using std::vector;
 using namespace seal;
 
-typedef vector<uint64_t> bfv_matrix;
-
 const map<int32_t, uint64_t> default_prime_mod{
     {25, 33832961},
     {28, 268582913},
@@ -89,10 +87,17 @@ public:
     size_t len;
     BFVLongPlaintext() {}
     BFVLongPlaintext(const Plaintext &pt);
+
     BFVLongPlaintext(BFVParm *contex, uint64_t data); // TODO: len=1
-    BFVLongPlaintext(BFVParm *contex, bfv_matrix data);
+    BFVLongPlaintext(BFVParm *contex, vector<uint64_t> data);
     BFVLongPlaintext(BFVParm *contex, uint64_t *data, size_t len);
-    bfv_matrix decode(BFVParm *contex) const;
+    vector<uint64_t> decode_uint(BFVParm *contex) const;
+
+    // for int64_t data
+    BFVLongPlaintext(BFVParm *contex, int64_t data); // TODO: len=1
+    BFVLongPlaintext(BFVParm *contex, vector<int64_t> data);
+    BFVLongPlaintext(BFVParm *contex, int64_t *data, size_t len);
+    vector<int64_t> decode_int(BFVParm *contex) const;
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
     {
@@ -110,8 +115,13 @@ public:
     size_t len;
     BFVLongCiphertext() {}
     BFVLongCiphertext(const Ciphertext &ct);
+
     BFVLongCiphertext(BFVParm *contex, uint64_t data, BFVKey *party); // TODO: len =1
     BFVLongCiphertext(BFVParm *contex, uint64_t *data, size_t len, BFVKey *party);
+
+    BFVLongCiphertext(BFVParm *contex, int64_t data, BFVKey *party); // TODO: len =1
+    BFVLongCiphertext(BFVParm *contex, int64_t *data, size_t len, BFVKey *party);
+
     BFVLongCiphertext(const BFVLongPlaintext &lpt, BFVKey *party);
     BFVLongPlaintext decrypt(BFVKey *party) const;
 
@@ -125,8 +135,8 @@ public:
     BFVLongCiphertext sub(BFVLongCiphertext &lct, Evaluator *evaluator) const;
     void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
     BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
-    static void send(sci::NetIO *io, BFVLongCiphertext *lct);
-    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context);
+    static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye);
+    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye);
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
     {

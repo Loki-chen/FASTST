@@ -11,4 +11,4 @@ else
   cmake -DCMAKE_INSTALL_PREFIX=./install ../
 fi
 
-cmake --build . --target install --parallel -j $1
+cmake --build . --target install --parallel -j ${40}

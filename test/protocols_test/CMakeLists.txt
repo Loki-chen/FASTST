@@ -29,5 +29,7 @@ endmacro()
 
 add_fixed_pro_test(attention)
 add_fixed_pro_test(ffn)
+add_fixed_pro_test(attention)
+add_fixed_pro_test(ffn)
 add_fixed_pro_test(layer-norm)
 add_fixed_pro_test(transformer)

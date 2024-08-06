@@ -91,9 +91,9 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         */
         // Alice: alice receive message and get x * gb;
         BFVLongCiphertext xb_ha_secret_a;
-        BFVLongCiphertext::recv(io, &xb_ha_secret_a, parm->context);
+        BFVLongCiphertext::recv(io, &xb_ha_secret_a, parm->context, true);
         BFVLongPlaintext xgb_ha_plain = xb_ha_secret_a.decrypt(party);
-        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode(parm); // something wrong here
+        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode_uint(parm); // something wrong here
 
         FixArray fix_x_gb(sci::ALICE, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
         uint64_t *x_gb_ha_prime = new uint64_t[batch_size * d_module];
@@ -206,12 +206,12 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         xb_ha_secret_a.multiply_plain_inplace(gb_plain, parm->evaluator);
         xb_ha_secret_a.mod_switch_to_next_inplace(parm->evaluator);
         // Bob send [x_add*ha*gb]_a} to alice;
-        BFVLongCiphertext::send(io, &xb_ha_secret_a);
+        BFVLongCiphertext::send(io, &xb_ha_secret_a, true);
 
         uint64_t *tmp1 = new uint64_t[batch_size * d_module];
         BFVLongCiphertext layernorm_secret_a;
         io->recv_data(tmp1, batch_size * d_module * sizeof(uint64_t));
-        BFVLongCiphertext::recv(io, &layernorm_secret_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &layernorm_secret_a, party->parm->context, true);
         // tmp * gama
         uint64_t *gama_array = new uint64_t[batch_size * d_module];
         uint64_t *beta_array = new uint64_t[batch_size * d_module];
