@@ -23,6 +23,71 @@ void random_mat(vector<int64_t> &mat, double min, double max, int scale)
     }
 }
 
+void *matmul(BFVKey* party, NetIO *io, FixFieldOp *fix, vector<int64_t> A, vector<int64_t> B, int dim1, int dim2, int dim3) {
+    int64_t field = 4294967311,
+            scale = 12; //~ 31-bit
+    // int64_t field = 2061584302081; ~ 41-bit
+    if (party->party == sci::ALICE) {
+        FixFieldArray prime_Aa = fix->input(sci::PUBLIC, dim1 * dim2, A.data(), field, scale);
+        FixFieldArray prime_Ba = fix->input(sci::PUBLIC, dim2 * dim3, B.data(), field, scale);
+
+        FixFieldArray prime_AB = fix->mul(prime_Aa, prime_Ba, 2 * field);
+        BFVLongPlaintext enc_Aa(party->parm, prime_Aa.data, dim1 * dim2), enc_Ba(party->parm, prime_Ba.data, dim2 * dim3), enc_AB(party->parm, prime_AB.data, dim1 * dim3);
+        BFVLongCiphertext heAa(enc_Aa, party), heBa(enc_Ba, party), heAB(enc_AB, party);
+    } else {
+        int dim = dim1 * dim2;
+        vector<int64_t> ture_ret1(dim);
+        // matrixMultiplication(x_b, w_b, ture_ret1);
+        vector<int64_t> ture_ret2(dim);
+        // matrixMultiplication(x_a, w_a, ture_ret2);
+        vector<int64_t> ture_ret3(dim);
+        // matrixMultiplication(x_a, w_b, ture_ret3);
+        vector<int64_t> ture_ret4(dim);
+        // matrixMultiplication(w_a, x_b, ture_ret4);
+
+        vector<int64_t> true_ret(dim1 * dim2);
+        std::cout << "true result: ";
+        for (size_t i = 0; i < dim1 * dim2 - 2; i++) {
+            true_ret[i] = ture_ret1[i] + ture_ret2[i] + ture_ret3[i] + ture_ret4[i];
+            std::cout << true_ret[i] / pow(2, 24) << " ";
+        }
+        std::cout << std::endl;
+        FixFieldArray prime_xb = fix->input(sci::PUBLIC, dim1 * dim2, A.data(), field, scale);
+        FixFieldArray prime_wb = fix->input(sci::PUBLIC, dim2 * dim3, B.data(), field, scale);
+
+        std::cout << prime_xb.data[0] << " " << prime_xb.data[1] << "\n";
+        std::cout << prime_wb.data[0] << " " << prime_wb.data[1] << "\n";
+        FixFieldArray prime_xbwb = fix->mul(prime_xb, prime_wb, 2 * field);
+        std::cout << prime_xbwb.data[0] << " " << prime_xbwb.data[1] << "\n";
+        std::cout << static_cast<int64_t>(prime_xbwb.data[0] / pow(2, 12)) << " " << static_cast<int64_t>(prime_xbwb.data[1] / pow(2, 12)) << "\n";
+
+        BFVLongPlaintext enc_xb(party->parm, prime_xb.data, dim1 * dim2),
+        enc_wb(party->parm, prime_wb.data, dim2 * dim3), enc_xbwb(party->parm, prime_xbwb.data, dim1 * dim3);
+        /*BFVLongCiphertext xawb = hexa.multiply_plain(enc_wb, party->parm->evaluator);
+        BFVLongCiphertext waxb = hewa.multiply_plain(enc_xb, party->parm->evaluator);
+
+        BFVLongPlaintext test_waxb = waxb.decrypt(party);
+        // vector<int64_t> ret = plain_ret.decode_int(party->parm);
+
+        BFVLongCiphertext ret1 = xawb.add(hexawa, party->parm->evaluator); // somtthings wrong here with different dim
+
+        BFVLongCiphertext ret2 = ret1.add(waxb, party->parm->evaluator);
+
+        BFVLongCiphertext enc_ret = ret2.add_plain(enc_xbwb, party->parm->evaluator);
+
+        BFVLongPlaintext plain_ret = enc_ret.decrypt(party);
+
+        vector<int64_t> ret = plain_ret.decode_int(party->parm);
+
+        std::cout << "result: ";
+        for (size_t i = 0; i < ret.size() - 2; i++) {
+            std::cout << ret[i] / pow(2, 12) << " ";
+        }
+        std::cout << std::endl;*/
+    }
+    return nullptr;
+} 
+
 int main()
 {
 
@@ -79,7 +144,7 @@ int main()
 
     vector<int64_t> true_ret(dim_a * dim_b);
     std::cout << "true result: ";
-    for (size_t i = 0; i < dim_a * dim_b - 2; i++)
+    for (size_t i = 0; i < dim_a * dim_b; i++)
     {
         true_ret[i] = ture_ret1[i] + ture_ret2[i] + ture_ret3[i] + ture_ret4[i];
         std::cout << true_ret[i] / pow(2, 24) << " ";
@@ -100,7 +165,7 @@ int main()
     BFVLongCiphertext waxb = hewa.multiply_plain(enc_xb, bfv_parm->evaluator);
 
     BFVLongPlaintext test_waxb = waxb.decrypt(party);
-    vector<int64_t> ret = plain_ret.decode_int(bfv_parm);
+    // vector<int64_t> ret = plain_ret.decode_int(bfv_parm);
 
     BFVLongCiphertext ret1 = xawb.add(hexawa, bfv_parm->evaluator); // somtthings wrong here with different dim
 
@@ -113,9 +178,9 @@ int main()
     vector<int64_t> ret = plain_ret.decode_int(bfv_parm);
 
     std::cout << "result: ";
-    for (size_t i = 0; i < ret.size() - 2; i++)
+    for (size_t i = 0; i < ret.size(); i++)
     {
-        std::cout << ret[i] / pow(2, 12) << " ";
+        std::cout << ret[i] / pow(2, 24) << " ";  // change 12 to 24
     }
     std::cout << std::endl;
     return 0;

@@ -135,8 +135,8 @@ public:
     BFVLongCiphertext sub(BFVLongCiphertext &lct, Evaluator *evaluator) const;
     void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
     BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
-    static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye);
-    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye);
+    static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye=true);
+    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye=true);
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
     {

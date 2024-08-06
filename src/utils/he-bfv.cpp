@@ -876,7 +876,7 @@ BFVLongCiphertext BFVLongCiphertext::multiply_plain(BFVLongPlaintext &lpt, Evalu
     return lct;
 }
 
-void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye = 1)
+void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye)
 {
     assert(lct->len > 0);
     io->send_data(&(lct->len), sizeof(size_t));
@@ -913,7 +913,7 @@ void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_t
     io->flush();
 }
 
-void BFVLongCiphertext::recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_type = 1)
+void BFVLongCiphertext::recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_type)
 {
     io->recv_data(&(lct->len), sizeof(size_t));
     size_t size;
