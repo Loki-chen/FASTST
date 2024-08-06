@@ -44,11 +44,11 @@ int main(int argc, const char **argv)
 
             BFVLongPlaintext ln_plain(bfv_parm, ln);
             BFVLongCiphertext ln_s_a(ln_plain, party);
-            BFVLongCiphertext::send(iopack->io, &ln_s_a);
+            BFVLongCiphertext::send(iopack->io, &ln_s_a, true);
         }
         else if (party_ == sci::BOB)
         {
-            BFVLongCiphertext::recv(iopack->io, &ln_secret, bfv_parm->context);
+            BFVLongCiphertext::recv(iopack->io, &ln_secret, bfv_parm->context, true);
         }
         printf("batch size:       %d\nd_module:         %d\nFFN_dim:          %d\n", batch_size, d_module, ffn_dim);
         BFVLongCiphertext result = ffn->forward(ln_secret);

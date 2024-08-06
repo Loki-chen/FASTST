@@ -80,8 +80,8 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         // Alice : send H1 = {ha_xa, ha_secret_a, attn_ha_secret_b} to bob
         io->send_data(prime_ha_xa, batch_size * d_module * sizeof(uint64_t));
         io->send_data(fix_ha_xa.data, fix_ha_xa.size * sizeof(uint64_t));
-        BFVLongCiphertext::send(io, &ha_secret_a);
-        BFVLongCiphertext::send(io, &attn_ha_secret_b);
+        BFVLongCiphertext::send(io, &ha_secret_a, true);
+        BFVLongCiphertext::send(io, &attn_ha_secret_b, true);
         /*
         alice receive H2, and get x * gb
         1. compute mean(x * gb) = gb * \mu, standard_deviation(x * gb, gb * \mu)
@@ -91,9 +91,9 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         */
         // Alice: alice receive message and get x * gb;
         BFVLongCiphertext xb_ha_secret_a;
-        BFVLongCiphertext::recv(io, &xb_ha_secret_a, parm->context);
+        BFVLongCiphertext::recv(io, &xb_ha_secret_a, parm->context, true);
         BFVLongPlaintext xgb_ha_plain = xb_ha_secret_a.decrypt(party);
-        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode(parm); // something wrong here
+        bfv_matrix x_gb_ha_matrix = xgb_ha_plain.decode_uint(parm); // something wrong here
 
         FixArray fix_x_gb(sci::ALICE, batch_size * d_module, true, DEFAULT_ELL, DEFAULT_SCALE);
         uint64_t *x_gb_ha_prime = new uint64_t[batch_size * d_module];
@@ -157,10 +157,10 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         BFVLongPlaintext tmp2_plain(parm, tmp2, batch_size * d_module);
         layernorm_secret_a.multiply_plain_inplace(tmp2_plain, parm->evaluator);
         auto ln_plain = layernorm_secret_a.decrypt(party);
-        auto ln = ln_plain.decode(parm);
+        auto ln = ln_plain.decode_uint(parm);
         std::cout << ln[0] << "\n";
         io->send_data(tmp1, batch_size * d_module * sizeof(uint64_t));
-        BFVLongCiphertext::send(io, &layernorm_secret_a);
+        BFVLongCiphertext::send(io, &layernorm_secret_a, true);
 
         delete[] prime_ha;
         delete[] prime_ha_xa;
@@ -190,8 +190,8 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
 
         io->recv_data(prime_ha_xa, batch_size * d_module * sizeof(uint64_t));
         io->recv_data(fix_ha_xa.data, fix_ha_xa.size * sizeof(uint64_t));
-        BFVLongCiphertext::recv(io, &ha_secret_a, parm->context);
-        BFVLongCiphertext::recv(io, &attn_ha_secret_b, parm->context);
+        BFVLongCiphertext::recv(io, &ha_secret_a, parm->context, true);
+        BFVLongCiphertext::recv(io, &attn_ha_secret_b, parm->context, true);
 
         BFVLongPlaintext attn_ha_plain = attn_ha_secret_b.decrypt(party);
         uint64_t *prime_xb = new uint64_t[batch_size * d_module];
@@ -216,12 +216,12 @@ BFVLongCiphertext FixedLayerNorm::forward(const BFVLongCiphertext &attn, const b
         xb_ha_secret_a.multiply_plain_inplace(gb_plain, parm->evaluator);
         xb_ha_secret_a.mod_switch_to_next_inplace(parm->evaluator);
         // Bob send [x_add*ha*gb]_a} to alice;
-        BFVLongCiphertext::send(io, &xb_ha_secret_a);
+        BFVLongCiphertext::send(io, &xb_ha_secret_a, true);
 
         uint64_t *tmp1 = new uint64_t[batch_size * d_module];
         BFVLongCiphertext layernorm_secret_a;
         io->recv_data(tmp1, batch_size * d_module * sizeof(uint64_t));
-        BFVLongCiphertext::recv(io, &layernorm_secret_a, party->parm->context);
+        BFVLongCiphertext::recv(io, &layernorm_secret_a, party->parm->context, true);
         // tmp * gama
         uint64_t *gama_array = new uint64_t[batch_size * d_module];
         uint64_t *beta_array = new uint64_t[batch_size * d_module];

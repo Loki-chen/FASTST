@@ -4,9 +4,9 @@
 bfv_matrix Conversion::he_to_ss_client(sci::NetIO *io, BFVKey *party)
 {
     BFVLongCiphertext lct;
-    BFVLongCiphertext::recv(io, &lct, party->parm->context);
+    BFVLongCiphertext::recv(io, &lct, party->parm->context, true);
     auto lpt = lct.decrypt(party);
-    return lpt.decode(party->parm);
+    return lpt.decode_uint(party->parm);
 }
 
 bfv_matrix Conversion::he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVLongCiphertext &in)
@@ -17,7 +17,7 @@ bfv_matrix Conversion::he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVL
     random_modP_mat(output, parm->plain_mod);
     BFVLongPlaintext output_plain(parm, output);
     BFVLongCiphertext cli_data = in.sub_plain(output_plain, parm->evaluator);
-    BFVLongCiphertext::send(io, &cli_data);
+    BFVLongCiphertext::send(io, &cli_data, true);
     return output;
 }
 

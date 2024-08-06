@@ -28,7 +28,7 @@ add_subdirectory(BuildingBlocks)
 add_subdirectory(NonLinear)
 add_subdirectory(Math)
 add_subdirectory(FixedPoint)
-
+add_subdirectory(FixedPoint_onfield)
 
 add_library(FASTST-EZPCLIB
     INTERFACE
@@ -40,6 +40,7 @@ target_link_libraries(FASTST-EZPCLIB
     INTERFACE
     FASTST-EZPCLIB-BuildingBlocks
     FASTST-EZPCLIB-FixedPoint
+    FASTST-EZPCLIB-FixedFieldPoint
     FASTST-EZPCLIB-Millionaire
     FASTST-EZPCLIB-OT
     FASTST-EZPCLIB-Utils

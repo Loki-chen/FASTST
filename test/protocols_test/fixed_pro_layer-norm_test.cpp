@@ -34,7 +34,7 @@ int main(int argc, const char **argv)
         BFVLongCiphertext attn_secret_b;
         if (party_ == sci::ALICE)
         {
-            BFVLongCiphertext::recv(iopack->io, &attn_secret_b, bfv_parm->context);
+            BFVLongCiphertext::recv(iopack->io, &attn_secret_b, bfv_parm->context, true);
         }
         else if (party_ == sci::BOB)
         {
@@ -43,7 +43,7 @@ int main(int argc, const char **argv)
 
             BFVLongPlaintext attn_plain(bfv_parm, attn);
             BFVLongCiphertext attn_s_b(attn_plain, party);
-            BFVLongCiphertext::send(iopack->io, &attn_s_b);
+            BFVLongCiphertext::send(iopack->io, &attn_s_b, true);
         }
         printf("batch size:       %d\nd_module:         %d\n", batch_size, d_module);
         INIT_TIMER;

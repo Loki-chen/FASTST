@@ -48,7 +48,7 @@ int main(int argc, const char **argv)
                       << RESET << "-------------------------------\n";
             BFVLongCiphertext test_secret;
             comm_data = io->counter;
-            BFVLongCiphertext::recv(io, &test_secret, bfv_parm->context);
+            BFVLongCiphertext::recv(io, &test_secret, bfv_parm->context, true);
             send = io->counter - comm_data;
             std::cout << "send data:        " << send << "\n";
             std::cout << "theoretical data: 0\n";
@@ -82,7 +82,7 @@ int main(int argc, const char **argv)
             BFVLongPlaintext test_plain(bfv_parm, fix_io_test.data, fix_io_test.size);
             BFVLongCiphertext test_secret(test_plain, party);
             comm_data = io->counter;
-            BFVLongCiphertext::send(io, &test_secret);
+            BFVLongCiphertext::send(io, &test_secret, true);
             send = io->counter - comm_data;
             std::cout << "send data:        " << send << "\n";
             int theoretical = sizeof(size_t) * 2;

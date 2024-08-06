@@ -30,10 +30,10 @@ public:
     int size = 0;             // size of array
     uint64_t *data = nullptr; // data (ell-bit integers)
     bool signed_;             // signed? (1: signed; 0: unsigned)
-    int ell;                  // bitlength
+    int ell;                  // field
     int s;                    // scale
 
-    FixArray(){};
+    FixArray() {};
 
     FixArray(int party_, int sz, bool signed__, int ell_, int s_ = 0)
     {
