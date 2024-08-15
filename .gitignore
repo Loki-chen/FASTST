@@ -5,4 +5,4 @@ data/
 Protocols.md
 Problem.md
 image.png
-# test/splitdata.py
+test/*.py
