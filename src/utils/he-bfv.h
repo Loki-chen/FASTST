@@ -2,6 +2,7 @@
 #define FAST_HE_BFV_TOOLS_H__
 
 #include <cassert>
+#include <seal/galoiskeys.h>
 #include <sstream>
 #include <string>
 
@@ -75,6 +76,7 @@ public:
     Decryptor *decryptor;
     PublicKey public_key;
     RelinKeys relin_keys;
+    GaloisKeys galois_keys;
 
     BFVKey(int party_, BFVParm *parm_);
     ~BFVKey();

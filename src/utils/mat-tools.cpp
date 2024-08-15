@@ -264,6 +264,37 @@ LongCiphertext *RFCP_encodeA(const matrix &A, CKKSKey *party, CKKSEncoder *encod
     }
     return lct;
 }
+BFVLongCiphertext *RFCP_bfv_encodeA(const bfv_matrix &A, BFVKey *party, size_t dim1, size_t dim2, size_t dim3) {
+    bfv_matrix Ae(dim1 * dim2 * dim3);
+#pragma omp parallel for
+    for (size_t i = 0; i < dim2; i++) {
+        for (size_t j = 0; j < dim1 * dim3; j++) {
+            Ae[i * dim1 * dim3 + j] = A[j / dim3 * dim2 + i];
+        }
+    }
+
+    BFVLongCiphertext *lct = new BFVLongCiphertext[dim2];
+#pragma omp parallel for
+    for (size_t i = 0; i < dim2; i++) {
+        BFVLongPlaintext lpt(party->parm, bfv_matrix(Ae.begin() + dim1 * dim3 * i, Ae.begin() + dim1 * dim3 * (i + 1)));
+        lct[i] = BFVLongCiphertext(lpt, party);
+    }
+    return lct;
+}
+
+BFVLongCiphertext RFCP_bfv_encodeA_new(const bfv_matrix &A, BFVKey *party, size_t dim1, size_t dim2, size_t dim3) {
+    bfv_matrix Ae(dim2 * dim1);
+#pragma omp parallel for
+    for (size_t i = 0; i < dim2; i++) {
+        for (size_t j = 0; j < dim1; j++) {
+            Ae[i * dim1 + j] = A[i + j * dim2];
+        }
+    }
+
+    BFVLongPlaintext lpt(party->parm, Ae);
+    BFVLongCiphertext lct(lpt, party);
+    return lct;
+}
 
 LongCiphertext RFCP_matmul(const LongCiphertext *A_secret, const matrix &B, size_t dim1, size_t dim2, size_t dim3,
                            CKKSEncoder *encoder, Evaluator *evaluator) {
@@ -286,4 +317,50 @@ LongCiphertext RFCP_matmul(const LongCiphertext *A_secret, const matrix &B, size
         { result.add_inplace(tmp_lct, evaluator); }
     }
     return result;
+}
+
+BFVLongCiphertext RFCP_bfv_matmul(const BFVLongCiphertext *A_secret, const bfv_matrix &B, 
+                                                                  size_t dim1, size_t dim2, size_t dim3, BFVParm *parm) {
+        // we assume that A_secret has encoded
+        bfv_matrix Be(dim1 * dim2 * dim3);
+#pragma omp parallel for
+        for (size_t i = 0; i < dim2; i++) {
+            for (size_t j = 0; j < dim1 * dim3; j++) {
+                Be[i * dim1 * dim3 + j] = B[i * dim3 + j % dim3]; 
+            }
+        }
+
+        BFVLongPlaintext lpt(parm, bfv_matrix(Be.begin(), Be.begin() + dim1 * dim3));
+        BFVLongCiphertext result = A_secret[0].multiply_plain(lpt, parm->evaluator);
+#pragma omp parallel for
+        for (size_t i = 1; i < dim2; i++) {
+            BFVLongPlaintext tmp_lpt(parm, bfv_matrix(Be.begin() + dim1 * dim3 * i, Be.begin() + dim1 * dim3 * (i + 1)));
+            BFVLongCiphertext tmp_lct = A_secret[i].multiply_plain(tmp_lpt, parm->evaluator);
+#pragma omp critical
+            { result.add_inplace(tmp_lct, parm->evaluator); }
+        }
+        return result;
+}
+
+BFVLongCiphertext RFCP_bfv_matmul_new(const BFVLongCiphertext *A_secret, const bfv_matrix &B, 
+                                                                  size_t dim1, size_t dim2, size_t dim3, BFVParm *parm) {
+        // we assume that A_secret has encoded
+        bfv_matrix Be(dim1 * dim2 * dim3);
+#pragma omp parallel for
+        for (size_t i = 0; i < dim2; i++) {
+            for (size_t j = 0; j < dim1 * dim3; j++) {
+                Be[i * dim1 * dim3 + j] = B[i * dim3 + j % dim3]; 
+            }
+        }
+
+        BFVLongPlaintext lpt(parm, bfv_matrix(Be.begin(), Be.begin() + dim1 * dim3));
+        BFVLongCiphertext result = A_secret[0].multiply_plain(lpt, parm->evaluator);
+#pragma omp parallel for
+        for (size_t i = 1; i < dim2; i++) {
+            BFVLongPlaintext tmp_lpt(parm, bfv_matrix(Be.begin() + dim1 * dim3 * i, Be.begin() + dim1 * dim3 * (i + 1)));
+            BFVLongCiphertext tmp_lct = A_secret[i].multiply_plain(tmp_lpt, parm->evaluator);
+#pragma omp critical
+            { result.add_inplace(tmp_lct, parm->evaluator); }
+        }
+        return result;
 }

@@ -88,6 +88,7 @@ BFVKey::BFVKey(int party_, BFVParm *parm_) : party(party_), parm(parm_)
     KeyGenerator *keygen = new KeyGenerator(*(parm->context));
     keygen->create_public_key(public_key);
     keygen->create_relin_keys(relin_keys);
+    keygen->create_galois_keys(galois_keys);
     encryptor = new Encryptor(*(parm->context), public_key);
     decryptor = new Decryptor(*(parm->context), keygen->secret_key());
     delete keygen;

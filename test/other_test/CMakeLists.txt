@@ -4,3 +4,5 @@ macro(add_test _name)
 endmacro()
 
 add_test(io)
+add_test(RFCP)
+add_test(FIT)
