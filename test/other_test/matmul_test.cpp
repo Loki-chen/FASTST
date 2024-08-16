@@ -22,10 +22,10 @@ int main(int argc, const char** argv) {
 		std::cout << "dim1 = " << dim1 << ", dim2 = " << dim2 << ", dim3 = " << dim3 << "\n";
 		string ip = "127.0.0.1";
 		if (argc > 3) {
-			ip = argv[2];
+			ip = argv[3];
         }
         BFVParm *parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
-	BFVKey *party = new BFVKey(party_, parm);
+	    BFVKey *party = new BFVKey(party_, parm);
         sci::IOPack *iopack = new sci::IOPack(party_, 56789, ip);
         sci::OTPack *otpack = new sci::OTPack(iopack, party_);
         sci::NetIO *io = iopack->io;

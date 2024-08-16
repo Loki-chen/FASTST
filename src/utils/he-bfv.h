@@ -2,6 +2,7 @@
 #define FAST_HE_BFV_TOOLS_H__
 
 #include <cassert>
+#include <seal/evaluator.h>
 #include <seal/galoiskeys.h>
 #include <sstream>
 #include <string>
@@ -135,8 +136,12 @@ public:
     BFVLongCiphertext sub_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
     void sub_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     BFVLongCiphertext sub(BFVLongCiphertext &lct, Evaluator *evaluator) const;
+    void negate_inplace(Evaluator *evaluator);
+    BFVLongCiphertext negate(Evaluator *evaluator) const;
     void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
     BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
+    void multiply_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
+    BFVLongCiphertext multiply(BFVLongCiphertext &lct, Evaluator *evaluator) const;
     static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye=true);
     static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye=true);
 

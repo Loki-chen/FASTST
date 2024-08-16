@@ -1,4 +1,5 @@
 #include "conversion.h"
+#include "Utils/net_io_channel.h"
 #include "utils/he-bfv.h"
 
 bfv_matrix Conversion::he_to_ss_client(sci::NetIO *io, BFVKey *party) {
@@ -17,6 +18,29 @@ bfv_matrix Conversion::he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVL
     BFVLongCiphertext cli_data = in.sub_plain(output_plain, parm->evaluator);
     BFVLongCiphertext::send(io, &cli_data);
     return output;
+}
+
+BFVLongCiphertext Conversion::ss_to_he_server(BFVParm *parm, NetIO *io, uint64_t *input, int length, int ell, bool is_add_share) {
+    vector<uint64_t> tmp(length);
+    for (int i = 0; i < length; i++) {
+        tmp[i] = neg_mod(signed_val(input[i], ell), (int64_t)parm->plain_mod);
+    }
+    BFVLongPlaintext share_server(parm, tmp);
+    BFVLongCiphertext share_client;
+    BFVLongCiphertext::recv(io, &share_client, parm->context);
+    is_add_share ? share_client.add_plain_inplace(share_server, parm->evaluator)
+                 : share_client.multiply_plain_inplace(share_server, parm->evaluator);
+    return share_client;
+}
+
+void Conversion::ss_to_he_client(BFVKey *party, NetIO* io, uint64_t *input, int length, int ell) {
+    vector<uint64_t> tmp(length);
+    for (int i = 0; i < length; i++) {
+        tmp[i] = neg_mod(signed_val(input[i], ell), (int64_t)party->parm->plain_mod);
+    }
+    BFVLongPlaintext share_client_plain(party->parm, tmp);
+    BFVLongCiphertext share_client(share_client_plain, party);
+    BFVLongCiphertext::send(io, &share_client);
 }
 
 void Conversion::Ring_to_Prime(uint64_t input, uint64_t output, int ell, int64_t plain_mod) {
@@ -84,8 +108,8 @@ void Conversion::Prime_to_Ring(const uint64_t *input, uint64_t *output, int leng
     memcpy(output, tmp.data, length * sizeof(uint64_t));
 }
 
-void gt_p_sub_thread(int tid, int party, uint64_t *x, uint64_t p, uint64_t *y, int num_ops, int ell, int s_in,
-                     int s_out, FPMath *fpmath) {
+void gt_p_sub_thread(int party, uint64_t *x, uint64_t p, uint64_t *y, int num_ops, int ell, int s_in, int s_out,
+                     FPMath *fpmath) {
     int this_party;
     if (false) {
         this_party = 3 - party;
@@ -115,22 +139,17 @@ void gt_p_sub_thread(int tid, int party, uint64_t *x, uint64_t p, uint64_t *y, i
     memcpy(y, output.data, num_ops * sizeof(uint64_t));
 }
 
-void Conversion::gt_p_sub(int nthreads, uint64_t *input, uint64_t p, uint64_t *output, FPMath fpmath, int size, int ell,
-                          int s_in, int s_out) {
+void Conversion::gt_p_sub(int party, int nthreads, uint64_t *input, uint64_t p, uint64_t *output, int size, int ell,
+                          int s_in, int s_out, FPMath *fpmath) {
     std::thread threads[nthreads];
     int chunk_size = size / nthreads;
     for (int i = 0; i < nthreads; ++i) {
         int offset = i * chunk_size;
-        int lnum_ops;
-        if (i == (nthreads - 1)) {
-            lnum_ops = size - offset;
-        } else {
-            lnum_ops = chunk_size;
+        int lnum_ops = (i == (nthreads - 1)) ? (size - offset) : chunk_size;
+        threads[i] =
+            std::thread(gt_p_sub_thread, party, input + offset, p, output + offset, lnum_ops, ell, s_in, s_out, fpmath);
+        for (int i = 0; i < nthreads; ++i) {
+            threads[i].join();
         }
-        threads[i] = std::thread(gt_p_sub_thread, i, party, &input[offset], p, &output[offset], lnum_ops, ell, s_in,
-                                 s_out, fpmath);
-    }
-    for (int i = 0; i < nthreads; ++i) {
-        threads[i].join();
     }
 }
