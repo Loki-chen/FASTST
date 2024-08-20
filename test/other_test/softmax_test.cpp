@@ -1,11 +1,4 @@
-#include "FixedPoint/fixed-math.h"
-#include "FixedPoint/fixed-point.h"
-#include "Utils/constants.h"
 #include "protocols/fixed-protocol.h"
-#include "utils/conversion.h"
-#include "utils/he-bfv.h"
-#include "utils/mat-tools.h"
-#include <cstdint>
 #include <utils.h>
 
 using namespace sci;
@@ -34,31 +27,26 @@ using namespace sci;
 //     return (x % p + p) % p;
 // }
 
+int64_t modInverse(int a, int m) {
+    int64_t m0 = m, x0 = 0, x1 = 1;
 
-int64_t modInverse(int a, int m)
-{
-  int64_t m0 = m, x0 = 0, x1 = 1;
+    while (a > 1) {
+        int64_t q = a / m;
+        int64_t temp = m;
+        m = a % m;
+        a = temp;
+        int64_t temp_x = x0;
+        x0 = x1 - q * x0;
+        x1 = temp_x;
+    }
 
-  while (a > 1)
-  {
-    int64_t q = a / m;
-    int64_t temp = m;
-    m = a % m;
-    a = temp;
-    int64_t temp_x = x0;
-    x0 = x1 - q * x0;
-    x1 = temp_x;
-  }
-
-  return x1 < 0 ? x1 + m0 : x1;
+    return x1 < 0 ? x1 + m0 : x1;
 }
 
-
-
-vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, vector<uint64_t> &output, int dim1, int dim2, NetIO *io,
-             FPMath *fpmath, Conversion *conv) {
+vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int dim2, NetIO *io, FPMath *fpmath,
+                         Conversion *conv) {
     int size = dim1 * dim2;
-    assert(input.size() == size && output.size() == size);
+    assert(input.size() == size);
     FixArray fix_inp = fpmath->fix->input(PUBLIC, size, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
     FixArray exp_inp = fpmath->location_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
     if (party->party == ALICE) {
@@ -90,7 +78,8 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, vector<uint64_t
             }
         }
 
-        // std::cout << "1 / (EV): "<< modInverse(Sexp_V[0], party->parm->plain_mod) << " " << modInverse(Sexp_V[1], party->parm->plain_mod) << "\n"; // 1 / EV
+        // std::cout << "1 / (EV): "<< modInverse(Sexp_V[0], party->parm->plain_mod) << " " << modInverse(Sexp_V[1],
+        // party->parm->plain_mod) << "\n"; // 1 / EV
         BFVLongPlaintext Sexp_expand_plain(party->parm, Sexp_V_expand);
         V_sec_b.multiply_plain_inplace(Sexp_expand_plain, party->parm->evaluator);
         exp_sec_b.multiply_inplace(V_sec_b, party->parm->evaluator);
@@ -114,7 +103,8 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, vector<uint64_t
                 fpmath->fix->input(party->party, dim2, exp_R.data() + i * dim2, true, DEFAULT_ELL, DEFAULT_SCALE);
         }
         FixArray fix_S_exp_R = fpmath->fix->tree_sum(fix_exp_R);
-        // std::cout << "1/E: " << modInverse(fix_S_exp_R.data[0], party->parm->plain_mod) << " " << modInverse(fix_S_exp_R.data[1], party->parm->plain_mod)<< "\n";
+        // std::cout << "1/E: " << modInverse(fix_S_exp_R.data[0], party->parm->plain_mod) << " " <<
+        // modInverse(fix_S_exp_R.data[1], party->parm->plain_mod)<< "\n";
         BFVLongPlaintext S_exp_R_plain(party->parm, fix_S_exp_R.data, fix_S_exp_R.size);
         SR_sec_a.negate_inplace(party->parm->evaluator);
         SR_sec_a.add_plain_inplace(S_exp_R_plain, party->parm->evaluator);
@@ -157,17 +147,17 @@ int main(int argc, const char **argv) {
         BFVKey *party = new BFVKey(party_, bfv_parm);
 
         int dim1 = 128, dim2 = 128;
-        vector<uint64_t> input(dim1 * dim2), output(dim1 * dim2);
+        vector<uint64_t> input(dim1 * dim2);
         random_ell_mat(input, DEFAULT_ELL);
         auto start = iopack->get_comm();
         INIT_TIMER
         START_TIMER
-        softmax(party, input, output, dim1, dim2, io, fpmath, conv);
+        auto output = softmax(party, input, dim1, dim2, io, fpmath, conv);
         STOP_TIMER("softmax")
         std::cout << "comm: " << iopack->get_comm() - start << "\n";
 
         delete party;
-        delete bfv_parm; 
+        delete bfv_parm;
         delete conv;
         delete fpmath;
         io = nullptr;

@@ -20,7 +20,8 @@ bfv_matrix Conversion::he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVL
     return output;
 }
 
-BFVLongCiphertext Conversion::ss_to_he_server(BFVParm *parm, NetIO *io, uint64_t *input, int length, int ell, bool is_add_share) {
+BFVLongCiphertext Conversion::ss_to_he_server(BFVParm *parm, NetIO *io, uint64_t *input, int length, int ell,
+                                              bool is_add_share) {
     vector<uint64_t> tmp(length);
     for (int i = 0; i < length; i++) {
         tmp[i] = neg_mod(signed_val(input[i], ell), (int64_t)parm->plain_mod);
@@ -33,7 +34,7 @@ BFVLongCiphertext Conversion::ss_to_he_server(BFVParm *parm, NetIO *io, uint64_t
     return share_client;
 }
 
-void Conversion::ss_to_he_client(BFVKey *party, NetIO* io, uint64_t *input, int length, int ell) {
+void Conversion::ss_to_he_client(BFVKey *party, NetIO *io, uint64_t *input, int length, int ell) {
     vector<uint64_t> tmp(length);
     for (int i = 0; i < length; i++) {
         tmp[i] = neg_mod(signed_val(input[i], ell), (int64_t)party->parm->plain_mod);
@@ -80,7 +81,7 @@ void Conversion::Prime_to_Ring(int party, const uint64_t *input, uint64_t *outpu
     FixArray p_array = fpmath->fix->input(sci::PUBLIC, length, plain_prime, true, ell, s_in);
     FixArray p_2_array = fpmath->fix->input(sci::PUBLIC, length, (plain_prime - 1) / 2, true, ell, s_in);
     FixArray tmp = fpmath->gt_p_sub(fix_input, p_array);
-    tmp = fpmath->fix->sub(tmp, p_2_array);
+    // tmp = fpmath->fix->sub(tmp, p_2_array);
 
     if (s_in > s_out) {
         tmp = fpmath->fix->right_shift(tmp, s_in - s_out);
@@ -91,44 +92,14 @@ void Conversion::Prime_to_Ring(int party, const uint64_t *input, uint64_t *outpu
     memcpy(output, tmp.data, length * sizeof(uint64_t));
 }
 
-// P-to-R:location conversion
-void Conversion::Prime_to_Ring(const uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_prime,
-                               int s_in, int s_out, FPMath *fpmath) {
-    FixArray fix_input = fpmath->fix->input(sci::PUBLIC, length, input, true, ell, s_in);
-    FixArray p_array = fpmath->fix->input(sci::PUBLIC, length, plain_prime, true, ell, s_in);
-    FixArray p_2_array = fpmath->fix->input(sci::PUBLIC, length, (plain_prime - 1) / 2, true, ell, s_in);
-    FixArray tmp = fpmath->location_gt_p_sub(fix_input, p_2_array);
-    tmp = fpmath->fix->sub(tmp, p_2_array);
-    if (s_in > s_out) {
-        tmp = fpmath->fix->location_right_shift(tmp, s_in - s_out);
-    } else if (s_in < s_out) {
-        tmp = fpmath->fix->mul(tmp, 1 << (s_out - s_in));
-    }
-
-    memcpy(output, tmp.data, length * sizeof(uint64_t));
-}
-
-void gt_p_sub_thread(int party, uint64_t *x, uint64_t p, uint64_t *y, int num_ops, int ell, int s_in, int s_out,
+void gt_p_sub_thread(int party, const uint64_t *x, uint64_t p, uint64_t *y, int num_ops, int ell, int s_in, int s_out,
                      FPMath *fpmath) {
-    int this_party;
-    if (false) {
-        this_party = 3 - party;
-    } else {
-        this_party = party;
-    }
-    // if input > p, then sub p
-    // sub p/2 anyway
+    int this_party = party;
     FixArray input = fpmath->fix->input(this_party, num_ops, x, true, ell, s_in);
     FixArray p_array = fpmath->fix->input(PUBLIC, num_ops, p, true, ell, s_in);
     FixArray p_2_array = fpmath->fix->input(PUBLIC, num_ops, (p - 1) / 2, true, ell, s_in);
     FixArray output = fpmath->gt_p_sub(input, p_array);
     output = fpmath->fix->sub(output, p_2_array);
-
-    // FixArray input = fpmath->fix->input(this_party, num_ops, x, false, 29, s_in);
-    // FixArray output = fpmath->fix->extend(input, ell);
-    // output.signed_ = true;
-    // FixArray p_2_array = fpmath->fix->input(PUBLIC, num_ops, (p-1)/2, true, ell, s_in);
-    // output = fpmath->fix->sub(output, p_2_array);
 
     if (s_in > s_out) {
         output = fpmath->fix->right_shift(output, s_in - s_out);
@@ -139,17 +110,17 @@ void gt_p_sub_thread(int party, uint64_t *x, uint64_t p, uint64_t *y, int num_op
     memcpy(y, output.data, num_ops * sizeof(uint64_t));
 }
 
-void Conversion::gt_p_sub(int party, int nthreads, uint64_t *input, uint64_t p, uint64_t *output, int size, int ell,
-                          int s_in, int s_out, FPMath *fpmath) {
+void Conversion::Prime_to_Ring(int party, int nthreads, const uint64_t *input, uint64_t *output, int length, int ell,
+                               int64_t plain_prime, int s_in, int s_out, FPMath **fpmath) {
     std::thread threads[nthreads];
-    int chunk_size = size / nthreads;
-    for (int i = 0; i < nthreads; ++i) {
+    int chunk_size = length / nthreads;
+    for (int i = 0; i < nthreads; i++) {
         int offset = i * chunk_size;
-        int lnum_ops = (i == (nthreads - 1)) ? (size - offset) : chunk_size;
-        threads[i] =
-            std::thread(gt_p_sub_thread, party, input + offset, p, output + offset, lnum_ops, ell, s_in, s_out, fpmath);
-        for (int i = 0; i < nthreads; ++i) {
-            threads[i].join();
-        }
+        int lnum_ops = (i == (nthreads - 1)) ? (length - offset) : chunk_size;
+        threads[i] = std::thread(gt_p_sub_thread, party, input + offset, plain_prime, output + offset, lnum_ops, ell,
+                                 s_in, s_out, fpmath[i]);
+    }
+    for (int i = 0; i < nthreads; i++) {
+        threads[i].join();
     }
 }

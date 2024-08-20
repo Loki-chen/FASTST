@@ -619,22 +619,6 @@ BFVLongCiphertext BFVLongCiphertext::sub(BFVLongCiphertext &lct, Evaluator *eval
     return lcct;
 }
 
-void BFVLongCiphertext::negate_inplace(Evaluator *evaluator) {
-    for (auto &ct: cipher_data) {
-        evaluator->negate_inplace(ct);
-    }
-}
-
-BFVLongCiphertext BFVLongCiphertext::negate(Evaluator *evaluator) const {
-    BFVLongCiphertext ret;
-    for (auto &ct: cipher_data) {
-        Ciphertext ret_ct;
-        evaluator->negate(ct, ret_ct);
-        ret.cipher_data.push_back(ret_ct);
-    }
-    return ret;
-}
-
 void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys) {
     if (len == 1) {
         len = lpt.len;

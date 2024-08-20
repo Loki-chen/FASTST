@@ -7,8 +7,8 @@
 #include <sstream>
 #include <string>
 
-#include <seal/seal.h>
 #include <Utils/emp-tool.h> // prg.h & io & arg
+#include <seal/seal.h>
 
 using std::map;
 using std::string;
@@ -16,19 +16,19 @@ using std::vector;
 using namespace seal;
 
 const map<int32_t, uint64_t> default_prime_mod{
-    {25, 33832961},
-    {28, 268582913},
-    {29, 536903681},
-    {30, 1073872897},
-    {31, 2146959361},
-    {32, 4293918721},
-    {33, 8585084929},
-    {34, 17171218433},
-    {35, 34359214081},
-    {36, 68686184449},
-    {37, 137352314881},
-    {38, 274824036353},
-    {39, 549753716737},
+    {25,      33832961},
+    {28,     268582913},
+    {29,     536903681},
+    {30,    1073872897},
+    {31,    2146959361},
+    {32,    4293918721},
+    {33,    8585084929},
+    {34,   17171218433},
+    {35,   34359214081},
+    {36,   68686184449},
+    {37,  137352314881},
+    {38,  274824036353},
+    {39,  549753716737},
     {40, 1099480956929},
     {41, 2198100901889},
 };
@@ -41,8 +41,7 @@ const map<int32_t, uint64_t> default_prime_mod{
 
 void print_parameters(std::shared_ptr<seal::SEALContext> context);
 
-class BFVParm
-{
+class BFVParm {
 public:
     size_t poly_modulus_degree;
     size_t slot_count;
@@ -56,20 +55,15 @@ public:
     ~BFVParm();
 };
 
-class bfv_lenth_error : public std::exception
-{
+class bfv_lenth_error : public std::exception {
     const char *message;
 
 public:
     bfv_lenth_error(const char *msg) : message(msg) {}
-    const char *what() const throw() override
-    {
-        return message;
-    }
+    const char *what() const throw() override { return message; }
 };
 
-class BFVKey
-{
+class BFVKey {
 public:
     int party;
     BFVParm *parm;
@@ -83,8 +77,7 @@ public:
     ~BFVKey();
 };
 
-class BFVLongPlaintext
-{
+class BFVLongPlaintext {
 public:
     vector<Plaintext> plain_data;
     size_t len;
@@ -102,17 +95,14 @@ public:
     BFVLongPlaintext(BFVParm *contex, int64_t *data, size_t len);
     vector<int64_t> decode_int(BFVParm *contex) const;
 
-    inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
-    {
-        for (size_t i = 0; i < plain_data.size(); i++)
-        {
+    inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator) {
+        for (size_t i = 0; i < plain_data.size(); i++) {
             evaluator->mod_switch_to_inplace(plain_data[i], parms_id);
         }
     }
 };
 
-class BFVLongCiphertext
-{
+class BFVLongCiphertext {
 public:
     vector<Ciphertext> cipher_data;
     size_t len;
@@ -136,35 +126,61 @@ public:
     BFVLongCiphertext sub_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
     void sub_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     BFVLongCiphertext sub(BFVLongCiphertext &lct, Evaluator *evaluator) const;
-    void negate_inplace(Evaluator *evaluator);
-    BFVLongCiphertext negate(Evaluator *evaluator) const;
     void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
-    BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr) const;
+    BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator,
+                                     RelinKeys *relin_keys = nullptr) const;
     void multiply_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     BFVLongCiphertext multiply(BFVLongCiphertext &lct, Evaluator *evaluator) const;
-    static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye=true);
-    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye=true);
+    static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye = true);
+    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye = true);
 
-    inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator)
-    {
-        for (size_t i = 0; i < cipher_data.size(); i++)
-        {
+    inline void negate_inplace(Evaluator *evaluator) {
+        for (auto &ct : cipher_data) {
+            evaluator->negate_inplace(ct);
+        }
+    }
+
+    inline BFVLongCiphertext negate(Evaluator *evaluator) const {
+        BFVLongCiphertext ret;
+        ret.len = len;
+        for (auto &ct : cipher_data) {
+            Ciphertext ret_ct;
+            evaluator->negate(ct, ret_ct);
+            ret.cipher_data.push_back(ret_ct);
+        }
+        return ret;
+    }
+
+    inline void square_inplace(Evaluator *evaluator) {
+        for (auto &ct : cipher_data) {
+            evaluator->square_inplace(ct);
+        }
+    }
+
+    inline BFVLongCiphertext square(Evaluator *evaluator) const {
+        BFVLongCiphertext ret;
+        ret.len = len;
+        for (auto &ct : cipher_data) {
+            Ciphertext ret_ct;
+            evaluator->square(ct, ret_ct);
+            ret.cipher_data.push_back(ret_ct);
+        }
+        return ret;
+    }
+
+    inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator) {
+        for (size_t i = 0; i < cipher_data.size(); i++) {
             evaluator->mod_switch_to_inplace(cipher_data[i], parms_id);
         }
     }
 
-    inline void mod_switch_to_next_inplace(Evaluator *evaluator)
-    {
-        for (size_t i = 0; i < cipher_data.size(); i++)
-        {
+    inline void mod_switch_to_next_inplace(Evaluator *evaluator) {
+        for (size_t i = 0; i < cipher_data.size(); i++) {
             evaluator->mod_switch_to_next_inplace(cipher_data[i]);
         }
     }
 
-    inline const parms_id_type parms_id() const noexcept
-    {
-        return cipher_data[0].parms_id();
-    }
+    inline const parms_id_type parms_id() const noexcept { return cipher_data[0].parms_id(); }
 };
 
 #endif

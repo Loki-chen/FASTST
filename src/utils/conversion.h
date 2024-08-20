@@ -16,22 +16,20 @@ public:
 
     bfv_matrix he_to_ss_server(sci::NetIO *io, BFVParm *parm, const BFVLongCiphertext &in);
 
-    void ss_to_he_client(BFVKey *party, NetIO* io, uint64_t *input, int length, int ell);
+    void ss_to_he_client(BFVKey *party, NetIO *io, uint64_t *input, int length, int ell);
 
-    BFVLongCiphertext ss_to_he_server(BFVParm *parm, NetIO *io, uint64_t *input, int length, int ell,  bool is_add_share = true);
+    BFVLongCiphertext ss_to_he_server(BFVParm *parm, NetIO *io, uint64_t *input, int length, int ell,
+                                      bool is_add_share = true);
 
     void Prime_to_Ring(int party, const uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_prime,
                        int s_in, int s_out, FPMath *fpmath);
-
-    void Prime_to_Ring(const uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_prime, int s_in,
-                       int s_out, FPMath *fpmath);
 
     void Ring_to_Prime(const uint64_t *input, uint64_t *output, int length, int ell, int64_t plain_mod);
 
     void Ring_to_Prime(const uint64_t input, uint64_t output, int ell, int64_t plain_mod);
 
-    void gt_p_sub(int party, int nthreads, uint64_t *input, uint64_t p, uint64_t *output, int size, int ell, int s_in,
-                  int s_out, FPMath *fpmath);
+    void Prime_to_Ring(int party, int nthreads, const uint64_t *input, uint64_t *output, int length, int ell,
+                       int64_t plain_prime, int s_in, int s_out, FPMath **fpmath);
 };
 
 #endif // FAST_HE_BFV_CONVERSION_H__
