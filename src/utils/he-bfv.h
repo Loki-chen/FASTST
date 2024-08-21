@@ -2,8 +2,10 @@
 #define FAST_HE_BFV_TOOLS_H__
 
 #include <cassert>
+#include <seal/ciphertext.h>
 #include <seal/evaluator.h>
 #include <seal/galoiskeys.h>
+#include <seal/relinkeys.h>
 #include <sstream>
 #include <string>
 
@@ -141,44 +143,56 @@ public:
     }
 
     inline BFVLongCiphertext negate(Evaluator *evaluator) const {
+        size_t c_d_size = cipher_data.size();
         BFVLongCiphertext ret;
+        ret.cipher_data = vector<Ciphertext>(c_d_size);
         ret.len = len;
-        for (auto &ct : cipher_data) {
-            Ciphertext ret_ct;
-            evaluator->negate(ct, ret_ct);
-            ret.cipher_data.push_back(ret_ct);
+        for (size_t i = 0; i < c_d_size; i++) {
+            evaluator->negate(cipher_data[i], ret.cipher_data[i]);
         }
         return ret;
     }
 
     inline void square_inplace(Evaluator *evaluator) {
-        for (auto &ct : cipher_data) {
-            evaluator->square_inplace(ct);
+        size_t c_d_size = cipher_data.size();
+        for (size_t i = 0; i < c_d_size; i++) {
+            evaluator->square_inplace(cipher_data[i]);
         }
     }
 
     inline BFVLongCiphertext square(Evaluator *evaluator) const {
+        size_t c_d_size = cipher_data.size();
         BFVLongCiphertext ret;
+        ret.cipher_data = vector<Ciphertext>(c_d_size);
         ret.len = len;
-        for (auto &ct : cipher_data) {
-            Ciphertext ret_ct;
-            evaluator->square(ct, ret_ct);
-            ret.cipher_data.push_back(ret_ct);
+        for (size_t i = 0; i < c_d_size; i++) {
+            evaluator->square(cipher_data[i], ret.cipher_data[i]);
         }
         return ret;
     }
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator) {
-        for (size_t i = 0; i < cipher_data.size(); i++) {
+        size_t c_d_size = cipher_data.size();
+        for (size_t i = 0; i < c_d_size; i++) {
             evaluator->mod_switch_to_inplace(cipher_data[i], parms_id);
         }
     }
 
     inline void mod_switch_to_next_inplace(Evaluator *evaluator) {
-        for (size_t i = 0; i < cipher_data.size(); i++) {
+        size_t c_d_size = cipher_data.size();
+        for (size_t i = 0; i < c_d_size; i++) {
             evaluator->mod_switch_to_next_inplace(cipher_data[i]);
         }
     }
+
+    inline void relinearize_inplace(Evaluator *evaluator, const RelinKeys &relin_keys) {
+        size_t c_d_size = cipher_data.size();
+        for (size_t i = 0; i < c_d_size; i++) {
+            evaluator->relinearize_inplace(cipher_data[i], relin_keys);
+        }
+    }
+
+    
 
     inline const parms_id_type parms_id() const noexcept { return cipher_data[0].parms_id(); }
 };
