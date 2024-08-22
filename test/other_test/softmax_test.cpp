@@ -27,7 +27,7 @@ using namespace sci;
 //     return (x % p + p) % p;
 // }
 
-int64_t modInverse(int a, int m) {
+int64_t mod_inverse(int64_t a, int64_t m) {
     int64_t m0 = m, x0 = 0, x1 = 1;
 
     while (a > 1) {
@@ -74,7 +74,7 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
 #pragma omp parallel for
         for (int i = 0; i < dim1; i++) {
             for (int j = 0; j < dim2; j++) {
-                Sexp_V_expand[i * dim2 + j] = modInverse(Sexp_V[i], party->parm->plain_mod);
+                Sexp_V_expand[i * dim2 + j] = mod_inverse(Sexp_V[i], party->parm->plain_mod);
             }
         }
 

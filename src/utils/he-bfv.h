@@ -98,7 +98,8 @@ public:
     vector<int64_t> decode_int(BFVParm *contex) const;
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator) {
-        for (size_t i = 0; i < plain_data.size(); i++) {
+        size_t p_d_size = plain_data.size();
+        for (size_t i = 0; i < p_d_size; i++) {
             evaluator->mod_switch_to_inplace(plain_data[i], parms_id);
         }
     }
