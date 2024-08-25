@@ -34,6 +34,62 @@ int64_t mod_inverse(int64_t a, int64_t m) {
     return x1 < 0 ? x1 + m0 : x1;
 }
 
+void LT_thread(uint64_t *x, int x_party, uint64_t *y, int y_party, uint8_t *out, int num_ops, FPMath *fpmath) {
+    FixArray fix_x = fpmath->fix->input(x_party, num_ops, x, true, DEFAULT_ELL, DEFAULT_SCALE);
+    FixArray fix_y = fpmath->fix->input(y_party, num_ops, y, true, DEFAULT_ELL, DEFAULT_SCALE);
+    BoolArray bool_out = fpmath->fix->LT(fix_x, fix_y);
+    memcpy(out, bool_out.data, sizeof(uint8_t) * num_ops);
+}
+
+BoolArray LT(int party, FixArray &x, FixArray &y, int dim, FPMath **fpmath) {
+    BoolArray output(party, dim);
+    std::thread threads[N_THREADS];
+    int chunk_size = dim / N_THREADS;
+    for (int i = 0; i < N_THREADS; i++) {
+        int offset = i * chunk_size;
+        int lnum_ops = (i == (N_THREADS - 1)) ? dim - offset : chunk_size;
+        threads[i] = std::thread(LT_thread, x.data + offset, x.party, y.data + offset, y.party, output.data + offset,
+                                 lnum_ops, fpmath[i]);
+    }
+    for (int i = 0; i < N_THREADS; ++i) {
+        threads[i].join();
+    }
+    return output;
+}
+
+BoolArray LT(int party, FixArray &x, uint64_t y, FPMath **fpmath) {
+    FixArray fix_y = fpmath[0]->fix->input(PUBLIC, x.size, y, true, x.ell, x.s);
+    return LT(party, x, fix_y, x.size, fpmath);
+}
+
+BoolArray LT(int party, uint64_t x, FixArray &y, FPMath **fpmath) {
+    FixArray fix_x = fpmath[0]->fix->input(PUBLIC, y.size, x, true, y.ell, y.s);
+    return LT(party, fix_x, y, y.size, fpmath);
+}
+
+void AND_thread(uint8_t *x, int x_party, uint8_t *y, int y_party, uint8_t *out, int num_ops, FPMath *fpmath) {
+    BoolArray bool_x = fpmath->bool_op->input(x_party, num_ops, x);
+    BoolArray bool_y = fpmath->bool_op->input(y_party, num_ops, y);
+    BoolArray bool_out = fpmath->bool_op->AND(bool_x, bool_y);
+    memcpy(out, bool_out.data, sizeof(uint8_t) * num_ops);
+}
+
+BoolArray AND(int party, BoolArray &x, BoolArray &y, FPMath **fpmath) {
+    BoolArray output(party, x.size);
+    std::thread threads[N_THREADS];
+    int chunk_size = output.size / N_THREADS;
+    for (int i = 0; i < N_THREADS; i++) {
+        int offset = i * chunk_size;
+        int lnum_ops = (i == (N_THREADS - 1)) ? output.size - offset : chunk_size;
+        threads[i] = std::thread(AND_thread, x.data + offset, x.party, y.data + offset, y.party, output.data + offset,
+                                 lnum_ops, fpmath[i]);
+    }
+    for (int i = 0; i < N_THREADS; ++i) {
+        threads[i].join();
+    }
+    return output;
+}
+
 void f1(BFVParm *parm, const BFVLongCiphertext &x, const BFVLongCiphertext &x2, const BFVLongCiphertext &x3,
         const BFVLongCiphertext &x4, BFVLongCiphertext &ret, Evaluator *evaluator) {
     ret = x4.multiply_plain(f1_parm4, evaluator);
@@ -79,42 +135,6 @@ void f3(BFVParm *parm, const BFVLongCiphertext &x, const BFVLongCiphertext &x2, 
     ret.add_inplace(ret2, evaluator);
 }
 
-void LT_thread(uint64_t *x, int x_party, uint64_t *y, int y_party, uint8_t *out, int num_ops, FPMath *fpmath) {
-    FixArray fix_x = fpmath->fix->input(x_party, num_ops, x, true, DEFAULT_ELL, DEFAULT_SCALE);
-    FixArray fix_y = fpmath->fix->input(y_party, num_ops, y, true, DEFAULT_ELL, DEFAULT_SCALE);
-    BoolArray bool_out = fpmath->fix->LT(fix_x, fix_y);
-    memcpy(out, bool_out.data, sizeof(uint8_t) * num_ops);
-}
-
-void LT(int party, uint64_t *x, int x_party, uint64_t *y, int y_party, BoolArray &output, int dim, FPMath **fpmath) {
-    output = BoolArray(party, dim);
-    std::thread threads[N_THREADS];
-    int chunk_size = dim / N_THREADS;
-    for (int i = 0; i < N_THREADS; i++) {
-        int offset = i * chunk_size;
-        int lnum_ops = (i == (N_THREADS - 1)) ? dim - offset : chunk_size;
-        threads[i] =
-            std::thread(LT_thread, x + offset, x_party, y + offset, y_party, output.data + offset, lnum_ops, fpmath[i]);
-    }
-    for (int i = 0; i < N_THREADS; ++i) {
-        threads[i].join();
-    }
-}
-
-BoolArray LT(int party, FixArray &x, uint64_t y, FixOp *fix, FPMath **fpmath) {
-    FixArray fix_y = fix->input(PUBLIC, x.size, y, true, x.ell, x.s);
-    BoolArray output;
-    LT(party, x.data, x.party, fix_y.data, fix_y.party, output, x.size, fpmath);
-    return output;
-}
-
-BoolArray LT(int party, uint64_t x, FixArray &y, FixOp *fix, FPMath **fpmath) {
-    FixArray fix_x = fix->input(PUBLIC, y.size, x, true, y.ell, y.s);
-    BoolArray output;
-    LT(party, fix_x.data, fix_x.party, y.data, y.party, output, y.size, fpmath);
-    return output;
-}
-
 void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *conv, AuxProtocols *aux,
           BoolOp *boolop) {
     NetIO *io = fpmath[0]->iopack->io;
@@ -127,38 +147,20 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         auto stop_conv = std::chrono::high_resolution_clock::now() - start_conv;
 
         auto start_comp = std::chrono::high_resolution_clock::now();
+        BoolArray all_zero = fpmath[0]->bool_op->input(PUBLIC, size_x, uint8_t(0));
+        fpmath[0]->fix->input(PUBLIC, size_x, static_cast<uint64_t>(0), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_x = fpmath[0]->fix->input(party->party, size_x, x.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-        // START_TIMER
-        // BoolArray S0 = fpmath[0]->fix->LT(
-        //               fix_x, neg_mod(static_cast<int64_t>(-5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE)),
-        //           S1 = fpmath[0]->fix->LT(
-        //               fix_x, neg_mod(static_cast<int64_t>(-sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL <<
-        //               DEFAULT_SCALE)),
-        //           S2 = fpmath[0]->fix->LT(
-        //               fpmath[0]->fix->input(
-        //                   PUBLIC, size_x,
-        //                   neg_mod(static_cast<int64_t>(sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-        //                   true, DEFAULT_ELL, DEFAULT_SCALE),
-        //               fix_x),
-        //           S3 = fpmath[0]->fix->LT(
-        //               fpmath[0]->fix->input(
-        //                   PUBLIC, size_x,
-        //                   neg_mod(static_cast<int64_t>(5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-        //                   true, DEFAULT_ELL, DEFAULT_SCALE),
-        //               fix_x);
-        BoolArray S0 = LT(party->party, fix_x,
-                          neg_mod(static_cast<int64_t>(-5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-                          fpmath[0]->fix, fpmath),
-                  S1 = LT(party->party, fix_x,
-                          neg_mod(static_cast<int64_t>(-sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-                          fpmath[0]->fix, fpmath),
+        auto msb_x = LT(party->party, fix_x, 0, fpmath);
+        FixArray neg_x = fpmath[0]->fix->mul(fix_x, -1);
+        auto abs_x = fpmath[0]->fix->if_else(msb_x, neg_x, fix_x);
+        BoolArray gt_zero = AND(party->party, msb_x, all_zero, fpmath),
                   S2 = LT(party->party,
                           neg_mod(static_cast<int64_t>(sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-                          fix_x, fpmath[0]->fix, fpmath),
+                          abs_x, fpmath),
                   S3 = LT(party->party,
-                          neg_mod(static_cast<int64_t>(5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE), fix_x,
-                          fpmath[0]->fix, fpmath);
-        // STOP_TIMER("LT")
+                          neg_mod(static_cast<int64_t>(5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE), abs_x,
+                          fpmath);
+        BoolArray S0 = AND(party->party, gt_zero, S3, fpmath), S1 = AND(party->party, gt_zero, S2, fpmath);
         BoolArray sign_b0 = S0, sign_b1 = boolop->XOR(S0, S1), sign_b2 = boolop->XOR(S1, S2),
                   sign_b3 = boolop->XOR(S2, S3), sign_b4 = S3;
         vector<uint64_t> b0(size_x), b1(size_x), b2(size_x), b3(size_x), b4(size_x);
@@ -181,21 +183,18 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         BFVLongPlaintext b0_plain(party->parm, b0), b1_plain(party->parm, b1), b2_plain(party->parm, b2),
             b3_plain(party->parm, b3), b4_plain(party->parm, b4);
         BFVLongCiphertext b0_sec_a(b0_plain, party), b1_sec_a(b1_plain, party), b2_sec_a(b2_plain, party),
-            b3_sec_a(b3_plain, party), b4_sec_a(b4_plain, party); 
+            b3_sec_a(b3_plain, party), b4_sec_a(b4_plain, party);
         auto stop_enc = std::chrono::high_resolution_clock::now() - start_enc;
 
         auto time = stop_comp + stop_enc;
-        INIT_TIMER
-        START_TIMER
         BFVLongCiphertext::send(io, &b0_sec_a);
         BFVLongCiphertext::send(io, &b1_sec_a);
         BFVLongCiphertext::send(io, &b2_sec_a);
         BFVLongCiphertext::send(io, &b3_sec_a);
         BFVLongCiphertext::send(io, &b4_sec_a);
-        STOP_TIMER("send")
 
         std::cout << "conv cost: " << stop_conv.count() / 1000000 << " ms\n";
-        std::cout << "enc cost: " << stop_enc.count() / 1000000 << " ms\n";
+        // std::cout << "enc cost: " << stop_enc.count() / 1000000 << " ms\n";
         std::cout << "time cost: " << time.count() / 1000000 << " ms\n";
     } else {
         uint64_t scale_inv = mod_inverse(1ULL << DEFAULT_SCALE, party->parm->plain_mod);
@@ -238,49 +237,31 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         auto size_x = x.size();
         conv->Prime_to_Ring(party->party, N_THREADS, x.data(), x.data(), size_x, DEFAULT_ELL, party->parm->plain_mod,
                             DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
-        FixArray fix_x = fpmath[0]->fix->input(party->party, size_x, x.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         auto stop_conv = std::chrono::high_resolution_clock::now() - start_conv;
-        // BoolArray S0 = fpmath[0]->fix->LT(
-        //               fix_x, neg_mod(static_cast<int64_t>(-5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE)),
-        //           S1 = fpmath[0]->fix->LT(
-        //               fix_x, neg_mod(static_cast<int64_t>(-sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL <<
-        //               DEFAULT_SCALE)),
-        //           S2 = fpmath[0]->fix->LT(
-        //               fpmath[0]->fix->input(
-        //                   PUBLIC, size_x,
-        //                   neg_mod(static_cast<int64_t>(sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-        //                   true, DEFAULT_ELL, DEFAULT_SCALE),
-        //               fix_x),
-        //           S3 = fpmath[0]->fix->LT(
-        //               fpmath[0]->fix->input(
-        //                   PUBLIC, size_x,
-        //                   neg_mod(static_cast<int64_t>(5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-        //                   true, DEFAULT_ELL, DEFAULT_SCALE),
-        //               fix_x);
+
         auto start_cmp = std::chrono::high_resolution_clock::now();
-        BoolArray S0 = LT(party->party, fix_x,
-                          neg_mod(static_cast<int64_t>(-5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-                          fpmath[0]->fix, fpmath),
-                  S1 = LT(party->party, fix_x,
-                          neg_mod(static_cast<int64_t>(-sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-                          fpmath[0]->fix, fpmath),
+        BoolArray all_zero = fpmath[0]->bool_op->input(PUBLIC, size_x, uint8_t(0));
+        fpmath[0]->fix->input(PUBLIC, size_x, static_cast<uint64_t>(0), true, DEFAULT_ELL, DEFAULT_SCALE);
+        FixArray fix_x = fpmath[0]->fix->input(party->party, size_x, x.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
+        auto msb_x = LT(party->party, fix_x, 0, fpmath);
+        FixArray neg_x = fpmath[0]->fix->mul(fix_x, -1);
+        auto abs_x = fpmath[0]->fix->if_else(msb_x, neg_x, fix_x);
+        BoolArray gt_zero = AND(party->party, msb_x, all_zero, fpmath),
                   S2 = LT(party->party,
                           neg_mod(static_cast<int64_t>(sqrt(2.) * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE),
-                          fix_x, fpmath[0]->fix, fpmath),
+                          abs_x, fpmath),
                   S3 = LT(party->party,
-                          neg_mod(static_cast<int64_t>(5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE), fix_x,
-                          fpmath[0]->fix, fpmath);
-        // STOP_TIMER("LT")
+                          neg_mod(static_cast<int64_t>(5.075 * (1ULL << DEFAULT_SCALE)), 1ULL << DEFAULT_SCALE), abs_x,
+                          fpmath);
+        BoolArray S0 = AND(party->party, gt_zero, S3, fpmath), S1 = AND(party->party, gt_zero, S2, fpmath);
         BoolArray sign_b0 = S0, sign_b1 = boolop->XOR(S0, S1), sign_b2 = boolop->XOR(S1, S2),
                   sign_b3 = boolop->XOR(S2, S3), sign_b4 = S3;
         vector<uint64_t> b0(size_x), b1(size_x), b2(size_x), b3(size_x), b4(size_x);
-        // START_TIMER
         aux->B2A(sign_b0.data, b0.data(), static_cast<int32_t>(size_x), 1);
         aux->B2A(sign_b1.data, b1.data(), static_cast<int32_t>(size_x), 1);
         aux->B2A(sign_b2.data, b2.data(), static_cast<int32_t>(size_x), 1);
         aux->B2A(sign_b3.data, b3.data(), static_cast<int32_t>(size_x), 1);
         aux->B2A(sign_b4.data, b4.data(), static_cast<int32_t>(size_x), 1);
-        // STOP_TIMER("B2A")
 #pragma omp parallel for
         for (size_t i = 0; i < size_x; i++) {
             b0[i] = (b0[i] - (1ULL << DEFAULT_SCALE)) % party->parm->plain_mod;
@@ -292,14 +273,11 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         auto stop_cmp = std::chrono::high_resolution_clock::now() - start_cmp;
 
         BFVLongCiphertext b0_sec_a, b1_sec_a, b2_sec_a, b3_sec_a, b4_sec_a;
-        INIT_TIMER
-        START_TIMER
         BFVLongCiphertext::recv(io, &b0_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &b1_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &b2_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &b3_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &b4_sec_a, party->parm->context);
-        STOP_TIMER("recv")
 
         auto start_fgelu = std::chrono::high_resolution_clock::now();
         b0_sec_a.mod_switch_to_next_inplace(party->parm->evaluator);
@@ -328,7 +306,7 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         auto time = stop_cc + stop_f + stop_cmp + stop_fgelu;
         // std::cout << "cipher-cipher: " << stop_cc.count() / 1000000 << " ms\n"
         //           << "f: " << stop_f.count() / 1000000 << " ms\n"
-        //           << "conversion: " << stop_conv.count() / 1000000 << " ms\n" 
+        //           << "conversion: " << stop_conv.count() / 1000000 << " ms\n"
         //           << "compare: " << stop_cmp.count() / 1000000 << " ms\n"
         //           << "gelu: " << stop_fgelu.count() / 1000000 << " ms\n";
         std::cout << "conv cost: " << stop_conv.count() / 1000000 << " ms\n";
@@ -357,7 +335,9 @@ int main(int argc, const char **argv) {
         Conversion *conv = new Conversion();
         AuxProtocols *aux = new AuxProtocols(party_, iopack[0], otpack[0]);
         BoolOp *boolop = new BoolOp(party_, iopack[0], otpack[0]);
-        BFVParm *parm = new BFVParm(8192, {40,30,30,40}, default_prime_mod.at(29)); //new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
+        BFVParm *parm =
+            new BFVParm(8192, {40, 30, 30, 40},
+                        default_prime_mod.at(29)); // new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
         BFVKey *party = new BFVKey(party_, parm);
 
         f1_parm0 = BFVLongPlaintext(
