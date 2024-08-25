@@ -31,24 +31,24 @@ int main(int argc, const char** argv) {
         size_t start = iopack->get_comm();
         if (party_ == sci::ALICE) {
             auto Ae = RFCP_bfv_encodeA(A, party, dim1, dim2, dim3);
-            INIT_TIMER
-            START_TIMER
             for (int i = 0; i < dim2; i++) {
                 BFVLongCiphertext::send(io, Ae + i);
             }
             delete[] Ae;
             BFVLongCiphertext C_sec;
+            INIT_TIMER
+            START_TIMER
             BFVLongCiphertext::recv(io, &C_sec, parm->context);
             auto C_plain = C_sec.decrypt(party);
             auto C = C_plain.decode_uint(parm);
             STOP_TIMER("RFCP")
         } else {
-            INIT_TIMER
-            START_TIMER
             BFVLongCiphertext* Ae = new BFVLongCiphertext[dim2];
             for (int i = 0; i < dim2; i++) {
                 BFVLongCiphertext::recv(io, Ae + i, parm->context);
             }
+            INIT_TIMER
+            START_TIMER
             auto res = RFCP_bfv_matmul(Ae, B, dim1, dim2, dim3, parm);
             delete[] Ae;
             bfv_matrix C(dim1 * dim3);
@@ -61,3 +61,5 @@ int main(int argc, const char** argv) {
         std::cout << "comm: " << iopack->get_comm() - start << "\n";
     } else { std::cout << "No party input\n"; }
 }
+// ./BOLT-softmax r=1 ip=172.20.0.2;./BOLT-layer_norm r=1 ip=172.20.0.2;./IRON-softmax r=1 ip=172.20.0.2;./IRON-layer_norm r=1 ip=172.20.0.2;./IRON-gelu r=1 ip=172.20.0.2
+// ./BOLT-softmax r=2 ip=172.20.0.3;./BOLT-layer_norm r=2 ip=172.20.0.3;./IRON-softmax r=2 ip=172.20.0.3;./IRON-layer_norm r=2 ip=172.20.0.3;./IRON-gelu r=2 ip=172.20.0.3

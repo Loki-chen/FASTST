@@ -1,5 +1,8 @@
 #include "he-bfv.h"
 #include <seal/ciphertext.h>
+#include <omp.h>
+
+#define MAX_SZ 10
 
 void print_parameters(std::shared_ptr<seal::SEALContext> context) {
     // Verify parameters
@@ -376,21 +379,22 @@ BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, int64_t *data, size_t len,
 
 BFVLongCiphertext::BFVLongCiphertext(const BFVLongPlaintext &lpt, BFVKey *party) {
     len = lpt.len;
-    for (Plaintext pt : lpt.plain_data) {
-        Ciphertext ct;
-        party->encryptor->encrypt(pt, ct);
-        cipher_data.push_back(ct);
+    size_t size = lpt.plain_data.size();
+    cipher_data.resize(size);
+#pragma omp parallel for
+    for (size_t i = 0; i < size; i++) {
+        party->encryptor->encrypt(lpt.plain_data[i], cipher_data[i]);
     }
 }
 
 BFVLongPlaintext BFVLongCiphertext::decrypt(BFVKey *party) const {
     BFVLongPlaintext lpt;
     lpt.len = len;
-    for (Ciphertext ct : cipher_data) {
-        Plaintext pt;
-        party->decryptor->decrypt(ct, pt);
-
-        lpt.plain_data.push_back(pt);
+    size_t size = cipher_data.size();
+    lpt.plain_data.resize(size);
+#pragma omp parallel for
+    for (size_t i = 0; i < size; i++) {
+        party->decryptor->decrypt(cipher_data[i], lpt.plain_data[i]);
     }
     return lpt;
 }
@@ -401,17 +405,21 @@ void BFVLongCiphertext::add_plain_inplace(BFVLongPlaintext &lpt, Evaluator *eval
         len = lpt.len;
         Ciphertext ct(cipher_data[0]);
         cipher_data.pop_back();
-        for (Plaintext pt : lpt.plain_data) {
+        size_t size = lpt.plain_data.size();
+        cipher_data = vector<Ciphertext>(size);
+        for (size_t i = 0; i < size; i++) {
             Ciphertext ctemp;
-            evaluator->add_plain(ct, pt, ctemp);
-            cipher_data.push_back(ctemp);
+            evaluator->add_plain(ct, lpt.plain_data[i], ctemp);
+            cipher_data[i] = ctemp;
         }
     } else if (lpt.len == 1) {
-        for (size_t i = 0; i < cipher_data.size(); i++)
+        for (size_t i = 0; i < cipher_data.size(); i++) {
             evaluator->add_plain_inplace(cipher_data[i], lpt.plain_data[0]);
+        }
     } else if (len == lpt.len) {
-        for (size_t i = 0; i < cipher_data.size(); i++)
+        for (size_t i = 0; i < cipher_data.size(); i++) {
             evaluator->add_plain_inplace(cipher_data[i], lpt.plain_data[i]);
+        }
     } else {
         char buf[100];
         sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
@@ -619,36 +627,28 @@ BFVLongCiphertext BFVLongCiphertext::sub(BFVLongCiphertext &lct, Evaluator *eval
     return lcct;
 }
 
-void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys) {
+void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator) {
+    size_t size = cipher_data.size();
     if (len == 1) {
         len = lpt.len;
-
+        size = lpt.plain_data.size();
         Ciphertext ct(cipher_data[0]);
-        cipher_data.pop_back();
-        for (Plaintext pt : lpt.plain_data) {
+        cipher_data.resize(size);
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             Ciphertext ctemp;
-
-            evaluator->multiply_plain(ct, pt, ctemp);
-
-            if (relin_keys != nullptr) {
-                evaluator->relinearize_inplace(ctemp, *relin_keys);
-            }
-
-            cipher_data.push_back(ctemp);
+            evaluator->multiply_plain(ct, lpt.plain_data[i], ctemp);
+            cipher_data[i] = ctemp;
         }
     } else if (lpt.len == 1) {
-        for (size_t i = 0; i < cipher_data.size(); i++) {
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             evaluator->multiply_plain_inplace(cipher_data[i], lpt.plain_data[0]);
-            if (relin_keys != nullptr) {
-                evaluator->relinearize_inplace(cipher_data[i], *relin_keys);
-            }
         }
     } else if (len == lpt.len) {
-        for (size_t i = 0; i < cipher_data.size(); i++) {
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             evaluator->multiply_plain_inplace(cipher_data[i], lpt.plain_data[i]);
-            if (relin_keys != nullptr) {
-                evaluator->relinearize_inplace(cipher_data[i], *relin_keys);
-            }
         }
     } else {
         char buf[100];
@@ -657,41 +657,31 @@ void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator 
     }
 }
 
-BFVLongCiphertext BFVLongCiphertext::multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator,
-                                                    RelinKeys *relin_keys) const {
+BFVLongCiphertext BFVLongCiphertext::multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const {
     BFVLongCiphertext lct;
     lct.len = 0;
+    size_t size = cipher_data.size();
     if (len == 1) {
         lct.len = lpt.len;
-        for (size_t i = 0; i < lpt.plain_data.size(); i++) {
-            Ciphertext ct;
-            evaluator->multiply_plain(cipher_data[0], lpt.plain_data[i], ct);
-            if (relin_keys != nullptr) {
-                evaluator->relinearize_inplace(ct, *relin_keys);
-            }
-            lct.cipher_data.push_back(ct);
+        size = lpt.plain_data.size();
+        lct.cipher_data.resize(size);
+        // #pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
+            evaluator->multiply_plain(cipher_data[0], lpt.plain_data[i], lct.cipher_data[i]);
         }
     } else if (lpt.len == 1) {
         lct.len = len;
-        for (size_t i = 0; i < cipher_data.size(); i++) {
-            Ciphertext ct;
-            evaluator->multiply_plain(cipher_data[i], lpt.plain_data[0], ct);
-            if (relin_keys != nullptr) {
-                evaluator->relinearize_inplace(ct, *relin_keys);
-            }
-
-            lct.cipher_data.push_back(ct);
+        lct.cipher_data.resize(size);
+        // #pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
+            evaluator->multiply_plain(cipher_data[i], lpt.plain_data[0], lct.cipher_data[i]);
         }
     } else if (len == lpt.len) {
         lct.len = len;
-        for (size_t i = 0; i < cipher_data.size(); i++) {
-            Ciphertext ct;
-            evaluator->multiply_plain(cipher_data[i], lpt.plain_data[i], ct);
-            if (relin_keys != nullptr) {
-                evaluator->relinearize_inplace(ct, *relin_keys);
-            }
-
-            lct.cipher_data.push_back(ct);
+        lct.cipher_data.resize(size);
+        // #pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
+            evaluator->multiply_plain(cipher_data[i], lpt.plain_data[i], lct.cipher_data[i]);
         }
     } else {
         char buf[100];
@@ -725,100 +715,107 @@ void BFVLongCiphertext::multiply_inplace(BFVLongCiphertext &lct, Evaluator *eval
 }
 
 BFVLongCiphertext BFVLongCiphertext::multiply(BFVLongCiphertext &lct, Evaluator *evaluator) const {
-    BFVLongCiphertext lcct;
-    lcct.len = 0;
+    BFVLongCiphertext ret;
+    ret.len = len;
+    size_t size = cipher_data.size();
     if (len == 1) {
-        lcct.len = lct.len;
-        for (size_t i = 0; i < lct.cipher_data.size(); i++) {
+        ret.len = lct.len;
+        size = lct.cipher_data.size();
+        ret.cipher_data.resize(size);
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             Ciphertext ct;
             evaluator->multiply(cipher_data[0], lct.cipher_data[i], ct);
-            lcct.cipher_data.push_back(ct);
+            ret.cipher_data[i] = ct;
         }
     } else if (lct.len == 1) {
-        lcct.len = len;
-        for (size_t i = 0; i < cipher_data.size(); i++) {
+        ret.cipher_data.resize(size);
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             Ciphertext ct;
             evaluator->multiply(cipher_data[i], lct.cipher_data[0], ct);
-            lcct.cipher_data.push_back(ct);
+            ret.cipher_data[i] = ct;
         }
     } else if (len == lct.len) {
-        lcct.len = len;
-        for (size_t i = 0; i < cipher_data.size(); i++) {
+        ret.cipher_data.resize(size);
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             Ciphertext ct;
             evaluator->multiply(cipher_data[i], lct.cipher_data[i], ct);
-            lcct.cipher_data.push_back(ct);
+            ret.cipher_data[i] = ct;
         }
     } else {
         char buf[100];
         sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
-    return lcct;
+    return ret;
 }
 
-void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye) {
+void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct) {
     assert(lct->len > 0);
     io->send_data(&(lct->len), sizeof(size_t));
     size_t size = lct->cipher_data.size();
     io->send_data(&size, sizeof(size_t));
 
-    if (uint_tpye) {
-        for (size_t ct = 0; ct < size; ct++) {
-            std::stringstream os;
-            uint64_t ct_size;
-            lct->cipher_data[ct].save(os);
-            ct_size = os.tellp();
-            string ct_ser = os.str();
-            io->send_data(&ct_size, sizeof(uint64_t));
-            io->send_data(ct_ser.c_str(), ct_ser.size());
-        }
-    } else {
-        for (size_t ct = 0; ct < size; ct++) {
-            std::stringstream os;
-            int64_t ct_size;
-            lct->cipher_data[ct].save(os);
-            ct_size = os.tellp();
-            string ct_ser = os.str();
-            io->send_data(&ct_size, sizeof(int64_t));
-            io->send_data(ct_ser.c_str(), ct_ser.size());
-        }
+    vector<uint64_t> ct_sizes(size);
+    vector<string> ct_sers(size);
+#pragma omp parallel for
+    for (size_t ct = 0; ct < size; ct++) {
+        std::stringstream os;
+        uint64_t ct_size;
+        lct->cipher_data[ct].save(os);
+        ct_sizes[ct] = os.tellp();
+        ct_sers[ct] = os.str();
     }
-
-    io->flush();
+    io->send_data(ct_sizes.data(), sizeof(uint64_t) * size);
+    for (size_t i = 0; i < size; i++) {
+        io->send_data(ct_sers[i].c_str(), ct_sizes[i]);
+    }
 }
 
-void BFVLongCiphertext::recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_type) {
+void BFVLongCiphertext::recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context) {
     io->recv_data(&(lct->len), sizeof(size_t));
     size_t size;
     io->recv_data(&size, sizeof(size_t));
+    lct->cipher_data.resize(size);
 
-    if (uint_type) {
-        for (size_t ct = 0; ct < size; ct++) {
-            Ciphertext cct;
-            std::stringstream is;
-            uint64_t ct_size;
-            io->recv_data(&ct_size, sizeof(uint64_t));
-            char *c_enc_result = new char[ct_size];
-            io->recv_data(c_enc_result, ct_size);
-            is.write(c_enc_result, ct_size);
-            cct.unsafe_load(*context, is);
-            lct->cipher_data.push_back(cct);
-            delete[] c_enc_result;
-        }
-    } else {
-        for (size_t ct = 0; ct < size; ct++) {
-            Ciphertext cct;
-            std::stringstream is;
-            int64_t ct_size;
-            io->recv_data(&ct_size, sizeof(int64_t));
-            char *c_enc_result = new char[ct_size];
-            io->recv_data(c_enc_result, ct_size);
-            is.write(c_enc_result, ct_size);
-            cct.unsafe_load(*context, is);
-            lct->cipher_data.push_back(cct);
-            delete[] c_enc_result;
-        }
+    vector<uint64_t> ct_sizes(size);
+    char** ct_sers = new char*[size];
+    io->recv_data(ct_sizes.data(), sizeof(uint64_t) * size);
+    for (size_t i = 0; i < size; i++) {
+        ct_sers[i] = new char[ct_sizes[i]];
+        io->recv_data(ct_sers[i], ct_sizes[i]);
     }
 
-    io->flush();
+#pragma omp parallel for
+    for (size_t ct = 0; ct < size; ct++) {
+        Ciphertext cct;
+        std::stringstream is;
+        is.write(ct_sers[ct], ct_sizes[ct]);
+        cct.unsafe_load(*context, is);
+        lct->cipher_data[ct] = cct;
+        delete[] ct_sers[ct];
+    }
+    delete[] ct_sers;
 }
+
+// void BFVLongCiphertext::recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context) {
+//     io->recv_data(&(lct->len), sizeof(size_t));
+//     size_t size;
+//     io->recv_data(&size, sizeof(size_t));
+
+//     vector<uint64_t> ct_sizes(size);
+//     io->recv_data(ct_sizes.data(), sizeof(uint64_t) * size);
+
+//     for (size_t ct = 0; ct < size; ct++) {
+//         Ciphertext cct;
+//         std::stringstream is;
+//         char *c_enc_result = new char[ct_sizes[ct]];
+//         io->recv_data(c_enc_result, ct_sizes[ct]);
+//         is.write(c_enc_result, ct_sizes[ct]);
+//         cct.unsafe_load(*context, is);
+//         lct->cipher_data.push_back(cct);
+//         delete[] c_enc_result;
+//     }
+// }

@@ -4,7 +4,7 @@
 
 bfv_matrix Conversion::he_to_ss_client(sci::NetIO *io, BFVKey *party) {
     BFVLongCiphertext lct;
-    BFVLongCiphertext::recv(io, &lct, party->parm->context, true);
+    BFVLongCiphertext::recv(io, &lct, party->parm->context);
     auto lpt = lct.decrypt(party);
     return lpt.decode_uint(party->parm);
 }

@@ -18,6 +18,8 @@ using std::vector;
 using namespace seal;
 
 const map<int32_t, uint64_t> default_prime_mod{
+    {13,        557057},
+    {16,       5875273},
     {25,      33832961},
     {28,     268582913},
     {29,     536903681},
@@ -129,13 +131,12 @@ public:
     BFVLongCiphertext sub_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
     void sub_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     BFVLongCiphertext sub(BFVLongCiphertext &lct, Evaluator *evaluator) const;
-    void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator, RelinKeys *relin_keys = nullptr);
-    BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator,
-                                     RelinKeys *relin_keys = nullptr) const;
+    void multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator *evaluator);
+    BFVLongCiphertext multiply_plain(BFVLongPlaintext &lpt, Evaluator *evaluator) const;
     void multiply_inplace(BFVLongCiphertext &lct, Evaluator *evaluator);
     BFVLongCiphertext multiply(BFVLongCiphertext &lct, Evaluator *evaluator) const;
-    static void send(sci::NetIO *io, BFVLongCiphertext *lct, bool uint_tpye = true);
-    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context, bool uint_tpye = true);
+    static void send(sci::NetIO *io, BFVLongCiphertext *lct);
+    static void recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context);
 
     inline void negate_inplace(Evaluator *evaluator) {
         for (auto &ct : cipher_data) {
@@ -162,38 +163,38 @@ public:
     }
 
     inline BFVLongCiphertext square(Evaluator *evaluator) const {
-        size_t c_d_size = cipher_data.size();
+        size_t size = cipher_data.size();
         BFVLongCiphertext ret;
-        ret.cipher_data = vector<Ciphertext>(c_d_size);
+        ret.cipher_data.resize(size);
         ret.len = len;
-        for (size_t i = 0; i < c_d_size; i++) {
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             evaluator->square(cipher_data[i], ret.cipher_data[i]);
         }
         return ret;
     }
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator) {
-        size_t c_d_size = cipher_data.size();
-        for (size_t i = 0; i < c_d_size; i++) {
+        size_t size = cipher_data.size();
+        for (size_t i = 0; i < size; i++) {
             evaluator->mod_switch_to_inplace(cipher_data[i], parms_id);
         }
     }
 
     inline void mod_switch_to_next_inplace(Evaluator *evaluator) {
-        size_t c_d_size = cipher_data.size();
-        for (size_t i = 0; i < c_d_size; i++) {
+        size_t size = cipher_data.size();
+        for (size_t i = 0; i < size; i++) {
             evaluator->mod_switch_to_next_inplace(cipher_data[i]);
         }
     }
 
     inline void relinearize_inplace(Evaluator *evaluator, const RelinKeys &relin_keys) {
-        size_t c_d_size = cipher_data.size();
-        for (size_t i = 0; i < c_d_size; i++) {
+        size_t size = cipher_data.size();
+#pragma omp parallel for
+        for (size_t i = 0; i < size; i++) {
             evaluator->relinearize_inplace(cipher_data[i], relin_keys);
         }
     }
-
-    
 
     inline const parms_id_type parms_id() const noexcept { return cipher_data[0].parms_id(); }
 };
