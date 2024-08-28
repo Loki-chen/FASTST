@@ -1,3 +1,4 @@
+#include "FixedPoint/fixed-math.h"
 #include "FixedPoint/fixed-point.h"
 #include "protocols/fixed-protocol.h"
 #include "utils/he-bfv.h"
@@ -8,6 +9,27 @@
 using namespace sci;
 
 INIT_TIMER
+
+void sqrt_thread(uint64_t* x_data, int x_party, uint64_t* out, bool recp_sqrt,int num_ops, FPMath* fpmath) {
+    FixArray fix_x = fpmath->fix->input(x_party, num_ops, x_data, true, DEFAULT_ELL, DEFAULT_SCALE);
+    FixArray fix_out = fpmath->sqrt_(fix_x, recp_sqrt);
+    memcpy(out, fix_out.data, sizeof(uint64_t) * num_ops);
+}
+
+FixArray sqrt(int party, FixArray &x, bool recp_sqrt, FPMath **fpmath) {
+    FixArray output(party, x.size, true, x.ell, x.s);
+    std::thread threads[N_THREADS];
+    int chunk_size = output.size / N_THREADS;
+    for (int i = 0; i < N_THREADS; i++) {
+        int offset = i * chunk_size;
+        int lnum_ops = (i == (N_THREADS - 1)) ? output.size - offset : chunk_size;
+        threads[i] = std::thread(sqrt_thread, x.data + offset, x.party, output.data + offset, recp_sqrt, lnum_ops, fpmath[i]);
+    }
+    for (int i = 0; i < N_THREADS; ++i) {
+        threads[i].join();
+    }
+    return output;
+}
 
 vector<uint64_t> layernorm(BFVKey *party, const vector<uint64_t> &input, const vector<uint64_t> &gamma,
                            const vector<uint64_t> &beta, int dim1, int dim2, NetIO *io, FPMath **fpmath,
@@ -47,15 +69,12 @@ vector<uint64_t> layernorm(BFVKey *party, const vector<uint64_t> &input, const v
         BFVLongCiphertext SR_sec_a(SR_plain, party);
         BFVLongCiphertext::send(io, &A_s_sec_b);
         BFVLongCiphertext::send(io, &SR_sec_a);
-        
 
         vector<uint64_t> Ka = conv->he_to_ss_client(io, party);
-        conv->Prime_to_Ring(party->party, N_THREADS, Ka.data(), Ka.data(), Ka.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE * 2,
-                            DEFAULT_SCALE, fpmath);//return Ka;
+        conv->Prime_to_Ring(party->party, N_THREADS, Ka.data(), Ka.data(), Ka.size(), DEFAULT_ELL,
+                            party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath); // return Ka;
         FixArray fix_Ka = fpmath[0]->fix->input(party->party, Ka.size(), Ka.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-        START_TIMER
         FixArray isqrt_Ka = fpmath[0]->sqrt_(fix_Ka, true);
-        STOP_TIMER("sqrt")
         FixArray isqrt_Ka_flat(party->party, size, true, DEFAULT_ELL, DEFAULT_SCALE);
         for (int i = 0; i < dim1; i++) {
             for (int j = 0; j < dim2; j++) {
@@ -74,8 +93,8 @@ vector<uint64_t> layernorm(BFVKey *party, const vector<uint64_t> &input, const v
         BFVLongCiphertext::send(io, &S_sec_a);
 
         vector<uint64_t> ret = conv->he_to_ss_client(io, party);
-        conv->Prime_to_Ring(party->party, N_THREADS, ret.data(), ret.data(), ret.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE * 2,
-                            DEFAULT_SCALE, fpmath);  // it's costly
+        conv->Prime_to_Ring(party->party, N_THREADS, ret.data(), ret.data(), ret.size(), DEFAULT_ELL,
+                            party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath); // it's costly
         return ret;
     } else {
         conv->ss_to_he_client(party, io, fix_A.data, fix_A.size, DEFAULT_ELL);
@@ -87,7 +106,8 @@ vector<uint64_t> layernorm(BFVKey *party, const vector<uint64_t> &input, const v
         vector<uint64_t> AR = A_s_plain.decode_uint(party->parm);
         vector<FixArray> fix_AR(dim1);
         for (int i = 0; i < dim1; i++) {
-            fix_AR[i] = fpmath[0]->fix->input(party->party, dim2, AR.data() + i * dim2, true, DEFAULT_ELL, DEFAULT_SCALE);
+            fix_AR[i] =
+                fpmath[0]->fix->input(party->party, dim2, AR.data() + i * dim2, true, DEFAULT_ELL, DEFAULT_SCALE);
         }
         FixArray fix_SAR = fpmath[0]->fix->tree_sum(fix_AR);
         BFVLongPlaintext SAR_plain(party->parm, fix_SAR.data, fix_SAR.size);
@@ -95,12 +115,10 @@ vector<uint64_t> layernorm(BFVKey *party, const vector<uint64_t> &input, const v
         SR_sec_a.add_plain_inplace(SAR_plain, party->parm->evaluator);
 
         vector<uint64_t> Kb = conv->he_to_ss_server(io, party->parm, SR_sec_a);
-        conv->Prime_to_Ring(party->party, N_THREADS, Kb.data(), Kb.data(), Kb.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE * 2,
-                            DEFAULT_SCALE, fpmath);//return Kb;
+        conv->Prime_to_Ring(party->party, N_THREADS, Kb.data(), Kb.data(), Kb.size(), DEFAULT_ELL,
+                            party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath); // return Kb;
         FixArray fix_Kb = fpmath[0]->fix->input(party->party, Kb.size(), Kb.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-        START_TIMER
         FixArray isqrt_Kb = fpmath[0]->sqrt_(fix_Kb, true);
-        STOP_TIMER("sqrt")
         FixArray isqrt_Kb_flat(party->party, size, true, DEFAULT_ELL, DEFAULT_SCALE);
         for (int i = 0; i < dim1; i++) {
             for (int j = 0; j < dim2; j++) {
@@ -118,8 +136,8 @@ vector<uint64_t> layernorm(BFVKey *party, const vector<uint64_t> &input, const v
         S_sec_a.multiply_plain_inplace(gamma_plain, party->parm->evaluator);
         S_sec_a.add_plain_inplace(beta_plain, party->parm->evaluator);
         vector<uint64_t> ret = conv->he_to_ss_server(io, party->parm, S_sec_a);
-        conv->Prime_to_Ring(party->party, N_THREADS, ret.data(), ret.data(), ret.size(), DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE * 2,
-                            DEFAULT_SCALE, fpmath);  // it's costly
+        conv->Prime_to_Ring(party->party, N_THREADS, ret.data(), ret.data(), ret.size(), DEFAULT_ELL,
+                            party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath); // it's costly
         return ret;
     }
 }

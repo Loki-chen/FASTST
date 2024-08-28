@@ -186,12 +186,14 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
             b3_sec_a(b3_plain, party), b4_sec_a(b4_plain, party);
         auto stop_enc = std::chrono::high_resolution_clock::now() - start_enc;
 
-        auto time = stop_comp + stop_enc;
+        auto start_send = std::chrono::high_resolution_clock::now();
         BFVLongCiphertext::send(io, &b0_sec_a);
         BFVLongCiphertext::send(io, &b1_sec_a);
         BFVLongCiphertext::send(io, &b2_sec_a);
         BFVLongCiphertext::send(io, &b3_sec_a);
         BFVLongCiphertext::send(io, &b4_sec_a);
+        auto stop_send = std::chrono::high_resolution_clock::now() - start_send;
+        auto time = stop_comp + stop_enc + stop_send;
 
         std::cout << "conv cost: " << stop_conv.count() / 1000000 << " ms\n";
         // std::cout << "enc cost: " << stop_enc.count() / 1000000 << " ms\n";

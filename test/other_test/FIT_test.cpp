@@ -38,10 +38,10 @@ bfv_matrix matmul(const bfv_matrix &mat1, const bfv_matrix &mat2, size_t dim1, s
 }
 
 int dim[5][3] = {
-    {32, 32, 64},
-    {128, 64, 64},
+    { 32,  32, 64},
+    {128,  64, 64},
     {128, 256, 64},
-    {128, 256, 256},
+    {256, 256, 64},
     {128, 768, 64}
 };
 
@@ -80,12 +80,12 @@ int main(int argc, const char** argv) {
                 BFVLongPlaintext lpt(parm, vector<uint64_t>(Ae.begin() + i * dim1 * 2, Ae.begin() + (i + 1) * dim1 * 2));
                 Ae_sec[i] = BFVLongCiphertext(lpt, party);
             }
-            INIT_TIMER
-            START_TIMER
             for (int i = 0; i  < dim2 / 2; i++) {
                 BFVLongCiphertext::send(io, Ae_sec + i);
             }
             delete[] Ae_sec;
+            INIT_TIMER
+            START_TIMER
 {
     std::stringstream os;
     party->galois_keys.save(os);
@@ -105,7 +105,7 @@ int main(int argc, const char** argv) {
                 auto C_vec = C_p.decode_uint(parm);
                 C[i] = vector<uint64_t>(C_vec.begin(), C_vec.begin() + dim1);
             }
-            STOP_TIMER("FCHE")
+            STOP_TIMER("FIT")
         } else {
             vector<vector<bfv_matrix>> Be(dim3, vector<bfv_matrix>(dim2 / 2, bfv_matrix(dim1 * 2)));
 #pragma omp parallel for
@@ -164,7 +164,7 @@ int main(int argc, const char** argv) {
                 BFVLongCiphertext::send(io, C_sec + i);
             }
             delete[] C_sec;
-            STOP_TIMER("FCHE")
+            STOP_TIMER("FIT")
         }
         std::cout << "comm: " << iopack->get_comm() - start << "\n";
         delete otpack;
