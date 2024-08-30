@@ -1,8 +1,4 @@
-#include "FixedPoint/fixed-math.h"
-#include "FixedPoint/fixed-point.h"
 #include "protocols/fixed-protocol.h"
-#include "utils/he-bfv.h"
-#include "utils/mat-tools.h"
 #include <utils.h>
 #define N_THREADS 12
 

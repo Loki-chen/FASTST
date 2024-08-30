@@ -1,6 +1,4 @@
 #include "conversion.h"
-#include "Utils/net_io_channel.h"
-#include "utils/he-bfv.h"
 
 bfv_matrix Conversion::he_to_ss_client(sci::NetIO *io, BFVKey *party) {
     BFVLongCiphertext lct;
@@ -94,25 +92,24 @@ void Conversion::Prime_to_Ring(int party, const uint64_t *input, uint64_t *outpu
 
 void gt_p_sub_thread(int party, const uint64_t *x, uint64_t p, uint64_t *y, int num_ops, int ell, int s_in, int s_out,
                      FPMath *fpmath) {
-    int this_party = party;
-    FixArray input = fpmath->fix->input(this_party, num_ops, x, true, ell, s_in);
+    FixArray input = fpmath->fix->input(party, num_ops, x, true, ell, s_in);
     FixArray p_array = fpmath->fix->input(PUBLIC, num_ops, p, true, ell, s_in);
     FixArray p_2_array = fpmath->fix->input(PUBLIC, num_ops, (p - 1) / 2, true, ell, s_in);
-    FixArray output = fpmath->gt_p_sub(input, p_array);
-    output = fpmath->fix->sub(output, p_2_array);
+    FixArray tmp = fpmath->gt_p_sub(input, p_array);
+    // tmp = fpmath->fix->sub(output, p_2_array);
 
     if (s_in > s_out) {
-        output = fpmath->fix->right_shift(output, s_in - s_out);
+        tmp = fpmath->fix->right_shift(tmp, s_in - s_out);
     } else if (s_in < s_out) {
-        output = fpmath->fix->mul(output, 1 << (s_out - s_in));
+        tmp = fpmath->fix->mul(tmp, 1 << (s_out - s_in));
     }
 
-    memcpy(y, output.data, num_ops * sizeof(uint64_t));
+    memcpy(y, tmp.data, num_ops * sizeof(uint64_t));
 }
 
 void Conversion::Prime_to_Ring(int party, int nthreads, const uint64_t *input, uint64_t *output, int length, int ell,
                                int64_t plain_prime, int s_in, int s_out, FPMath **fpmath) {
-    std::thread threads[nthreads];
+    thread threads[nthreads];
     int chunk_size = length / nthreads;
     for (int i = 0; i < nthreads; i++) {
         int offset = i * chunk_size;

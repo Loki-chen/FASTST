@@ -1,6 +1,3 @@
-#include "Utils/io_pack.h"
-#include "utils/he-bfv.h"
-#include <thread>
 #include <utils.h>
 #define N_THREADS 12
 

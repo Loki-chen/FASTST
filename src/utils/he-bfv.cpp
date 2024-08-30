@@ -1,6 +1,4 @@
 #include "he-bfv.h"
-#include <omp.h>
-#include <seal/ciphertext.h>
 
 #define MAX_SZ 10
 
@@ -422,7 +420,7 @@ void BFVLongCiphertext::add_plain_inplace(BFVLongPlaintext &lpt, Evaluator *eval
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
+        sprintf(buf, "In add_plain_inplace: Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
         throw bfv_lenth_error(buf);
     }
 }
@@ -453,7 +451,7 @@ BFVLongCiphertext BFVLongCiphertext::add_plain(BFVLongPlaintext &lpt, Evaluator 
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
+        sprintf(buf, "In add_plain: Length of BFVLongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
         throw bfv_lenth_error(buf);
     }
     return lct;
@@ -477,7 +475,7 @@ void BFVLongCiphertext::add_inplace(BFVLongCiphertext &lct, Evaluator *evaluator
             evaluator->add_inplace(cipher_data[i], lct.cipher_data[i]);
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        sprintf(buf, "In add_inplace: Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
 }
@@ -508,7 +506,7 @@ BFVLongCiphertext BFVLongCiphertext::add(BFVLongCiphertext &lct, Evaluator *eval
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        sprintf(buf, "In add: Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
     return lcct;
@@ -533,7 +531,7 @@ void BFVLongCiphertext::sub_plain_inplace(BFVLongPlaintext &lpt, Evaluator *eval
             evaluator->sub_plain_inplace(cipher_data[i], lpt.plain_data[i]);
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
+        sprintf(buf, "In sub_plain_inplace: Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
         throw bfv_lenth_error(buf);
     }
 }
@@ -565,7 +563,7 @@ BFVLongCiphertext BFVLongCiphertext::sub_plain(BFVLongPlaintext &lpt, Evaluator 
             }
         } else {
             char buf[100];
-            sprintf(buf, "Length of BFVLongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
+            sprintf(buf, "In sub_plain: Length of BFVLongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
             throw bfv_lenth_error(buf);
         }
         return lct;
@@ -590,7 +588,7 @@ void BFVLongCiphertext::sub_inplace(BFVLongCiphertext &lct, Evaluator *evaluator
             evaluator->sub_inplace(cipher_data[i], lct.cipher_data[i]);
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        sprintf(buf, "In sub_inplace: Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
 }
@@ -621,7 +619,7 @@ BFVLongCiphertext BFVLongCiphertext::sub(BFVLongCiphertext &lct, Evaluator *eval
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        sprintf(buf, "In sub: Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
     return lcct;
@@ -652,7 +650,7 @@ void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator 
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of LongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
+        sprintf(buf, "In multiply_plain_inplace: Length of LongCiphertext(%ld) and LongPlaintext(%ld) mismatch", len, lpt.len);
         throw bfv_lenth_error(buf);
     }
 }
@@ -685,7 +683,7 @@ BFVLongCiphertext BFVLongCiphertext::multiply_plain(BFVLongPlaintext &lpt, Evalu
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
+        sprintf(buf, "In multiply_plain: Length of BFVLongCiphertext(%ld) and BFVLongPlaintext(%ld) mismatch", len, lpt.len);
         throw bfv_lenth_error(buf);
     }
     return lct;
@@ -709,7 +707,7 @@ void BFVLongCiphertext::multiply_inplace(BFVLongCiphertext &lct, Evaluator *eval
             evaluator->multiply_inplace(cipher_data[i], lct.cipher_data[i]);
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        sprintf(buf, "In multiply_inplace: Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
 }
@@ -746,7 +744,7 @@ BFVLongCiphertext BFVLongCiphertext::multiply(BFVLongCiphertext &lct, Evaluator 
         }
     } else {
         char buf[100];
-        sprintf(buf, "Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
+        sprintf(buf, "In multiply: Length of BFVLongCiphertext(%ld) and BFVLongCiphertext(%ld) mismatch", len, lct.len);
         throw bfv_lenth_error(buf);
     }
     return ret;

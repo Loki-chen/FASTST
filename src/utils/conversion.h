@@ -1,8 +1,6 @@
 #ifndef FAST_HE_BFV_CONVERSION_H__
 #define FAST_HE_BFV_CONVERSION_H__
 
-#include "FixedPoint/fixed-math.h"
-#include "Utils/constants.h"
 #include "he-bfv.h"
 #include "mat-tools.h"
 #include <ezpc_scilib/ezpc_utils.h>

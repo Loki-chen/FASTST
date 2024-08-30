@@ -1,13 +1,4 @@
-#include "FixedPoint/bool-data.h"
-#include "FixedPoint/fixed-math.h"
-#include "FixedPoint/fixed-point.h"
-#include "Utils/ezpc_scilib_tool.h"
 #include "protocols/fixed-protocol.h"
-#include "utils/he-bfv.h"
-#include <chrono>
-#include <cstdint>
-#include <seal/evaluator.h>
-#include <thread>
 #include <utils.h>
 #define N_THREADS 12
 

@@ -2,10 +2,7 @@
 #define FAST_HE_BFV_TOOLS_H__
 
 #include <cassert>
-#include <seal/ciphertext.h>
-#include <seal/evaluator.h>
-#include <seal/galoiskeys.h>
-#include <seal/relinkeys.h>
+#include <seal/seal.h>
 #include <sstream>
 #include <string>
 

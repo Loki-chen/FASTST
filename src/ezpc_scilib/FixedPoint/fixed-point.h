@@ -32,7 +32,7 @@ public:
     int ell;                  // field
     int s;                    // scale
 
-    FixArray() {};
+    FixArray(){};
 
     FixArray(int party_, int sz, bool signed__, int ell_, int s_ = 0) {
         assert(party_ == sci::PUBLIC || party_ == sci::ALICE || party_ == sci::BOB);
@@ -68,7 +68,12 @@ public:
         other.data = nullptr;
     }
 
-    ~FixArray() { delete[] data; }
+    ~FixArray() {
+        if (data != nullptr) {
+            delete[] data;
+            data = nullptr;
+        }
+    }
 
     template <class T> std::vector<T> get_native_type() const;
 
@@ -76,7 +81,10 @@ public:
     FixArray &operator=(const FixArray &other) {
         if (this == &other) return *this;
 
-        delete[] this->data;
+        if (data != nullptr) {
+            delete[] this->data;
+            this->data = nullptr;
+        }
         this->party = other.party;
         this->size = other.size;
         this->signed_ = other.signed_;
@@ -91,7 +99,10 @@ public:
     FixArray &operator=(FixArray &&other) noexcept {
         if (this == &other) return *this;
 
-        delete[] this->data;
+        if (data != nullptr) {
+            delete[] this->data;
+            this->data = nullptr;
+        }
         this->party = other.party;
         this->size = other.size;
         this->signed_ = other.signed_;

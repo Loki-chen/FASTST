@@ -1,5 +1,4 @@
 #include "mat-tools.h"
-#include <stdexcept>
 
 using std::cerr;
 using std::cout;
