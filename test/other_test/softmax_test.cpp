@@ -84,7 +84,7 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
         V_sec_b.multiply_plain_inplace(Sexp_expand_plain, party->parm->evaluator);
         exp_sec_b.multiply_inplace(V_sec_b, party->parm->evaluator);
 
-        BFVLongCiphertext::send(io, &exp_sec_b);
+        // BFVLongCiphertext::send(io, &exp_sec_b);
         vector<uint64_t> ret = conv->he_to_ss_server(io, party->parm, exp_sec_b);
         // std::cout << "result of A:\n" << ret[0] << " " << ret[1] << "\n" << ret[2] << " " << ret[3] << "\n";
         return ret;

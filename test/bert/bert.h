@@ -35,9 +35,6 @@ class Encoder {
     timestamp send_encoded_ciper(BFVLongCiphertext *inp_e, FPMath **fpmath, int length) {
         thread send_threads[N_THREADS];
         int split = length / N_THREADS;
-        if (split * N_THREADS > length) {
-            split += 1;
-        }
         for (int t = 0; t < N_THREADS; t++) {
             int num_ops = split;
             if (t == N_THREADS - 1) {
@@ -54,15 +51,15 @@ class Encoder {
             send_threads[t].join();
         }
         timestamp end = get_timestamp() - start;
+        for (int i = 0; i < N_THREADS; i++) {
+            fpmath[i]->iopack->io->flush();
+        }
         return end;
     }
 
     void recv_encoded_ciper(BFVLongCiphertext *inp_e, FPMath **fpmath, int length) {
         thread recv_threads[N_THREADS];
         int split = length / N_THREADS;
-        if (split * N_THREADS > length) {
-            split += 1;
-        }
         for (int t = 0; t < N_THREADS; t++) {
             int num_ops = split;
             if (t == N_THREADS - 1) {
@@ -100,16 +97,17 @@ class Encoder {
         FixArray fix_inp = fpmath->fix->input(PUBLIC, size, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray exp_inp = fpmath->location_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
         if (party->party == ALICE) {
-            BFVLongCiphertext exp_sec_b = conv->ss_to_he_server(party->parm, fpmath->iopack->io, exp_inp.data, exp_inp.size, false);
+            BFVLongCiphertext exp_sec_b =
+                conv->ss_to_he_server(party->parm, fpmath->iopack->io, exp_inp.data, exp_inp.size, false);
             vector<uint64_t> R(size);
-            // random_modP_mat(R, party->parm->plain_mod);
+            random_modP_mat(R, party->parm->plain_mod);
             BFVLongPlaintext R_plain(party->parm, R);
             auto exp_R_sec_b = exp_sec_b.add_plain(R_plain, party->parm->evaluator);
             vector<FixArray> fix_R(batch_size);
 #pragma omp parallel for
             for (int i = 0; i < batch_size; i++) {
-                fix_R[i] =
-                    fpmath->fix->input(party->party, batch_size, R.data() + i * batch_size, true, DEFAULT_ELL, DEFAULT_SCALE);
+                fix_R[i] = fpmath->fix->input(party->party, batch_size, R.data() + i * batch_size, true, DEFAULT_ELL,
+                                              DEFAULT_SCALE);
             }
             FixArray fix_SR = fpmath->fix->tree_sum(fix_R);
             BFVLongPlaintext SR_plain(party->parm, fix_SR.data, fix_SR.size);
@@ -129,13 +127,11 @@ class Encoder {
                 }
             }
 
-            // std::cout << "1 / (EV): "<< modInverse(Sexp_V[0], party->parm->plain_mod) << " " << modInverse(Sexp_V[1],
-            // party->parm->plain_mod) << "\n"; // 1 / EV
             BFVLongPlaintext Sexp_expand_plain(party->parm, Sexp_V_expand);
             V_sec_b.multiply_plain_inplace(Sexp_expand_plain, party->parm->evaluator);
             exp_sec_b.multiply_inplace(V_sec_b, party->parm->evaluator);
 
-            BFVLongCiphertext::send(fpmath->iopack->io, &exp_sec_b);
+            // BFVLongCiphertext::send(fpmath->iopack->io, &exp_sec_b);
             output = conv->he_to_ss_server(fpmath->iopack->io, party->parm, exp_sec_b);
         } else {
             conv->ss_to_he_client(party, fpmath->iopack->io, exp_inp.data, exp_inp.size, DEFAULT_ELL);
@@ -148,24 +144,21 @@ class Encoder {
             vector<FixArray> fix_exp_R(batch_size);
 #pragma omp parallel for
             for (int i = 0; i < batch_size; i++) {
-                fix_exp_R[i] =
-                    fpmath->fix->input(party->party, batch_size, exp_R.data() + i * batch_size, true, DEFAULT_ELL, DEFAULT_SCALE);
+                fix_exp_R[i] = fpmath->fix->input(party->party, batch_size, exp_R.data() + i * batch_size, true,
+                                                  DEFAULT_ELL, DEFAULT_SCALE);
             }
             FixArray fix_S_exp_R = fpmath->fix->tree_sum(fix_exp_R);
-            // std::cout << "1/E: " << modInverse(fix_S_exp_R.data[0], party->parm->plain_mod) << " " <<
-            // modInverse(fix_S_exp_R.data[1], party->parm->plain_mod)<< "\n";
+
             BFVLongPlaintext S_exp_R_plain(party->parm, fix_S_exp_R.data, fix_S_exp_R.size);
             SR_sec_a.negate_inplace(party->parm->evaluator);
             SR_sec_a.add_plain_inplace(S_exp_R_plain, party->parm->evaluator);
             vector<uint64_t> V(batch_size, 1), V_expand(batch_size * batch_size);
-            // random_modP_mat(V, party->parm->plain_mod);
 #pragma omp parallel for
             for (int i = 0; i < batch_size; i++) {
                 for (int j = 0; j < batch_size; j++) {
                     V_expand[i * batch_size + j] = V[i];
                 }
             }
-            // std::cout << "V: " << V_expand[0] << " " << V_expand[3] << "\n";
             BFVLongPlaintext V_plain(party->parm, V), V_expand_plain(party->parm, V_expand);
             SR_sec_a.multiply_plain_inplace(V_plain, party->parm->evaluator);
             BFVLongCiphertext V_sec_b(V_expand_plain, party);
@@ -230,6 +223,7 @@ public:
 
     Encoder(BFVKey *_party, int _layer) : party(_party), layer(_layer) {
         if (party->party == BOB) {
+            vector<uint64_t> tmp_Attn_b;
             string layer_str = std::to_string(layer);
             load_bfv_mat(WQ, replace(base_path + WQ_path, "LAYER", layer_str));
             load_bfv_mat(WK, replace(base_path + WK_path, "LAYER", layer_str));
@@ -238,7 +232,7 @@ public:
             load_bfv_mat(bK, replace(base_path + bK_path, "LAYER", layer_str));
             load_bfv_mat(bV, replace(base_path + bV_path, "LAYER", layer_str));
             load_bfv_mat(Attn_W, replace(base_path + Attn_W_path, "LAYER", layer_str));
-            load_bfv_mat(Attn_b, replace(base_path + Attn_b_path, "LAYER", layer_str));
+            load_bfv_mat(tmp_Attn_b, replace(base_path + Attn_b_path, "LAYER", layer_str));
             load_bfv_mat(gamma1, replace(base_path + gamma1_path, "LAYER", layer_str));
             load_bfv_mat(beta1, replace(base_path + beta1_path, "LAYER", layer_str));
             load_bfv_mat(W1, replace(base_path + W1_path, "LAYER", layer_str));
@@ -273,6 +267,13 @@ public:
                         nhead_bK[i][k * d_k + j] = tmp_bK[j];
                         nhead_bV[i][k * d_k + j] = tmp_bV[j];
                     }
+                }
+            }
+
+            Attn_b.resize(batch_size * d_module);
+            for (int i = 0; i < batch_size; i++) {
+                for (size_t j = 0; j < d_module; j++) {
+                    Attn_b[i * d_module + j] = tmp_Attn_b[j];
                 }
             }
         }

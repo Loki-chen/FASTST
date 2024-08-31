@@ -97,18 +97,18 @@ BFVLongPlaintext::BFVLongPlaintext(const Plaintext &pt) {
 /*
      BFVLongPlaintext:  for field [0,2p]
 */
-BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, uint64_t data) {
+BFVLongPlaintext::BFVLongPlaintext(BFVParm *parm, uint64_t data) {
     // TODO value len =1, use the BFV batchencoder to encode the palaintext
     len = 1;
     Plaintext pt;
-    vector<uint64_t> temp(contex->slot_count, data);
-    contex->encoder->encode(temp, pt);
+    vector<uint64_t> temp(parm->slot_count, data);
+    parm->encoder->encode(temp, pt);
     plain_data.push_back(pt);
 }
 
-BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, vector<uint64_t> data) {
+BFVLongPlaintext::BFVLongPlaintext(BFVParm *parm, vector<uint64_t> data) {
     len = data.size();
-    size_t slot_count = contex->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
+    size_t slot_count = parm->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / slot_count;
 
     if (len % slot_count) {
@@ -117,7 +117,7 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, vector<uint64_t> data) {
     size_t i, j;
     if (slot_count >= len) {
         Plaintext pt;
-        contex->encoder->encode(data, pt);
+        parm->encoder->encode(data, pt);
         plain_data.push_back(pt);
     } else {
         vector<uint64_t>::iterator curPtr = data.begin(), endPtr = data.end(), end;
@@ -126,16 +126,16 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, vector<uint64_t> data) {
             slot_count = endPtr - curPtr > slot_count ? slot_count : endPtr - curPtr;
             vector<uint64_t> temp(curPtr, end);
             Plaintext pt;
-            contex->encoder->encode(temp, pt);
+            parm->encoder->encode(temp, pt);
             plain_data.push_back(pt);
             curPtr += slot_count;
         }
     }
 }
 
-BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, uint64_t *data, size_t len) {
+BFVLongPlaintext::BFVLongPlaintext(BFVParm *parm, uint64_t *data, size_t len) {
     this->len = len;
-    size_t slot_count = contex->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
+    size_t slot_count = parm->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / slot_count;
 
     if (len % slot_count) {
@@ -144,7 +144,7 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, uint64_t *data, size_t len) 
     size_t i, j;
     if (slot_count >= len) {
         Plaintext pt;
-        contex->encoder->encode(vector<uint64_t>(data, data + len), pt);
+        parm->encoder->encode(vector<uint64_t>(data, data + len), pt);
         plain_data.push_back(pt);
     } else {
         uint64_t *curPtr = data, *endPtr = data + len, *end;
@@ -153,23 +153,23 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, uint64_t *data, size_t len) 
             slot_count = endPtr - curPtr > slot_count ? slot_count : endPtr - curPtr;
             vector<uint64_t> temp(curPtr, end);
             Plaintext pt;
-            contex->encoder->encode(temp, pt);
+            parm->encoder->encode(temp, pt);
             plain_data.push_back(pt);
             curPtr += slot_count;
         }
     }
 }
 
-vector<uint64_t> BFVLongPlaintext::decode_uint(BFVParm *contex) const {
+vector<uint64_t> BFVLongPlaintext::decode_uint(BFVParm *parm) const {
     vector<uint64_t> data(len); // 5
 
     size_t size = plain_data.size(); // 1
 
-    size_t solut_cout = contex->slot_count; // 8192
+    size_t solut_cout = parm->slot_count; // 8192
 
     for (size_t i = 0; i < size; i++) {
         vector<uint64_t> temp;
-        contex->encoder->decode(plain_data[i], temp);
+        parm->encoder->decode(plain_data[i], temp);
 
         if (i < size - 1) {
             copy(temp.begin(), temp.end(), data.begin() + i * solut_cout);
@@ -185,18 +185,18 @@ vector<uint64_t> BFVLongPlaintext::decode_uint(BFVParm *contex) const {
 /*
      BFVLongPlaintext: for field [-p,p]
 */
-BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, int64_t data) {
+BFVLongPlaintext::BFVLongPlaintext(BFVParm *parm, int64_t data) {
     // TODO value len =1, use the BFV batchencoder to encode the palaintext
     len = 1;
     Plaintext pt;
-    vector<int64_t> temp(contex->slot_count, data);
-    contex->encoder->encode(temp, pt);
+    vector<int64_t> temp(parm->slot_count, data);
+    parm->encoder->encode(temp, pt);
     plain_data.push_back(pt);
 }
 
-BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, vector<int64_t> data) {
+BFVLongPlaintext::BFVLongPlaintext(BFVParm *parm, vector<int64_t> data) {
     len = data.size();
-    size_t slot_count = contex->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
+    size_t slot_count = parm->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / slot_count;
 
     if (len % slot_count) {
@@ -205,7 +205,7 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, vector<int64_t> data) {
     size_t i, j;
     if (slot_count >= len) {
         Plaintext pt;
-        contex->encoder->encode(data, pt);
+        parm->encoder->encode(data, pt);
         plain_data.push_back(pt);
     } else {
         vector<int64_t>::iterator curPtr = data.begin(), endPtr = data.end(), end;
@@ -214,16 +214,16 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, vector<int64_t> data) {
             slot_count = endPtr - curPtr > slot_count ? slot_count : endPtr - curPtr;
             vector<int64_t> temp(curPtr, end);
             Plaintext pt;
-            contex->encoder->encode(temp, pt);
+            parm->encoder->encode(temp, pt);
             plain_data.push_back(pt);
             curPtr += slot_count;
         }
     }
 }
 
-BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, int64_t *data, size_t len) {
+BFVLongPlaintext::BFVLongPlaintext(BFVParm *parm, int64_t *data, size_t len) {
     this->len = len;
-    size_t slot_count = contex->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
+    size_t slot_count = parm->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / slot_count;
 
     if (len % slot_count) {
@@ -232,7 +232,7 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, int64_t *data, size_t len) {
     size_t i, j;
     if (slot_count >= len) {
         Plaintext pt;
-        contex->encoder->encode(vector<int64_t>(data, data + len), pt);
+        parm->encoder->encode(vector<int64_t>(data, data + len), pt);
         plain_data.push_back(pt);
     } else {
         int64_t *curPtr = data, *endPtr = data + len, *end;
@@ -241,23 +241,23 @@ BFVLongPlaintext::BFVLongPlaintext(BFVParm *contex, int64_t *data, size_t len) {
             slot_count = endPtr - curPtr > slot_count ? slot_count : endPtr - curPtr;
             vector<int64_t> temp(curPtr, end);
             Plaintext pt;
-            contex->encoder->encode(temp, pt);
+            parm->encoder->encode(temp, pt);
             plain_data.push_back(pt);
             curPtr += slot_count;
         }
     }
 }
 
-vector<int64_t> BFVLongPlaintext::decode_int(BFVParm *contex) const {
+vector<int64_t> BFVLongPlaintext::decode_int(BFVParm *parm) const {
     vector<int64_t> data(len); // 5
 
     size_t size = plain_data.size(); // 1
 
-    size_t solut_cout = contex->slot_count; // 8192
+    size_t solut_cout = parm->slot_count; // 8192
 
     for (size_t i = 0; i < size; i++) {
         vector<int64_t> temp;
-        contex->encoder->decode(plain_data[i], temp);
+        parm->encoder->decode(plain_data[i], temp);
 
         if (i < size - 1) {
             copy(temp.begin(), temp.end(), data.begin() + i * solut_cout);
@@ -283,20 +283,20 @@ BFVLongCiphertext::BFVLongCiphertext(const Ciphertext &ct) {
      BFVLongCiphertext: for field [0,2p]
 */
 
-BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, uint64_t data, BFVKey *party) {
+BFVLongCiphertext::BFVLongCiphertext(BFVParm *parm, uint64_t data, BFVKey *party) {
     // TODO:
     len = 1;
     Plaintext pt;
-    vector<uint64_t> temp(contex->slot_count, data);
-    contex->encoder->encode(temp, pt);
+    vector<uint64_t> temp(parm->slot_count, data);
+    parm->encoder->encode(temp, pt);
     Ciphertext ct;
     party->encryptor->encrypt(pt, ct);
     cipher_data.push_back(ct);
 }
 
-BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, uint64_t *data, size_t len, BFVKey *party) {
+BFVLongCiphertext::BFVLongCiphertext(BFVParm *parm, uint64_t *data, size_t len, BFVKey *party) {
     this->len = len;
-    size_t slot_count = contex->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
+    size_t slot_count = parm->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / slot_count;
 
     if (len % slot_count) {
@@ -306,7 +306,7 @@ BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, uint64_t *data, size_t len
     if (slot_count >= len) {
         Plaintext pt;
         Ciphertext ct;
-        contex->encoder->encode(vector<uint64_t>(data, data + len), pt);
+        parm->encoder->encode(vector<uint64_t>(data, data + len), pt);
         party->encryptor->encrypt(pt, ct);
         cipher_data.push_back(ct);
     } else {
@@ -317,7 +317,7 @@ BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, uint64_t *data, size_t len
             vector<uint64_t> temp(curPtr, end);
             Plaintext pt;
             Ciphertext ct;
-            contex->encoder->encode(temp, pt);
+            parm->encoder->encode(temp, pt);
             party->encryptor->encrypt(pt, ct);
             cipher_data.push_back(ct);
             curPtr += slot_count;
@@ -329,20 +329,20 @@ BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, uint64_t *data, size_t len
      BFVLongCiphertext: for field [-p,p]
 */
 
-BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, int64_t data, BFVKey *party) {
+BFVLongCiphertext::BFVLongCiphertext(BFVParm *parm, int64_t data, BFVKey *party) {
     // TODO:
     len = 1;
     Plaintext pt;
-    vector<int64_t> temp(contex->slot_count, data);
-    contex->encoder->encode(temp, pt);
+    vector<int64_t> temp(parm->slot_count, data);
+    parm->encoder->encode(temp, pt);
     Ciphertext ct;
     party->encryptor->encrypt(pt, ct);
     cipher_data.push_back(ct);
 }
 
-BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, int64_t *data, size_t len, BFVKey *party) {
+BFVLongCiphertext::BFVLongCiphertext(BFVParm *parm, int64_t *data, size_t len, BFVKey *party) {
     this->len = len;
-    size_t slot_count = contex->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
+    size_t slot_count = parm->slot_count; // TODO:: this slot_count use SEALcontext? BFVLongPlaintext contain it.
     size_t count = len / slot_count;
 
     if (len % slot_count) {
@@ -352,7 +352,7 @@ BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, int64_t *data, size_t len,
     if (slot_count >= len) {
         Plaintext pt;
         Ciphertext ct;
-        contex->encoder->encode(vector<int64_t>(data, data + len), pt);
+        parm->encoder->encode(vector<int64_t>(data, data + len), pt);
         party->encryptor->encrypt(pt, ct);
         cipher_data.push_back(ct);
     } else {
@@ -363,7 +363,7 @@ BFVLongCiphertext::BFVLongCiphertext(BFVParm *contex, int64_t *data, size_t len,
             vector<int64_t> temp(curPtr, end);
             Plaintext pt;
             Ciphertext ct;
-            contex->encoder->encode(temp, pt);
+            parm->encoder->encode(temp, pt);
             party->encryptor->encrypt(pt, ct);
             cipher_data.push_back(ct);
             curPtr += slot_count;
@@ -663,21 +663,21 @@ BFVLongCiphertext BFVLongCiphertext::multiply_plain(BFVLongPlaintext &lpt, Evalu
         lct.len = lpt.len;
         size = lpt.plain_data.size();
         lct.cipher_data.resize(size);
-        #pragma omp parallel for if (size > MAX_SZ)
+        // #pragma omp parallel for if (size > MAX_SZ)
         for (size_t i = 0; i < size; i++) {
             evaluator->multiply_plain(cipher_data[0], lpt.plain_data[i], lct.cipher_data[i]);
         }
     } else if (lpt.len == 1) {
         lct.len = len;
         lct.cipher_data.resize(size);
-        #pragma omp parallel for if (size > MAX_SZ)
+        // #pragma omp parallel for if (size > MAX_SZ)
         for (size_t i = 0; i < size; i++) {
             evaluator->multiply_plain(cipher_data[i], lpt.plain_data[0], lct.cipher_data[i]);
         }
     } else if (len == lpt.len) {
         lct.len = len;
         lct.cipher_data.resize(size);
-        #pragma omp parallel for if (size > MAX_SZ)
+        // #pragma omp parallel for if (size > MAX_SZ)
         for (size_t i = 0; i < size; i++) {
             evaluator->multiply_plain(cipher_data[i], lpt.plain_data[i], lct.cipher_data[i]);
         }
@@ -754,7 +754,6 @@ void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct) {
     assert(lct->len > 0);
     io->send_data(&(lct->len), sizeof(size_t));
     size_t size = lct->cipher_data.size();
-#define SIZE size
     io->send_data(&size, sizeof(size_t));
 
     vector<uint64_t> ct_sizes(size);
@@ -772,6 +771,8 @@ void BFVLongCiphertext::send(sci::NetIO *io, BFVLongCiphertext *lct) {
     for (size_t i = 0; i < size; i++) {
         io->send_data(ct_sers[i].c_str(), ct_sizes[i]);
     }
+    ct_sers.clear();
+    ct_sers.shrink_to_fit();
 }
 
 void BFVLongCiphertext::recv(sci::NetIO *io, BFVLongCiphertext *lct, SEALContext *context) {

@@ -11,9 +11,9 @@ if (NOT SEAL_FOUND)
     endif ()
     execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory SEAL
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
-    execute_process(COMMAND ${CMAKE_COMMAND} ${PROJECT_SOURCE_DIR}/extern/SEAL
+    execute_process(COMMAND ${CMAKE_COMMAND} ${PROJECT_SOURCE_DIR}/extern/SEAL -DSEAL_THROW_ON_TRANSPARENT_CIPHERTEXT=OFF
             WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/SEAL")
-    execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install -j 16
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install -j 16 
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/SEAL/")
     find_package(SEAL 4.1.1 EXACT REQUIRED PATHS "${CMAKE_BINARY_DIR}/SEAL" NO_DEFAULT_PATH)
 endif()

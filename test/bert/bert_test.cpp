@@ -14,6 +14,9 @@ int main(int argc, const char **argv) {
         FPMath *fpmath[N_THREADS]; // = new FPMath(party_, iopack, otpack);
         for (int i = 0; i < N_THREADS; i++) {
             iopack[i] = new IOPack(party_, 64789 + i, ip);
+            if (party_ == BOB) {
+                iopack[i]->io->is_server = true;
+            }
             otpack[i] = new OTPack(iopack[i], party_);
             fpmath[i] = new FPMath(party_, iopack[i], otpack[i]);
         }
@@ -32,14 +35,18 @@ int main(int argc, const char **argv) {
         auto end = get_timestamp() - start;
         std::cout << "time of load data: " << end << "\n";
 
-        bool ok = true;
-        if (party_ == BOB) {
-            iopack[0]->io->send_data(&ok, sizeof(bool));
-        } else {
-            iopack[0]->io->recv_data(&ok, sizeof(bool));
-        }
+        iopack[0]->io->sync();
 
+        size_t start_comm = 0;
+        for (int i = 0; i < N_THREADS; i++) {
+            start_comm += fpmath[i]->iopack->get_comm();
+        }
         std::cout << "time of forward: " << bert->encoders[0]->forward(input, output, fpmath, conv) << "\n";
+        size_t end_comm = 0;
+        for (int i = 0; i < N_THREADS; i++) {
+            end_comm += fpmath[i]->iopack->get_comm();
+        }
+        std::cout << "comm: " << end_comm - start_comm << "\n";
         // std::cout << "time cost:" << time.count() / 1000000 << "\n";
 // 144 986 749 1026
         delete bert;

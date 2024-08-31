@@ -76,6 +76,8 @@ public:
 
     BFVKey(int party_, BFVParm *parm_);
     ~BFVKey();
+
+    inline bool operator==(int party) { return party == this->party; }
 };
 
 class BFVLongPlaintext {
@@ -85,16 +87,16 @@ public:
     BFVLongPlaintext() {}
     BFVLongPlaintext(const Plaintext &pt);
 
-    BFVLongPlaintext(BFVParm *contex, uint64_t data); // TODO: len=1
-    BFVLongPlaintext(BFVParm *contex, vector<uint64_t> data);
-    BFVLongPlaintext(BFVParm *contex, uint64_t *data, size_t len);
-    vector<uint64_t> decode_uint(BFVParm *contex) const;
+    BFVLongPlaintext(BFVParm *parm, uint64_t data); // TODO: len=1
+    BFVLongPlaintext(BFVParm *parm, vector<uint64_t> data);
+    BFVLongPlaintext(BFVParm *parm, uint64_t *data, size_t len);
+    vector<uint64_t> decode_uint(BFVParm *parm) const;
 
     // for int64_t data
-    BFVLongPlaintext(BFVParm *contex, int64_t data); // TODO: len=1
-    BFVLongPlaintext(BFVParm *contex, vector<int64_t> data);
-    BFVLongPlaintext(BFVParm *contex, int64_t *data, size_t len);
-    vector<int64_t> decode_int(BFVParm *contex) const;
+    BFVLongPlaintext(BFVParm *parm, int64_t data); // TODO: len=1
+    BFVLongPlaintext(BFVParm *parm, vector<int64_t> data);
+    BFVLongPlaintext(BFVParm *parm, int64_t *data, size_t len);
+    vector<int64_t> decode_int(BFVParm *parm) const;
 
     inline void mod_switch_to_inplace(parms_id_type parms_id, Evaluator *evaluator) {
         size_t p_d_size = plain_data.size();
@@ -111,11 +113,11 @@ public:
     BFVLongCiphertext() {}
     BFVLongCiphertext(const Ciphertext &ct);
 
-    BFVLongCiphertext(BFVParm *contex, uint64_t data, BFVKey *party); // TODO: len =1
-    BFVLongCiphertext(BFVParm *contex, uint64_t *data, size_t len, BFVKey *party);
+    BFVLongCiphertext(BFVParm *parm, uint64_t data, BFVKey *party); // TODO: len =1
+    BFVLongCiphertext(BFVParm *parm, uint64_t *data, size_t len, BFVKey *party);
 
-    BFVLongCiphertext(BFVParm *contex, int64_t data, BFVKey *party); // TODO: len =1
-    BFVLongCiphertext(BFVParm *contex, int64_t *data, size_t len, BFVKey *party);
+    BFVLongCiphertext(BFVParm *parm, int64_t data, BFVKey *party); // TODO: len =1
+    BFVLongCiphertext(BFVParm *parm, int64_t *data, size_t len, BFVKey *party);
 
     BFVLongCiphertext(const BFVLongPlaintext &lpt, BFVKey *party);
     BFVLongPlaintext decrypt(BFVKey *party) const;
