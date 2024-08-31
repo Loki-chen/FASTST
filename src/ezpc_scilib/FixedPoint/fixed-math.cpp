@@ -808,6 +808,80 @@ vector<FixArray> FPMath::layer_norm_iron(const vector<FixArray> &x, FixArray &w,
     return ret;
 }
 
+vector<FixArray> FPMath::layer_norm_bolt(const vector<FixArray> &x, FixArray &w, FixArray &b)
+{
+    int N = x.size();
+    int n = x[0].size;
+    int ell = x[0].ell;
+    int s = x[0].s;
+    bool signed_ = x[0].signed_;
+
+    BoolArray all_0 = bool_op->input(ALICE, N * n, uint8_t(0));
+    BoolArray all_1 = bool_op->input(ALICE, N * n, 1);
+
+    FixArray sum = fix->tree_sum(x);
+
+    FixArray dn = fix->input(PUBLIC, sum.size, uint64_t(((1.0 / n) * pow(2, 2 * s))), true, ell, 2 * s);
+    FixArray avg = fix->mul(sum, dn, ell + 2 * s, nullptr, all_0.data);
+    avg = fix->truncate_reduce(avg, 2 * s);
+
+    FixArray avg_flat(party, N * n, sum.signed_, ell, s);
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            avg_flat.data[i * n + j] = avg.data[i];
+        }
+    }
+
+    FixArray x_flat = concat(x);
+    FixArray x_flat_avg = fix->sub(x_flat, avg_flat);
+    BoolArray msb_x_avg = fix->MSB(x_flat_avg);
+    FixArray x_flat_avg_square = fix->mul(x_flat_avg, x_flat_avg, ell + s, msb_x_avg.data, msb_x_avg.data);
+    x_flat_avg_square = fix->truncate_reduce(x_flat_avg_square, s);
+
+    vector<FixArray> square_group(N);
+    for (int i = 0; i < N; i++)
+    {
+        square_group[i] = FixArray(party, n, signed_, ell, s);
+        memcpy(square_group[i].data, &x_flat_avg_square.data[i * n], n * sizeof(uint64_t));
+    }
+
+    FixArray square_sum = fix->tree_sum(square_group);
+    square_sum = fix->mul(square_sum, dn, ell + 2 * s, all_0.data, all_0.data);
+    square_sum = fix->truncate_reduce(square_sum, 2 * s);
+
+    FixArray sigma = sqrt_(square_sum, true);
+
+    FixArray sigma_flat(party, N * n, sum.signed_, ell, s);
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            sigma_flat.data[i * n + j] = sigma.data[i];
+        }
+    }
+
+    FixArray x_avg_sigma = fix->mul(x_flat_avg, sigma_flat, ell + s, msb_x_avg.data, all_0.data);
+    x_avg_sigma = fix->truncate_reduce(x_avg_sigma, s);
+
+    // Weight and Bias
+    // x_avg_sigma = fix->mul(x_avg_sigma, w, ell+s);
+    // x_avg_sigma = fix->truncate_reduce(x_avg_sigma, s);
+    // x_avg_sigma = fix->add(x_avg_sigma, b);
+
+    // Hack!
+    // x_avg_sigma = fix->extend(x_avg_sigma, 64);
+
+    vector<FixArray> ret(N);
+    for (int i = 0; i < N; i++)
+    {
+        ret[i] = FixArray(party, n, signed_, ell, s);
+        memcpy(ret[i].data, &x_avg_sigma.data[i * n], n * sizeof(uint64_t));
+    }
+    return ret;
+}
+
 std::tuple<vector<FixArray>, FixArray> FPMath::softmax_bolt(const vector<FixArray> &x)
 {
     // std::cout << "Entering softmax fix" << std::endl;
