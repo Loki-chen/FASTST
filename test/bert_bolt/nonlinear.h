@@ -30,15 +30,12 @@ public:
     ~NonLinear();
 
     void softmax(int nthreads, uint64_t *input, uint64_t *output, uint64_t *l, int dim, int array_size, int ell, int s);
-    void softmax_iron(int nthreads, uint64_t *input, uint64_t *output, int dim, int array_size, int ell, int s);
 
     void layer_norm(int nthreads, uint64_t *input, uint64_t *output, uint64_t *weight, uint64_t *bias, int dim, int array_size, int ell, int s);
 
     void gelu(int nthreads, uint64_t *input, uint64_t *output, int size, int ell, int s);
-    void gelu_iron(int nthreads, uint64_t *input, uint64_t *output, int size, int ell, int s);
 
     void tanh(int nthreads, uint64_t *input, uint64_t *output, int size, int ell, int s);
-    void tanh_iron(int nthreads, uint64_t *input, uint64_t *output, int size, int ell, int s);
 
     void gt_p_sub(int nthreads, uint64_t *input, uint64_t p, uint64_t *output, int size, int ell, int s_in, int s_out);
 

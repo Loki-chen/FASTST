@@ -111,7 +111,7 @@ void operation_thread(int tid, uint64_t *x, uint64_t *y, int num_ops)
   }
   FixArray w = fpmath->fix->input(this_party, num_ops * array_size, 1, true, bw_x, s_x);
   FixArray b = fpmath->fix->input(this_party, num_ops * array_size, 1, true, bw_x, s_x);
-  vector<FixArray> output_array = fpmath->layer_norm_iron(input_array, w, b);
+  vector<FixArray> output_array = fpmath->layer_norm_bolt(input_array, w, b);
   for (int i = 0; i < num_ops; i++)
   {
     memcpy(&y[i * array_size], output_array[i].data, array_size * sizeof(uint64_t));

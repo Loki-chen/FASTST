@@ -60,12 +60,11 @@ public:
     // BOLT
     FixArray gelu_bolt(const FixArray &x);
     std::tuple<vector<FixArray>, FixArray> softmax_bolt(const vector<FixArray> &x);
-
+    vector<FixArray> layer_norm_bolt(const vector<FixArray> &x, FixArray &w, FixArray &b);
     // IRON
     FixArray gelu_iron(const FixArray &x);
-    vector<FixArray> layer_norm_iron(const vector<FixArray> &x, FixArray &w, FixArray &b);
-
     vector<FixArray> softmax_iron(const vector<FixArray> &x);
+    vector<FixArray> layer_norm_iron(const vector<FixArray> &x, FixArray &w, FixArray &b);
 };
 
 #endif // FIXED_POINT_MATH_H__
