@@ -1,4 +1,9 @@
 #include "linear.h"
+#include "protocols/fixed-protocol.h"
+
+const int32_t SMUDGING_BITLEN_bert1 = 100 - 29;
+const int32_t SMUDGING_BITLEN_bert2 = 100 - 19;
+const int32_t SMUDGING_BITLEN_bert3 = 100 - 32;
 
 void print_pt_l(HE *he, Plaintext &pt, int len)
 {
@@ -62,7 +67,7 @@ Linear::Linear(int party, NetIO *io, bool prune)
         {54, 54, 55, 55},
         4295049217);
 
-    this->p_mod = prime_mod;
+    this->p_mod = 1ULL << DEFAULT_ELL;
 
     // this->he_4096 = new HE(
     // 	party,

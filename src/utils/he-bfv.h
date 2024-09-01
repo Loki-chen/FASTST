@@ -52,6 +52,7 @@ public:
     SEALContext *context;
     BatchEncoder *encoder;
     Evaluator *evaluator;
+    BFVParm() {}
     BFVParm(size_t poly_modulus_degree, vector<int> coeff_bit_sizes, uint64_t plain_mod);
     ~BFVParm();
 };
@@ -76,6 +77,7 @@ public:
     RelinKeys relin_keys;
     GaloisKeys galois_keys;
 
+    BFVKey() {}
     BFVKey(int party_, BFVParm *parm_);
     ~BFVKey();
 

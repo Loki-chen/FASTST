@@ -145,25 +145,25 @@ timestamp Encoder::forward(const vector<uint64_t> &input, vector<uint64_t> &outp
             }
         }
     }
-    vector<uint64_t> attn_out;
-    if (*party == BOB) {
-        vector<uint64_t> attn_out_local = matmul(tmp_output, Attn_W, batch_size, d_module, d_module);
-        for (int i = 0; i < batch_size * d_module; i++) {
-            attn_out_local[i] = (attn_out_local[i] + Attn_b[i]) & (1ULL << DEFAULT_ELL);
-        }
-        BFVLongPlaintext attn_out_local_plain = BFVLongPlaintext(party->parm, attn_out_local);
-        BFVLongCiphertext *tmpout_e = new BFVLongCiphertext[d_module];
-        timestamp start_rev = get_timestamp();
-        recv_encoded_ciper(tmpout_e, fpmath, d_module);
-        time -= (get_timestamp() - start_rev);
-        BFVLongCiphertext attn_out_enc = RFCP_bfv_matmul(tmpout_e, Attn_W, batch_size, d_module, d_module, party->parm);
-        attn_out_enc.add_plain_inplace(attn_out_local_plain, party->parm->evaluator);
-        attn_out = conv->he_to_ss_server(fpmath[layer]->iopack->io, party->parm, attn_out_enc);
-    } else {
-        BFVLongCiphertext *tmpout_e = RFCP_bfv_encodeA(tmp_output, party, batch_size, d_module, d_module);
-        send_encoded_ciper(tmpout_e, fpmath, d_module);
-        attn_out = conv->he_to_ss_client(fpmath[layer]->iopack->io, party);
-    }
+    // vector<uint64_t> attn_out;
+    // if (*party == BOB) {
+    //     vector<uint64_t> attn_out_local = matmul(tmp_output, Attn_W, batch_size, d_module, d_module);
+    //     for (int i = 0; i < batch_size * d_module; i++) {
+    //         attn_out_local[i] = (attn_out_local[i] + Attn_b[i]) & (1ULL << DEFAULT_ELL);
+    //     }
+    //     BFVLongPlaintext attn_out_local_plain = BFVLongPlaintext(party->parm, attn_out_local);
+    //     BFVLongCiphertext *tmpout_e = new BFVLongCiphertext[d_module];
+    //     timestamp start_rev = get_timestamp();
+    //     recv_encoded_ciper(tmpout_e, fpmath, d_module);
+    //     time -= (get_timestamp() - start_rev);
+    //     BFVLongCiphertext attn_out_enc = RFCP_bfv_matmul(tmpout_e, Attn_W, batch_size, d_module, d_module, party->parm);
+    //     attn_out_enc.add_plain_inplace(attn_out_local_plain, party->parm->evaluator);
+    //     attn_out = conv->he_to_ss_server(fpmath[layer]->iopack->io, party->parm, attn_out_enc);
+    // } else {
+    //     BFVLongCiphertext *tmpout_e = RFCP_bfv_encodeA(tmp_output, party, batch_size, d_module, d_module);
+    //     send_encoded_ciper(tmpout_e, fpmath, d_module);
+    //     attn_out = conv->he_to_ss_client(fpmath[layer]->iopack->io, party);
+    // }
     timestamp end_concat = get_timestamp() - start_concat;
     time += end_concat;
     // time += get_max_time(times, n_heads);

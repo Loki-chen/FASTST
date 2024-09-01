@@ -17,8 +17,8 @@ int bitlength = 37;
 // string path = "/home/data/bolt/quantize/mrpc/";
 // string output_file_path = "/home/data/result/ppnlp_test.txt";
 
-string path = "/data/bolt/quantize/mrpc/";
-string output_file_path = "/data/result/ppnlp_test.txt";
+string path = "/data/bolt/quantize/mrpc";
+string output_file_path = "/data/ppnlp_test.txt";
 int num_class = 2;
 int sample_id = 0;
 int num_sample = 1;

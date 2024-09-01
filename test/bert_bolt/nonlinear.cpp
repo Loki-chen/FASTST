@@ -53,7 +53,7 @@ void softmax_thread(int tid, int party, uint64_t *x, uint64_t *y, uint64_t *l, i
 
   vector<FixArray> output_array;
   FixArray l_short;
-  tie(output_array, l_short) = fpmath->softmax_fix(input_array);
+  tie(output_array, l_short) = fpmath->softmax_bolt(input_array);
   for (int i = 0; i < num_ops; i++)
   {
     memcpy(&y[i * array_size], output_array[i].data, array_size * sizeof(uint64_t));
