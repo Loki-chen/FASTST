@@ -38,8 +38,9 @@ timestamp Encoder::forward(const vector<uint64_t> &input, vector<uint64_t> &outp
         inp_e = new BFVLongCiphertext[d_module];
         recv_encoded_ciper(inp_e, fpmath, d_module);
     }
-    timestamp times[n_heads];
+    timestamp times[n_heads] = {0};
     // this can be multi thread
+#pragma omp parallel for num_threads(12)
     for (int head = 0; head < n_heads; head++) {
         vector<uint64_t> Q, K, V;
         BFVLongCiphertext *Q_encode, *Q_encode_remote = new BFVLongCiphertext[d_k], *softmax_encode,
@@ -63,8 +64,10 @@ timestamp Encoder::forward(const vector<uint64_t> &input, vector<uint64_t> &outp
             K = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm, K_sec_a);
             V = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm, K_sec_a);
         }
+        times[head] += (get_timestamp() - start_QKV);
         conv->Prime_to_Ring(party->party, V.data(), V.data(), batch_size * d_k, DEFAULT_ELL, party->parm->plain_mod,
                             DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath[head]);
+        start_QKV = get_timestamp();
         vector<uint64_t> K_T(batch_size * d_k);
         for (int i = 0; i < batch_size; i++) {
             for (int j = 0; j < d_k; j++) {
@@ -75,11 +78,25 @@ timestamp Encoder::forward(const vector<uint64_t> &input, vector<uint64_t> &outp
         Q_encode = RFCP_bfv_encodeA(Q, party, batch_size, d_k, batch_size);
         times[head] += (get_timestamp() - start_QKV);
         if (party->party == ALICE) {
-            times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
-            recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
+            timestamp start_send = get_timestamp();
+            for (int i = 0; i < d_k; i++) {
+                BFVLongCiphertext::send(fpmath[head]->iopack->io, Q_encode + i);
+            }
+            times[head] += (get_timestamp() - start_send);
+            for (int i = 0; i < d_k; i++) {
+                BFVLongCiphertext::recv(fpmath[head]->iopack->io, Q_encode_remote + i, party->parm->context);
+            }
         } else {
-            recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
-            times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
+            // recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
+            // times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
+            for (int i = 0; i < d_k; i++) {
+                BFVLongCiphertext::recv(fpmath[head]->iopack->io, Q_encode_remote + i, party->parm->context);
+            }
+            timestamp start_send = get_timestamp();
+            for (int i = 0; i < d_k; i++) {
+                BFVLongCiphertext::send(fpmath[head]->iopack->io, Q_encode + i);
+            }
+            times[head] += (get_timestamp() - start_send);
         }
 
         timestamp start_QK = get_timestamp();
@@ -95,22 +112,37 @@ timestamp Encoder::forward(const vector<uint64_t> &input, vector<uint64_t> &outp
         for (int i = 0; i < batch_size * batch_size; i++) {
             QK_local[i] = (QK_local[i] + ret1[i] + ret2[i]) & (1ULL << DEFAULT_ELL);
         }
+        times[head] += get_timestamp() - start_QK;
         conv->Prime_to_Ring(party->party, QK_local.data(), QK_local.data(), batch_size * batch_size, DEFAULT_ELL,
                             party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath[head]);
         vector<uint64_t> softmax_output;
-        times[head] += get_timestamp() - start_QK;
-        times[head] += softmax(QK_local, softmax_output, fpmath[head], conv);
+        // times[head] += softmax(QK_local, softmax_output, fpmath[head], conv);
+        softmax(QK_local, softmax_output, fpmath[head], conv);
 
         timestamp start_SV_local = get_timestamp();
         attn_output_h[head] = matmul(softmax_output, V, batch_size, batch_size, d_k);
         softmax_encode = RFCP_bfv_encodeA(softmax_output, party, batch_size, batch_size, d_k);
         times[head] += get_timestamp() - start_SV_local;
         if (party->party == ALICE) {
-            recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
-            times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
+            // recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
+            // times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
+            timestamp start_send = get_timestamp();
+            for (int i = 0; i < batch_size; i++) {
+                BFVLongCiphertext::send(fpmath[head]->iopack->io, softmax_encode + i);
+            }
+            times[head] += (get_timestamp() - start_send);
+            for (int i = 0; i < batch_size; i++) {
+                BFVLongCiphertext::recv(fpmath[head]->iopack->io, softmax_encode_remote + i, party->parm->context);
+            }
         } else {
-            times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
-            recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
+            for (int i = 0; i < batch_size; i++) {
+                BFVLongCiphertext::recv(fpmath[head]->iopack->io, softmax_encode_remote + i, party->parm->context);
+            }
+            timestamp start_send = get_timestamp();
+            for (int i = 0; i < batch_size; i++) {
+                BFVLongCiphertext::send(fpmath[head]->iopack->io, softmax_encode + i);
+            }
+            times[head] += (get_timestamp() - start_send);
         }
 
         timestamp start_SV = get_timestamp();

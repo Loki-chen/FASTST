@@ -842,7 +842,7 @@ void Linear::bert_cipher_plain_bsgs(
     int num_diag = data.slot_count / data.image_size / 2;
     int num_matrix_per_col = data.filter_w / num_diag;
 
-#pragma omp parallel for num_threads(32)
+#pragma omp parallel for num_threads(12)
     for (int k = 0; k < cts.size() * n1; k++)
     {
         int i = k % cts.size();
@@ -1029,7 +1029,7 @@ void Linear::bert_cipher_plain_bsgs_2(
 
     vector<vector<Ciphertext>> rotatedIR(cts.size(), vector<Ciphertext>(n1 * 2));
 
-#pragma omp parallel for num_threads(32)
+#pragma omp parallel for num_threads(12)
     for (int k = 0; k < cts.size() * n1; k++)
     {
         int i = k % cts.size();
@@ -1052,7 +1052,7 @@ void Linear::bert_cipher_plain_bsgs_2(
 
     // rotatedIR 48 x 16, enc_mat 64 x 48
 
-#pragma omp parallel for num_threads(32)
+#pragma omp parallel for num_threads(12)
     for (int k = 0; k < cts.size() * n2; k++)
     {
         int j = k / cts.size();
@@ -2039,7 +2039,7 @@ void Linear::preprocess_softmax(const uint64_t *input, uint64_t *output, const F
     for (int packing_ind = 0; packing_ind < 6; packing_ind++)
     {
         vector<uint64_t> temp2, temp3;
-        // #pragma omp parallel for num_threads(32)
+        // #pragma omp parallel for num_threads(12)
         for (int diag_ind = 0; diag_ind < num_diag; diag_ind++)
         {
             for (int j = 0; j < num_diag; j++)
@@ -2067,7 +2067,7 @@ vector<vector<Plaintext>> Linear::softmax_mask_ct_ct(HE *he, const FCMetadata &d
     int num_diag = data.image_size;
     int num_diag_per_ct = data.slot_count / data.image_size / 2;
 
-#pragma omp parallel for num_threads(32)
+#pragma omp parallel for num_threads(12)
     for (int i = 0; i < data.image_size; i++)
     {
         vector<uint64_t> mask1(data.image_size, 0ULL);

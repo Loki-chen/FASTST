@@ -26,6 +26,7 @@ using namespace sci;
 //     if (d != 1) return -1;
 //     return (x % p + p) % p;
 // }
+timestamp softmax_time = 0;
 
 int64_t mod_inverse(int64_t a, int64_t m) {
     int64_t m0 = m, x0 = 0, x1 = 1;
@@ -47,9 +48,13 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
                          Conversion *conv) {
     int size = dim1 * dim2;
     assert(input.size() == size);
+    timestamp start;
+    start = TIME_STAMP;
     FixArray fix_inp = fpmath->fix->input(PUBLIC, size, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
     FixArray exp_inp = fpmath->location_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
+    softmax_time += (TIME_STAMP - start);
     if (party->party == ALICE) {
+        start = TIME_STAMP;
         BFVLongCiphertext exp_sec_b = conv->ss_to_he_server(party->parm, io, exp_inp.data, exp_inp.size, false);
         vector<uint64_t> R(size);
         // random_modP_mat(R, party->parm->plain_mod);
@@ -65,10 +70,12 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
         BFVLongCiphertext SR_sec_a(SR_plain, party);
         BFVLongCiphertext::send(io, &exp_R_sec_b);
         BFVLongCiphertext::send(io, &SR_sec_a);
+        softmax_time += (TIME_STAMP - start);
 
         BFVLongCiphertext S_exp_V, V_sec_b;
         BFVLongCiphertext::recv(io, &S_exp_V, party->parm->context);
         BFVLongCiphertext::recv(io, &V_sec_b, party->parm->context);
+        start = TIME_STAMP;
         BFVLongPlaintext S_exp_V_plain = S_exp_V.decrypt(party);
         vector<uint64_t> Sexp_V = S_exp_V_plain.decode_uint(party->parm), Sexp_V_expand(dim1 * dim2);
 #pragma omp parallel for
@@ -86,14 +93,18 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
 
         // BFVLongCiphertext::send(io, &exp_sec_b);
         vector<uint64_t> ret = conv->he_to_ss_server(io, party->parm, exp_sec_b);
+        softmax_time += (TIME_STAMP - start);
         // std::cout << "result of A:\n" << ret[0] << " " << ret[1] << "\n" << ret[2] << " " << ret[3] << "\n";
         return ret;
     } else {
+        start = TIME_STAMP;
         conv->ss_to_he_client(party, io, exp_inp.data, exp_inp.size, DEFAULT_ELL);
-
+        softmax_time += (TIME_STAMP - start);
+        
         BFVLongCiphertext exp_sec_b, R_sec_a, SR_sec_a;
         BFVLongCiphertext::recv(io, &exp_sec_b, party->parm->context);
         BFVLongCiphertext::recv(io, &SR_sec_a, party->parm->context);
+        start = TIME_STAMP;
         BFVLongPlaintext exp_R_plain = exp_sec_b.decrypt(party);
         vector<uint64_t> exp_R = exp_R_plain.decode_uint(party->parm);
         vector<FixArray> fix_exp_R(dim1);
@@ -124,12 +135,14 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
         BFVLongCiphertext::send(io, &V_sec_b);
 
         vector<uint64_t> ret = conv->he_to_ss_client(io, party);
+        softmax_time += (TIME_STAMP - start);
         // std::cout << "result of B:\n" << ret[0] << " " << ret[1] << "\n" << ret[2] << " " << ret[3] << "\n";
         return ret;
     }
 }
 
 int main(int argc, const char **argv) {
+    softmax_time = 0;
     if (argc > 1) {
         int party_ = argv[1][0] - '0';
         assert(party_ == ALICE || party_ == BOB);
@@ -150,10 +163,12 @@ int main(int argc, const char **argv) {
         vector<uint64_t> input(dim1 * dim2);
         random_ell_mat(input, DEFAULT_ELL);
         auto start = iopack->get_comm();
-        INIT_TIMER
-        START_TIMER
-        auto output = softmax(party, input, dim1, dim2, io, fpmath, conv);
-        STOP_TIMER("softmax")
+        for (int head = 0; head < 12; head++) {
+            std::cout << "SoftMax " << head << " start\n";
+            auto output = softmax(party, input, dim1, dim2, io, fpmath, conv);
+            std::cout << "SoftMax " << head << " end\n";
+        }
+        std::cout << "time: " << softmax_time << "\n";
         std::cout << "comm: " << iopack->get_comm() - start << "\n";
 
         delete party;

@@ -4,6 +4,8 @@
 #include "utils/he-bfv.h"
 #include "utils/mat-tools.h"
 #include "utils/conversion.h"
+#define TIME_STAMP std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()
+typedef unsigned long long timestamp;
 
 inline string replace(string str, string substr1, string substr2)
 {

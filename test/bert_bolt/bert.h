@@ -29,6 +29,7 @@ public:
     int party;
     string address;
     int port;
+    struct BertModel bm;
 
     NetIO *io;
 

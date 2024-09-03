@@ -1,19 +1,17 @@
 #include "FixedPoint/fixed-math.h"
-#include "utils/he-bfv.h"
-#include "utils/mat-tools.h"
+#include "utils.h"
 #include <ctime>
 #include <model.h>
 #include <utils.h>
 #define DEFAULT_SCALE 12
 #define DEFAULT_ELL 37
 #define N_THREADS 12
-typedef unsigned long long timestamp;
 
 timestamp get_timestamp();
 
 using namespace sci;
 
-const string base_path = "/data/BOLT/bolt/prune/mrpc/weights_txt/";
+const string base_path = "/data/bolt/quantize/mrpc/weights_txt/";
 const string WQ_path = "bert.encoder.layer.LAYER.attention.self.query.weight.txt",
              WK_path = "bert.encoder.layer.LAYER.attention.self.key.weight.txt",
              WV_path = "bert.encoder.layer.LAYER.attention.self.value.weight.txt",

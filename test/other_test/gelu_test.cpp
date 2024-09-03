@@ -1,10 +1,10 @@
 #include "protocols/fixed-protocol.h"
 #include <utils.h>
-#define N_THREADS 12
+#define N_THREADS 32
 
 using namespace sci;
 
-INIT_TIMER
+timestamp gelu_time = 0;
 
 BFVLongPlaintext f1_parm0, f1_parm1, f1_parm2, f1_parm3, f1_parm4, f2_parm0, f2_parm1, f2_parm2, f2_parm4, f3_parm0,
     f3_parm1, f3_parm2, f3_parm3;
@@ -129,15 +129,14 @@ void f3(BFVParm *parm, const BFVLongCiphertext &x, const BFVLongCiphertext &x2, 
 void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *conv, AuxProtocols *aux,
           BoolOp *boolop) {
     NetIO *io = fpmath[0]->iopack->io;
+    timestamp start;
     if (party->party == ALICE) {
-        auto start_conv = std::chrono::high_resolution_clock::now();
         vector<uint64_t> x = conv->he_to_ss_client(io, party);
         auto size_x = x.size();
         conv->Prime_to_Ring(party->party, N_THREADS, x.data(), x.data(), size_x, DEFAULT_ELL, party->parm->plain_mod,
                             DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
-        auto stop_conv = std::chrono::high_resolution_clock::now() - start_conv;
 
-        auto start_comp = std::chrono::high_resolution_clock::now();
+        start = TIME_STAMP;
         BoolArray all_zero = fpmath[0]->bool_op->input(PUBLIC, size_x, uint8_t(0));
         fpmath[0]->fix->input(PUBLIC, size_x, static_cast<uint64_t>(0), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_x = fpmath[0]->fix->input(party->party, size_x, x.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
@@ -168,32 +167,23 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
             b3[i] = (b3[i] - (1ULL << DEFAULT_SCALE)) % party->parm->plain_mod;
             b4[i] = (b4[i] - (1ULL << DEFAULT_SCALE)) % party->parm->plain_mod;
         }
-        auto stop_comp = std::chrono::high_resolution_clock::now() - start_comp;
 
-        auto start_enc = std::chrono::high_resolution_clock::now();
         BFVLongPlaintext b0_plain(party->parm, b0), b1_plain(party->parm, b1), b2_plain(party->parm, b2),
             b3_plain(party->parm, b3), b4_plain(party->parm, b4);
         BFVLongCiphertext b0_sec_a(b0_plain, party), b1_sec_a(b1_plain, party), b2_sec_a(b2_plain, party),
             b3_sec_a(b3_plain, party), b4_sec_a(b4_plain, party);
-        auto stop_enc = std::chrono::high_resolution_clock::now() - start_enc;
 
-        auto start_send = std::chrono::high_resolution_clock::now();
         BFVLongCiphertext::send(io, &b0_sec_a);
         BFVLongCiphertext::send(io, &b1_sec_a);
         BFVLongCiphertext::send(io, &b2_sec_a);
         BFVLongCiphertext::send(io, &b3_sec_a);
         BFVLongCiphertext::send(io, &b4_sec_a);
-        auto stop_send = std::chrono::high_resolution_clock::now() - start_send;
-        auto time = stop_comp + stop_enc + stop_send;
-
-        std::cout << "conv cost: " << stop_conv.count() / 1000000 << " ms\n";
-        // std::cout << "enc cost: " << stop_enc.count() / 1000000 << " ms\n";
-        std::cout << "time cost: " << time.count() / 1000000 << " ms\n";
+        gelu_time += (TIME_STAMP - start);
     } else {
         uint64_t scale_inv = mod_inverse(1ULL << DEFAULT_SCALE, party->parm->plain_mod);
         BFVLongPlaintext scale_inv_plain(party->parm, scale_inv);
 
-        auto start_cc = std::chrono::high_resolution_clock::now();
+        start = TIME_STAMP;
         BFVLongCiphertext ct_x2 = ct_x.square(party->parm->evaluator); // with return ciphertext = 3
         ct_x2.multiply_plain_inplace(scale_inv_plain, party->parm->evaluator);
         ct_x.mod_switch_to_next_inplace(party->parm->evaluator);
@@ -209,7 +199,6 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         ct_x4.multiply_plain_inplace(scale_inv_plain, party->parm->evaluator);
         ct_x4.mod_switch_to_next_inplace(party->parm->evaluator);
         ct_x4.relinearize_inplace(party->parm->evaluator, party->relin_keys);
-        auto stop_cc = std::chrono::high_resolution_clock::now() - start_cc;
 
         vector<std::thread> f_threads(3);
         BFVLongCiphertext f1_res, f2_res, f3_res;
@@ -223,16 +212,13 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         f_threads[0].join();
         f_threads[1].join();
         f_threads[2].join();
-        auto stop_f = std::chrono::high_resolution_clock::now() - start_f;
 
-        auto start_conv = std::chrono::high_resolution_clock::now();
         vector<uint64_t> x = conv->he_to_ss_server(io, party->parm, ct_x);
+        gelu_time += (TIME_STAMP - start);
         auto size_x = x.size();
         conv->Prime_to_Ring(party->party, N_THREADS, x.data(), x.data(), size_x, DEFAULT_ELL, party->parm->plain_mod,
                             DEFAULT_SCALE, DEFAULT_SCALE, fpmath);
-        auto stop_conv = std::chrono::high_resolution_clock::now() - start_conv;
-
-        auto start_cmp = std::chrono::high_resolution_clock::now();
+        start = TIME_STAMP;
         BoolArray all_zero = fpmath[0]->bool_op->input(PUBLIC, size_x, uint8_t(0));
         fpmath[0]->fix->input(PUBLIC, size_x, static_cast<uint64_t>(0), true, DEFAULT_ELL, DEFAULT_SCALE);
         FixArray fix_x = fpmath[0]->fix->input(party->party, size_x, x.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
@@ -263,7 +249,7 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
             b3[i] = (b3[i] - (1ULL << DEFAULT_SCALE)) % party->parm->plain_mod;
             b4[i] = (b4[i] - (1ULL << DEFAULT_SCALE)) % party->parm->plain_mod;
         }
-        auto stop_cmp = std::chrono::high_resolution_clock::now() - start_cmp;
+        gelu_time += (TIME_STAMP - start);
 
         BFVLongCiphertext b0_sec_a, b1_sec_a, b2_sec_a, b3_sec_a, b4_sec_a;
         BFVLongCiphertext::recv(io, &b0_sec_a, party->parm->context);
@@ -272,7 +258,7 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         BFVLongCiphertext::recv(io, &b3_sec_a, party->parm->context);
         BFVLongCiphertext::recv(io, &b4_sec_a, party->parm->context);
 
-        auto start_fgelu = std::chrono::high_resolution_clock::now();
+        start = TIME_STAMP;
         b0_sec_a.mod_switch_to_next_inplace(party->parm->evaluator);
         b1_sec_a.mod_switch_to_next_inplace(party->parm->evaluator);
         b2_sec_a.mod_switch_to_next_inplace(party->parm->evaluator);
@@ -295,19 +281,12 @@ void gelu(BFVKey *party, BFVLongCiphertext &ct_x, FPMath **fpmath, Conversion *c
         b3_sec_a.mod_switch_to_inplace(f3_res.parms_id(), party->parm->evaluator);
         b3_sec_a.multiply(f3_res, party->parm->evaluator);
         gelu_sec_a.add_inplace(b3_sec_a, party->parm->evaluator);
-        auto stop_fgelu = std::chrono::high_resolution_clock::now() - start_fgelu;
-        auto time = stop_cc + stop_f + stop_cmp + stop_fgelu;
-        // std::cout << "cipher-cipher: " << stop_cc.count() / 1000000 << " ms\n"
-        //           << "f: " << stop_f.count() / 1000000 << " ms\n"
-        //           << "conversion: " << stop_conv.count() / 1000000 << " ms\n"
-        //           << "compare: " << stop_cmp.count() / 1000000 << " ms\n"
-        //           << "gelu: " << stop_fgelu.count() / 1000000 << " ms\n";
-        std::cout << "conv cost: " << stop_conv.count() / 1000000 << " ms\n";
-        std::cout << "time cost: " << time.count() / 1000000 << " ms\n";
+        gelu_time += (TIME_STAMP - start);
     }
 }
 
 int main(int argc, const char **argv) {
+    gelu_time = 0;
     if (argc > 1) {
         int party_ = argv[1][0] - '0';
         assert(party_ == ALICE || party_ == BOB);
@@ -320,7 +299,7 @@ int main(int argc, const char **argv) {
         OTPack *otpack[N_THREADS]; // = new OTPack(iopack, party_);
         FPMath *fpmath[N_THREADS]; // = new FPMath(party_, iopack, otpack);
         for (int i = 0; i < N_THREADS; i++) {
-            iopack[i] = new IOPack(party_, 56789 + i, ip);
+            iopack[i] = new IOPack(party_, 64789 + i, ip);
             otpack[i] = new OTPack(iopack[i], party_);
             fpmath[i] = new FPMath(party_, iopack[i], otpack[i]);
         }
@@ -328,52 +307,55 @@ int main(int argc, const char **argv) {
         Conversion *conv = new Conversion();
         AuxProtocols *aux = new AuxProtocols(party_, iopack[0], otpack[0]);
         BoolOp *boolop = new BoolOp(party_, iopack[0], otpack[0]);
-        BFVParm *parm =
-            new BFVParm(8192, {40, 30, 30, 40},
-                        default_prime_mod.at(29)); // new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
+        BFVParm *parm = new BFVParm(8192, {54, 54, 55, 55}, default_prime_mod.at(29));
         BFVKey *party = new BFVKey(party_, parm);
-
-        f1_parm0 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.568686678 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f1_parm1 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.529288810 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f1_parm2 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.183509590 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f1_parm3 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.028070202 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f1_parm4 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.001597741 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f2_parm0 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(0.001193207 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f2_parm1 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(0.500000000 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f2_parm2 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(0.385858026 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f2_parm4 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.045101361 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-        f3_parm0 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.438406187 * (1ULL << DEFAULT_SCALE)), parm->plain_mod)),
-        f3_parm1 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(1.340789252 * (1ULL << DEFAULT_SCALE)), parm->plain_mod)),
-        f3_parm2 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(-0.087184212 * (1ULL << DEFAULT_SCALE)), parm->plain_mod)),
-        f3_parm3 = BFVLongPlaintext(
-            parm, neg_mod(static_cast<int64_t>(0.007334718 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
-
-        int dim1 = 128, dim2 = 3072;
-        vector<uint64_t> input_x(dim1 * dim2);
-        random_modP_mat(input_x, default_prime_mod.at(31));
-        BFVLongPlaintext pt_x(parm, input_x.data(), dim1 * dim2);
-        BFVLongCiphertext ct_x(pt_x, party);
         size_t start = 0;
         for (int i = 0; i < N_THREADS; i++) {
             start += iopack[i]->get_comm();
         }
-        gelu(party, ct_x, fpmath, conv, aux, boolop);
+        for (int head = 0; head < 12; head++) {
+            f1_parm0 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.568686678 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f1_parm1 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.529288810 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f1_parm2 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.183509590 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f1_parm3 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.028070202 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f1_parm4 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.001597741 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f2_parm0 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(0.001193207 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f2_parm1 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(0.500000000 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f2_parm2 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(0.385858026 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f2_parm4 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.045101361 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+            f3_parm0 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.438406187 * (1ULL << DEFAULT_SCALE)), parm->plain_mod)),
+            f3_parm1 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(1.340789252 * (1ULL << DEFAULT_SCALE)), parm->plain_mod)),
+            f3_parm2 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(-0.087184212 * (1ULL << DEFAULT_SCALE)), parm->plain_mod)),
+            f3_parm3 = BFVLongPlaintext(
+                parm, neg_mod(static_cast<int64_t>(0.007334718 * (1ULL << DEFAULT_SCALE)), parm->plain_mod));
+
+            int dim1 = 128, dim2 = 3072;
+            vector<uint64_t> input_x(dim1 * dim2);
+            random_modP_mat(input_x, default_prime_mod.at(31));
+            BFVLongPlaintext pt_x(parm, input_x.data(), dim1 * dim2);
+            BFVLongCiphertext ct_x(pt_x, party);
+
+            std::cout << "GeLU " << head << " start\n";
+            gelu(party, ct_x, fpmath, conv, aux, boolop);
+            std::cout << "GeLU " << head << " end\n";
+        }
         size_t end = 0;
         for (int i = 0; i < N_THREADS; i++) {
             end += iopack[i]->get_comm();
         }
+        std::cout << "time: " << gelu_time << "\n";
         std::cout << "comm: " << end - start << "\n";
         delete party;
         delete parm;
