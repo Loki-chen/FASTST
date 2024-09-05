@@ -1,9 +1,12 @@
-add_library(BERT bert.cpp)
+macro(add_test _name)
+    add_executable(${_name}_test "${_name}_test.cpp")
+    target_link_libraries(${_name}_test PUBLIC FASTST-SRC)
+endmacro()
 
-target_link_libraries(BERT
-    PUBLIC
-    FASTST-SRC
-)
-
-add_executable(bert_test "bert_test.cpp")
-target_link_libraries(bert_test PUBLIC BERT)
+add_test(RFCP)
+add_test(FIT)
+add_test(softmax)
+add_test(layernorm)
+add_test(gelu)
+add_test(p-r) # Prime to ring
+add_test(linear1)

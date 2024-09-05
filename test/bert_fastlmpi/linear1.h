@@ -93,7 +93,7 @@ class Encoder {
         timestamp time;
         size_t size = batch_size * batch_size;
         FixArray fix_inp = fpmath->fix->input(PUBLIC, size, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-        FixArray exp_inp = fpmath->location_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
+        FixArray exp_inp = fpmath->sirnn_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
         if (party->party == ALICE) {
             BFVLongCiphertext exp_sec_b =
                 conv->ss_to_he_server(party->parm, fpmath->iopack->io, exp_inp.data, exp_inp.size, false);
@@ -299,5 +299,13 @@ public:
         }
     }
 
-    timestamp forward(const vector<uint64_t> &input, vector<uint64_t> &output, FPMath **fpmath, Conversion *conv);
+    timestamp forward(const vector<uint64_t> &input, vector<uint64_t> &output, FPMath **fpmath, Conversion *conv) {
+        vector<uint64_t> upper_out;
+        timestamp time = encoders[0]->forward(input, upper_out, fpmath, conv);
+        for (int i = 1; i < n_layer; i++) {
+            time += encoders[i]->forward(upper_out, output, fpmath, conv);
+            upper_out = output;
+        }
+        return time;
+    }
 };

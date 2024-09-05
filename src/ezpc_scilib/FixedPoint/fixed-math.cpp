@@ -262,13 +262,6 @@ FixArray FPMath::gt_p_sub(const FixArray &x, const FixArray &p)
     return fix->if_else(gt, sub, x);
 }
 
-FixArray FPMath::location_gt_p_sub(const FixArray &x, const FixArray &p)
-{
-    BoolArray gt = fix->location_GT(x, p);
-    FixArray sub = fix->sub(x, p);
-    return fix->location_if_else(gt, sub, x); // use location_if_else, without mul multiplexer.
-}
-
 void FPMath::print(const FixArray &x) { print_fix(x); }
 
 BoolArray bitonic_reverse(const BoolArray &x, int array_size, int cur_depth)
@@ -505,7 +498,7 @@ int64_t FPMath::LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out)
     return res_val;
 }
 
-FixArray FPMath::location_exp(const FixArray &x, int scale_in, int scale_out)
+FixArray FPMath::sirnn_exp(const FixArray &x, int scale_in, int scale_out)
 {
     assert(x.party == PUBLIC);
     int digit_limit = 8;

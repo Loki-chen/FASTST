@@ -1,3 +1,276 @@
+
+
+// vector<double> Bert::run(string input_fname, string mask_fname) {
+//     // Server: Alice
+//     // Client: Bob
+
+//     // int input_dim = INPUT_DIM;
+//     // if (prune) {
+//     //     input_dim /= 2;
+//     // }
+
+//     // vector<uint64_t> softmax_mask;
+//     // uint64_t h1_cache_12_original[INPUT_DIM * COMMON_DIM] = {0};
+//     uint64_t h1_cache_12[INPUT_DIM * COMMON_DIM] = {0};
+//     uint64_t h4_cache_12[INPUT_DIM * COMMON_DIM] = {0};
+//     uint64_t h98[COMMON_DIM] = {0};
+
+//     vector<Ciphertext> h1;
+//     vector<Ciphertext> h2;
+//     vector<Ciphertext> h4;
+//     vector<Ciphertext> h6;
+
+// #ifdef BERT_PERF
+//     n_rounds += io->num_rounds;
+//     n_comm += io->counter;
+
+//     for (int i = 0; i < MAX_THREADS; i++) {
+//         n_rounds += nl.iopackArr[i]->get_rounds();
+//         n_comm += nl.iopackArr[i]->get_comm();
+//     }
+
+//     auto t_linear1 = high_resolution_clock::now();
+//     auto t_linear2 = high_resolution_clock::now();
+//     auto t_linear3 = high_resolution_clock::now();
+//     auto t_linear4 = high_resolution_clock::now();
+// #endif
+
+//     if (party == ALICE) {
+//         //         // -------------------- Preparing -------------------- //
+//         //         // Receive cipher text input
+//         // int cts_size = INPUT_DIM * COMMON_DIM / lin.data_lin1_0.slot_count;
+//         // h1.resize(cts_size);
+
+//         // #ifdef BERT_PERF
+//         //         t_linear1 = high_resolution_clock::now();
+//         // #endif
+
+//         // recv_encrypted_vector(lin.he_8192->context, io, h1);
+//         // cout << "> Receive input cts from client " << endl;
+//     } else {
+//         //         cout << "> Loading inputs" << endl;
+
+//         vector<vector<uint64_t>> input_plain = read_data(input_fname);
+//         //         softmax_mask = read_bias(mask_fname, 128);
+
+//         //         cout << "> Repacking to column" << endl;
+
+//         //         // Column Packing
+//         vector<uint64_t> input_col(COMMON_DIM * INPUT_DIM);
+//         for (int j = 0; j < COMMON_DIM; j++) {
+//             for (int i = 0; i < INPUT_DIM; i++) {
+//                 // input_col[j * INPUT_DIM + i] =
+//                 //     neg_mod(((int64_t)input_plain[i][j]) >> 7, (int64_t)lin.he_8192->plain_mod);
+//                 // if (prune) {
+//                 //     h1_cache_12_original[i * COMMON_DIM + j] = input_plain[i][j];
+//                 // } else {
+//                 h1_cache_12[i * COMMON_DIM + j] = input_plain[i][j];
+//                 // }
+//             }
+//         }
+
+//         // cout << "> Send to client" << endl;
+
+//         // Send cipher text input
+//         // vector<Ciphertext> h1_cts = lin.bert_efficient_preprocess_vec(lin.he_8192, input_col, lin.data_lin1_0);
+
+//         // #ifdef BERT_PERF
+//         //         t_linear1 = high_resolution_clock::now();
+//         // #endif
+
+//         // send_encrypted_vector(io, h1_cts);
+//     }
+//     vector<uint64_t> input(batch_size * d_module);
+//     if (party == BOB) {
+//         memcpy(input.data(), h1_cache_12, batch_size * d_module * sizeof(uint64_t));
+//     }
+//     BFVParm *parm = new BFVParm();
+//     BFVKey *_party = new BFVKey();
+//     FPMath **fpmath = nl.fpmath;
+//     _party->parm = parm;
+//     _party->party = party;
+//     _party->encryptor = lin.he_8192->encryptor;
+//     _party->decryptor = lin.he_8192->decryptor;
+//     _party->parm->poly_modulus_degree = lin.he_8192->poly_modulus_degree;
+//     _party->parm->plain_mod = lin.he_8192->plain_mod;
+//     _party->parm->context = lin.he_8192->context;
+//     _party->parm->evaluator = lin.he_8192->evaluator;
+//     _party->parm->encoder = lin.he_8192->encoder;
+//     BFVLongCiphertext *inp_e = nullptr;
+//     vector<vector<uint64_t>> attn_output_h(n_heads);
+//     vector<uint64_t> tmp_output(batch_size * d_module, 100000);
+//     // if (party == BOB) {
+//     //     inp_e = RFCP_bfv_encodeA(input, _party, batch_size, d_module, d_k);
+//     //     send_encoded_ciper(inp_e, fpmath, d_module);
+//     // } else {
+//     //     inp_e = new BFVLongCiphertext[d_module];
+//     //     recv_encoded_ciper(inp_e, fpmath, d_module, _party->parm->context);
+//     // }
+//     // Conversion *conv = new Conversion();
+//     // std::cout << inp_e[0].len << "\n";
+
+//     cout << "> --- Entering Attention Layers ---" << endl;
+//     for (int layer_id = 0; layer_id < ATTENTION_LAYERS; ++layer_id) {
+//         {
+//             // -------------------- Linear #1 -------------------- //
+//             // w/ input pruning
+
+//             // Layer 0:
+//             // softmax input: 12*128*128
+//             // softmax output: 12*128*128
+//             // v: 12*128*64
+//             // softmax_v: 12*128*64
+
+//             // softmax_v(pruned): 12*64*64
+
+//             // Layer 1-11:
+//             // softmax input: 12*64*64
+//             // softmax output: 12*64*64
+//             // v: 12*64*64
+//             // softmax_v: 12*64*64
+
+//             // w/o input pruning
+
+//             // Layer 0-11:
+//             // softmax input: 12*128*128
+//             // softmax output(pruned): 128*128*128
+//             // v: 12*128*64
+//             // softmax_v: 12*128*64
+
+//             // this can be multi thread
+//             // for (int head = 0; head < n_heads; head++) {
+//             // auto head = layer_id;
+//             // vector<uint64_t> Q, K, V, wq(d_module * d_k), wk(d_module * d_k), wv(d_module * d_k), bq(batch_size *
+//             d_k),
+//             //     bk(batch_size * d_k), bv(batch_size * d_k);
+//             // for (int j = 0; j < d_k; j++) {
+//             //     for (int i = 0; i < d_module; i++) {
+//             //         // wq[i * d_k + j] = bm.w_q[layer_id][head][i][j];
+//             //         // wk[i * d_k + j] = bm.w_k[layer_id][head][i][j];
+//             //         // wv[i * d_k + j] = bm.w_v[layer_id][head][i][j];
+//             //         wq[i * d_k + j] = 1000;
+//             //         wk[i * d_k + j] = 1000;
+//             //         wv[i * d_k + j] = 1000;
+//             //     }
+//             //     for (int i = 0; i < batch_size; i++) {
+//             //         bq[i * d_k + j] = 1000;
+//             //         bk[i * d_k + j] = 1000;
+//             //         bv[i * d_k + j] = 1000;
+//             //     }
+//             // }
+//             // BFVLongCiphertext *Q_encode, *Q_encode_remote = new BFVLongCiphertext[d_k], *softmax_encode,
+//             //                              *softmax_encode_remote = new BFVLongCiphertext[batch_size];
+//             // if (party == ALICE) {
+//                 // Q = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
+//                 // K = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
+//                 // V = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
+//             // } else {
+
+//                 // BFVLongCiphertext Q_sec_a = RFCP_bfv_matmul(inp_e, wq, batch_size, d_module, d_k, _party->parm),
+//                 //                   K_sec_a = RFCP_bfv_matmul(inp_e, wk, batch_size, d_module, d_k, _party->parm),
+//                 //                   V_sec_a = RFCP_bfv_matmul(inp_e, wv, batch_size, d_module, d_k, _party->parm);
+//                 // BFVLongPlaintext bQ_plain(_party->parm, wk), bK_plain(_party->parm, wk), bV_plain(_party->parm,
+//                 wk);
+//                 // Q_sec_a.add_plain_inplace(bQ_plain, _party->parm->evaluator);
+//                 // K_sec_a.add_plain_inplace(bK_plain, _party->parm->evaluator);
+//                 // V_sec_a.add_plain_inplace(bV_plain, _party->parm->evaluator);
+
+//                 // Q = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, Q_sec_a);
+//                 // K = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
+//                 // V = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
+//             // }
+//             // conv->Prime_to_Ring(_party->party, V.data(), V.data(), batch_size * d_k, DEFAULT_ELL,
+//             //                     _party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath[head]);
+//             // vector<uint64_t> K_T(batch_size * d_k);
+//             // for (int i = 0; i < batch_size; i++) {
+//             //     for (int j = 0; j < d_k; j++) {
+//             //         K_T[j * batch_size + i] = K[i * d_k + j];
+//             //     }
+//             // }
+//             // vector<uint64_t> QK_local = matmul(Q, K, batch_size, d_k, batch_size, true);
+//             // Q_encode = RFCP_bfv_encodeA(Q, party, batch_size, d_k, batch_size);
+//             // times[head] += (get_timestamp() - start_QKV);
+//             //         if (party->party == ALICE) {
+//             //             times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
+//             //             recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
+//             //         } else {
+//             //             recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
+//             //             times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
+//             //         }
+
+//             //         timestamp start_QK = get_timestamp();
+//             //         BFVLongCiphertext QK_enc =
+//             //             RFCP_bfv_matmul(Q_encode_remote, K_T, batch_size, d_k, batch_size, party->parm);
+//             //         vector<uint64_t> ret1, ret2;
+//             //         if (party->party == ALICE) {
+//             //             ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm, QK_enc);
+//             //             ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
+//             //         } else {
+//             //             ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
+//             //             ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm, QK_enc);
+//             //         }
+//             //         for (int i = 0; i < batch_size * batch_size; i++) {
+//             //             QK_local[i] = (QK_local[i] + ret1[i] + ret2[i]) & (1ULL << DEFAULT_ELL);
+//             //         }
+//             //         conv->Prime_to_Ring(party->party, QK_local.data(), QK_local.data(), batch_size * batch_size,
+//             //                             DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE,
+//             //                             fpmath[head]);
+//             //         vector<uint64_t> softmax_output;
+//             //         times[head] += get_timestamp() - start_QK;
+//             //         times[head] += softmax(QK_local, softmax_output, fpmath[head], conv);
+
+//             //         timestamp start_SV_local = get_timestamp();
+//             //         attn_output_h[head] = matmul(softmax_output, V, batch_size, batch_size, d_k);
+//             //         softmax_encode = RFCP_bfv_encodeA(softmax_output, party, batch_size, batch_size, d_k);
+//             //         times[head] += get_timestamp() - start_SV_local;
+//             //         if (party->party == ALICE) {
+//             //             recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
+//             //             times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
+//             //         } else {
+//             //             times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
+//             //             recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
+//             //         }
+
+//             //         timestamp start_SV = get_timestamp();
+//             //         BFVLongCiphertext attn_out_enc =
+//             //             RFCP_bfv_matmul(softmax_encode_remote, V, batch_size, batch_size, d_k, party->parm);
+//             //         vector<uint64_t> attn_out_ret1, attn_out_ret2;
+//             //         if (party->party == ALICE) {
+//             //             attn_out_ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm,
+//             //             attn_out_enc); attn_out_ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
+//             //         } else {
+//             //             attn_out_ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
+//             //             attn_out_ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm,
+//             //             attn_out_enc);
+//             //         }
+//             //         for (int i = 0; i < batch_size * d_k; i++) {
+//             //             attn_output_h[head][i] =
+//             //                 (attn_output_h[head][i] + attn_out_ret1[i] + attn_out_ret2[i]) & (1ULL <<
+//             //                 DEFAULT_ELL);
+//             //         }
+//             //         times[head] += get_timestamp() - start_SV;
+
+//             //         delete[] softmax_encode_remote;
+//             //         delete[] softmax_encode;
+//             //         delete[] Q_encode_remote;
+//             //         delete[] Q_encode;
+//             // }
+
+//             // #pragma omp parallel for
+//             //             for (int h = 0; h < n_heads; h++) {
+//             //                 for (int i = 0; i < batch_size; i++) {
+//             //                     for (int j = 0; j < d_k; j++) {
+//             //                         tmp_output[i * d_module + h * d_k + j] = attn_output_h[h][i * d_k + j];
+//             //                     }
+//             //                 }
+//             //             }
+//             if (party == ALICE) {
+//                 h2 = ss_to_he_server(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
+//             } else {
+//                 ss_to_he_client(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
+//             }
+//         }
+
 #include "bert.h"
 #include "FixedPoint/fixed-math.h"
 #include "linear.h"
@@ -246,11 +519,7 @@ void print_pt(HE *he, Plaintext &pt, int len) {
         } else {
             cout << dest[i] << " ";
         }
-        // if(dest[i] != 0){
-        //     non_zero_count += 1;
-        // }
     }
-    // cout << "Non zero count: " << non_zero_count;
     cout << endl;
 }
 
@@ -274,8 +543,7 @@ Bert::Bert(int party, int port, string address, string model_path, bool prune) {
     cout << "> Setup NonLinear" << endl;
     this->nl = NonLinear(party, address, port + 1);
 
-    // this->prune = prune;
-    this->prune = false;
+    this->prune = prune;
 
     if (party == ALICE) {
         cout << "> Loading and preprocessing weights on server" << endl;
@@ -283,7 +551,7 @@ Bert::Bert(int party, int port, string address, string model_path, bool prune) {
         auto t_load_model = high_resolution_clock::now();
 #endif
 
-        bm = load_model(model_path, NUM_CLASS);
+        struct BertModel bm = load_model(model_path, NUM_CLASS);
 
 #ifdef BERT_PERF
         cout << "> [TIMING]: Loading Model takes: " << interval(t_load_model) << "sec" << endl;
@@ -364,14 +632,6 @@ vector<Ciphertext> Bert::ss_to_he_server(HE *he, uint64_t *input, int length, in
     t_total_conversion += interval(t_conversion);
 #endif
     return share_client;
-
-    // io->send_data(input, length*sizeof(uint64_t));
-    // int slot_count = he->poly_modulus_degree;
-    // uint64_t plain_mod = he->plain_mod;
-    // int dim = length / slot_count;
-    // vector<Ciphertext> share_client(dim);
-    // recv_encrypted_vector(he->context, io, share_client);
-    // return share_client;
 }
 
 void Bert::he_to_ss_client(HE *he, uint64_t *output, int length, const FCMetadata &data) {
@@ -392,7 +652,7 @@ void Bert::he_to_ss_client(HE *he, uint64_t *output, int length, const FCMetadat
 #endif
 }
 
-void Bert::ss_to_he_client(HE *he, uint64_t *input, int length, int bw, bool log) {
+void Bert::ss_to_he_client(HE *he, uint64_t *input, int length, int bw) {
 #ifdef BERT_PERF
     auto t_conversion = high_resolution_clock::now();
 #endif
@@ -415,25 +675,6 @@ void Bert::ss_to_he_client(HE *he, uint64_t *input, int length, int bw, bool log
 #ifdef BERT_PERF
     t_total_conversion += interval(t_conversion);
 #endif
-    // uint64_t* input_server = new uint64_t[length];
-    // io->recv_data(input_server, length*sizeof(uint64_t));
-    // int slot_count = he->poly_modulus_degree;
-    // uint64_t plain_mod = he->plain_mod;
-    // vector<Ciphertext> cts;
-    // int dim = length / slot_count;
-    // for(int i = 0; i < dim; i++){
-    //     vector<uint64_t> tmp(slot_count);
-    //     for(int j = 0; j < slot_count; ++j){
-    //          tmp[j] = neg_mod(signed_val(input[i*slot_count + j] + input_server[i*slot_count + j], bw),
-    //          (int64_t)plain_mod);
-    //     }
-    //     Plaintext pt;
-    //     he->encoder->encode(tmp, pt);
-    //     Ciphertext ct;
-    //     he->encryptor->encrypt(pt, ct);
-    //     cts.push_back(ct);
-    // }
-    // send_encrypted_vector(io, cts);
 }
 
 void Bert::ln_share_server(int layer_id, vector<uint64_t> &wln_input, vector<uint64_t> &bln_input, uint64_t *wln,
@@ -587,6 +828,7 @@ void Bert::softmax_v(HE *he, vector<Ciphertext> enc_v, uint64_t *s_softmax, uint
         // }
 
         delete[] softmax_v_server;
+
     } else {
         // Client
 
@@ -604,17 +846,6 @@ void Bert::softmax_v(HE *he, vector<Ciphertext> enc_v, uint64_t *s_softmax, uint
         he_to_ss_client(he, softmax_v_server, cts_len, data);
 
         lin.plain_cross_packing_postprocess_v(softmax_v_server, s_softmax_v, true, data);
-
-        // vector<Ciphertext> enc_y_r(12 * data.image_size * data.filter_w / data.slot_count);
-        // recv_encrypted_vector(he->context, io, enc_y_r);
-
-        // uint64_t *y_r = new uint64_t[enc_y_r.size() * data.slot_count];
-
-        // lin.bert_postprocess_V_enc(he, enc_y_r, y_r, data, true);
-
-        // for (int i = 0; i < data.image_size * data.filter_w * 12; i++) {
-        //     s_softmax_v[i] = y_r[i] + softmax_v_client[i];
-        // }
 
         for (int i = 0; i < data.image_size * data.filter_w * 12; i++) {
             if (softmax_v_client[i] > he->plain_mod_2) {
@@ -670,14 +901,8 @@ void Bert::check_p_share(uint64_t *s, uint64_t p, int len, uint64_t *ref) {
 vector<double> Bert::run(string input_fname, string mask_fname) {
     // Server: Alice
     // Client: Bob
-
-    // int input_dim = INPUT_DIM;
-    // if (prune) {
-    //     input_dim /= 2;
-    // }
-
-    // vector<uint64_t> softmax_mask;
-    // uint64_t h1_cache_12_original[INPUT_DIM * COMMON_DIM] = {0};
+    vector<uint64_t> softmax_mask;
+    uint64_t h1_cache_12_original[INPUT_DIM * COMMON_DIM] = {0};
     uint64_t h1_cache_12[INPUT_DIM * COMMON_DIM] = {0};
     uint64_t h4_cache_12[INPUT_DIM * COMMON_DIM] = {0};
     uint64_t h98[COMMON_DIM] = {0};
@@ -703,54 +928,50 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
 #endif
 
     if (party == ALICE) {
-        //         // -------------------- Preparing -------------------- //
-        //         // Receive cipher text input
-        // int cts_size = INPUT_DIM * COMMON_DIM / lin.data_lin1_0.slot_count;
-        // h1.resize(cts_size);
+        // -------------------- Preparing -------------------- //
+        // Receive cipher text input
+        int cts_size = INPUT_DIM * COMMON_DIM / lin.data_lin1_0.slot_count;
+        h1.resize(cts_size);
 
-        // #ifdef BERT_PERF
-        //         t_linear1 = high_resolution_clock::now();
-        // #endif
+#ifdef BERT_PERF
+        t_linear1 = high_resolution_clock::now();
+#endif
 
-        // recv_encrypted_vector(lin.he_8192->context, io, h1);
-        // cout << "> Receive input cts from client " << endl;
+        recv_encrypted_vector(lin.he_8192->context, io, h1);
+        cout << "> Receive input cts from client " << endl;
     } else {
-        //         cout << "> Loading inputs" << endl;
-
+        cout << "> Loading inputs" << endl;
         vector<vector<uint64_t>> input_plain = read_data(input_fname);
-        //         softmax_mask = read_bias(mask_fname, 128);
+        softmax_mask = read_bias(mask_fname, 128);
 
-        //         cout << "> Repacking to column" << endl;
+        cout << "> Repacking to column" << endl;
 
-        //         // Column Packing
+        // Column Packing
         vector<uint64_t> input_col(COMMON_DIM * INPUT_DIM);
         for (int j = 0; j < COMMON_DIM; j++) {
             for (int i = 0; i < INPUT_DIM; i++) {
-                // input_col[j * INPUT_DIM + i] =
-                //     neg_mod(((int64_t)input_plain[i][j]) >> 7, (int64_t)lin.he_8192->plain_mod);
-                // if (prune) {
-                //     h1_cache_12_original[i * COMMON_DIM + j] = input_plain[i][j];
-                // } else {
-                h1_cache_12[i * COMMON_DIM + j] = input_plain[i][j];
-                // }
+                input_col[j * INPUT_DIM + i] =
+                    neg_mod(((int64_t)input_plain[i][j]) >> 7, (int64_t)lin.he_8192->plain_mod);
+                if (prune) {
+                    h1_cache_12_original[i * COMMON_DIM + j] = input_plain[i][j];
+                } else {
+                    h1_cache_12[i * COMMON_DIM + j] = input_plain[i][j];
+                }
             }
         }
 
-        // cout << "> Send to client" << endl;
+        cout << "> Send to client" << endl;
 
         // Send cipher text input
-        // vector<Ciphertext> h1_cts = lin.bert_efficient_preprocess_vec(lin.he_8192, input_col, lin.data_lin1_0);
+        vector<Ciphertext> h1_cts = lin.bert_efficient_preprocess_vec(lin.he_8192, input_col, lin.data_lin1_0);
 
-        // #ifdef BERT_PERF
-        //         t_linear1 = high_resolution_clock::now();
-        // #endif
+#ifdef BERT_PERF
+        t_linear1 = high_resolution_clock::now();
+#endif
 
-        // send_encrypted_vector(io, h1_cts);
+        send_encrypted_vector(io, h1_cts);
     }
-    vector<uint64_t> input(batch_size * d_module);
-    if (party == BOB) {
-        memcpy(input.data(), h1_cache_12, batch_size * d_module * sizeof(uint64_t));
-    }
+
     BFVParm *parm = new BFVParm();
     BFVKey *_party = new BFVKey();
     FPMath **fpmath = nl.fpmath;
@@ -764,8 +985,8 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
     _party->parm->evaluator = lin.he_8192->evaluator;
     _party->parm->encoder = lin.he_8192->encoder;
     BFVLongCiphertext *inp_e = nullptr;
-    vector<vector<uint64_t>> attn_output_h(n_heads);
-    vector<uint64_t> tmp_output(batch_size * d_module, 100000);
+    vector<uint64_t> input(batch_size * d_module);
+    memcpy(input.data(), h1_cache_12, batch_size * d_module * sizeof(uint64_t));
     if (party == BOB) {
         inp_e = RFCP_bfv_encodeA(input, _party, batch_size, d_module, d_k);
         send_encoded_ciper(inp_e, fpmath, d_module);
@@ -773,41 +994,17 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
         inp_e = new BFVLongCiphertext[d_module];
         recv_encoded_ciper(inp_e, fpmath, d_module, _party->parm->context);
     }
-    Conversion *conv = new Conversion();
+    vector<vector<uint64_t>> attn_output_h(n_heads);
+    vector<uint64_t> tmp_output(batch_size * d_module, 100000);
 
     cout << "> --- Entering Attention Layers ---" << endl;
     for (int layer_id = 0; layer_id < ATTENTION_LAYERS; ++layer_id) {
         {
-            // -------------------- Linear #1 -------------------- //
-            // w/ input pruning
-
-            // Layer 0:
-            // softmax input: 12*128*128
-            // softmax output: 12*128*128
-            // v: 12*128*64
-            // softmax_v: 12*128*64
-
-            // softmax_v(pruned): 12*64*64
-
-            // Layer 1-11:
-            // softmax input: 12*64*64
-            // softmax output: 12*64*64
-            // v: 12*64*64
-            // softmax_v: 12*64*64
-
-            // w/o input pruning
-
-            // Layer 0-11:
-            // softmax input: 12*128*128
-            // softmax output(pruned): 128*128*128
-            // v: 12*128*64
-            // softmax_v: 12*128*64
-
-            // this can be multi thread
-            for (int head = 0; head < n_heads; head++) {
-                vector<uint64_t> Q, K, V, wq(d_module * d_k), wk(d_module * d_k), wv(d_module * d_k);
-                for (int i = 0; i < d_module; i++) {
-                    for (int j = 0; j < d_k; j++) {
+            // for (int head = 0; head < n_heads; head++) {
+                vector<uint64_t> Q, K, V, wq(d_module * d_k), wk(d_module * d_k), wv(d_module * d_k),
+                    bq(batch_size * d_k), bk(batch_size * d_k), bv(batch_size * d_k);
+                for (int j = 0; j < d_k; j++) {
+                    for (int i = 0; i < d_module; i++) {
                         // wq[i * d_k + j] = bm.w_q[layer_id][head][i][j];
                         // wk[i * d_k + j] = bm.w_k[layer_id][head][i][j];
                         // wv[i * d_k + j] = bm.w_v[layer_id][head][i][j];
@@ -815,26 +1012,32 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
                         wk[i * d_k + j] = 1000;
                         wv[i * d_k + j] = 1000;
                     }
+                    for (int i = 0; i < batch_size; i++) {
+                        bq[i * d_k + j] = 1000;
+                        bk[i * d_k + j] = 1000;
+                        bv[i * d_k + j] = 1000;
+                    }
                 }
                 // BFVLongCiphertext *Q_encode, *Q_encode_remote = new BFVLongCiphertext[d_k], *softmax_encode,
                 //                              *softmax_encode_remote = new BFVLongCiphertext[batch_size];
-                if (party == ALICE) {
-                    // Q = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
-                    // K = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
-                    // V = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
-                } else {
-                    BFVLongCiphertext Q_sec_a = RFCP_bfv_matmul(inp_e, wq, batch_size, d_module, d_k, _party->parm),
-                                      K_sec_a = RFCP_bfv_matmul(inp_e, wk, batch_size, d_module, d_k, _party->parm),
-                                      V_sec_a = RFCP_bfv_matmul(inp_e, wv, batch_size, d_module, d_k, _party->parm);
-                    // BFVLongPlaintext bQ_plain(_party->parm, wk), bK_plain(_party->parm, wk), bV_plain(_party->parm, wk);
-                    // Q_sec_a.add_plain_inplace(bQ_plain, _party->parm->evaluator);
-                    // K_sec_a.add_plain_inplace(bK_plain, _party->parm->evaluator);
-                    // V_sec_a.add_plain_inplace(bV_plain, _party->parm->evaluator);
+                // if (party == ALICE) {
+                // Q = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
+                // K = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
+                // V = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
+                // } else {
 
-                    // Q = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, Q_sec_a);
-                    // K = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
-                    // V = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
-                }
+                // BFVLongCiphertext Q_sec_a = RFCP_bfv_matmul(inp_e, wq, batch_size, d_module, d_k, _party->parm),
+                //                   K_sec_a = RFCP_bfv_matmul(inp_e, wk, batch_size, d_module, d_k, _party->parm),
+                //                   V_sec_a = RFCP_bfv_matmul(inp_e, wv, batch_size, d_module, d_k, _party->parm);
+                // BFVLongPlaintext bQ_plain(_party->parm, wk), bK_plain(_party->parm, wk), bV_plain(_party->parm, wk);
+                // Q_sec_a.add_plain_inplace(bQ_plain, _party->parm->evaluator);
+                // K_sec_a.add_plain_inplace(bK_plain, _party->parm->evaluator);
+                // V_sec_a.add_plain_inplace(bV_plain, _party->parm->evaluator);
+
+                // Q = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, Q_sec_a);
+                // K = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
+                // V = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
+                // }
                 // conv->Prime_to_Ring(_party->party, V.data(), V.data(), batch_size * d_k, DEFAULT_ELL,
                 //                     _party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath[head]);
                 // vector<uint64_t> K_T(batch_size * d_k);
@@ -910,538 +1113,353 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
                 //         delete[] softmax_encode;
                 //         delete[] Q_encode_remote;
                 //         delete[] Q_encode;
-                // }
-
-                // #pragma omp parallel for
-                //             for (int h = 0; h < n_heads; h++) {
-                //                 for (int i = 0; i < batch_size; i++) {
-                //                     for (int j = 0; j < d_k; j++) {
-                //                         tmp_output[i * d_module + h * d_k + j] = attn_output_h[h][i * d_k + j];
-                //                     }
-                //                 }
-                //             }
-                if (party == ALICE) {
-                    h2 = ss_to_he_server(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
-                } else {
-                    ss_to_he_client(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
-                }
-            }
-
-            // -------------------- Linear #2 -------------------- //
-            {
-                FCMetadata data = lin.data_lin2;
-
-                int ln_size = data.image_size * COMMON_DIM;
-                int ln_cts_size = ln_size / lin.he_8192_tiny->poly_modulus_degree;
-                uint64_t *ln_input_cross = new uint64_t[ln_size];
-                uint64_t *ln_input_row = new uint64_t[ln_size];
-                uint64_t *ln_output_row = new uint64_t[ln_size];
-                uint64_t *ln_output_col = new uint64_t[ln_size];
-                uint64_t *ln_wx = new uint64_t[ln_size];
-
-                uint64_t *ln_weight = new uint64_t[ln_size];
-                uint64_t *ln_bias = new uint64_t[ln_size];
-
-                if (party == ALICE) {
-                    cout << "-> Layer - " << layer_id << ": Linear #2 HE" << endl;
-                    vector<Ciphertext> h3 = lin.linear_2(lin.he_8192_tiny, h2, lin.pp_2[layer_id], data);
-                    cout << "-> Layer - " << layer_id << ": Linear #2 HE done " << endl;
-                    he_to_ss_server(lin.he_8192_tiny, h3, ln_input_cross, true);
-                    ln_share_server(layer_id, lin.w_ln_1[layer_id], lin.b_ln_1[layer_id], ln_weight, ln_bias, data);
-                } else {
-                    vector<Ciphertext> h3(ln_cts_size);
-                    he_to_ss_client(lin.he_8192_tiny, ln_input_cross, ln_cts_size, lin.data_lin2);
-                    ln_share_client(ln_weight, ln_bias, data);
-                }
-
-#ifdef BERT_PERF
-                t_total_linear2 += interval(t_linear2);
-
-                c_linear_2 += get_comm();
-                r_linear_2 += get_round();
-                auto t_repacking = high_resolution_clock::now();
-#endif
-
-                lin.plain_col_packing_postprocess(ln_input_cross, ln_input_row, false, data);
-
-#ifdef BERT_PERF
-                t_total_repacking += interval(t_repacking);
-                auto t_gt_sub = high_resolution_clock::now();
-#endif
-
-                nl.gt_p_sub(NL_NTHREADS, ln_input_row, lin.he_8192_tiny->plain_mod, ln_input_row, ln_size, NL_ELL,
-                            NL_SCALE, NL_SCALE);
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray ln_input_row_pub = nl.to_public(ln_input_row, ln_size, NL_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(ln_input_row_pub.data, ln_size, 1,
-                                 replace_2("./ppnlp/ln_input_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-#ifdef BERT_PERF
-                t_total_gt_sub += interval(t_gt_sub);
-                c_gt_sub += get_comm();
-                r_gt_sub += get_round();
-                auto t_ln_1 = high_resolution_clock::now();
-#endif
-
-                // nl.print_ss(ln_input_row, 16, NL_ELL, NL_SCALE);
-                // return {};
-
-                for (int i = 0; i < ln_size; i++) {
-                    ln_input_row[i] += h1_cache_12[i];
-                }
-
-                // Layer Norm
-                nl.layer_norm(NL_NTHREADS, ln_input_row, ln_output_row, ln_weight, ln_bias, data.image_size, COMMON_DIM,
-                              NL_ELL, NL_SCALE);
-
-                // wx
-                if (party == ALICE) {
-                    vector<Ciphertext> ln = ss_to_he_server(lin.he_8192_ln, ln_output_row, ln_size, NL_ELL);
-
-                    vector<Ciphertext> ln_w = lin.w_ln(lin.he_8192_ln, ln, lin.w_ln_1_pt[layer_id]);
-                    he_to_ss_server(lin.he_8192_ln, ln_w, ln_wx, true);
-                } else {
-                    ss_to_he_client(lin.he_8192_ln, ln_output_row, ln_size, NL_ELL);
-                    int cts_size = ln_size / lin.he_8192_ln->poly_modulus_degree;
-                    he_to_ss_client(lin.he_8192_ln, ln_wx, cts_size, data);
-                }
-
-                nl.gt_p_sub(NL_NTHREADS, ln_wx, lin.he_8192_ln->plain_mod, ln_wx, ln_size, NL_ELL, 2 * NL_SCALE,
-                            NL_SCALE);
-
-                uint64_t ell_mask = (1ULL << (NL_ELL)) - 1;
-
-                for (int i = 0; i < ln_size; i++) {
-                    ln_wx[i] += ln_bias[i] & ell_mask;
-                }
-
-#ifdef BERT_PERF
-                t_total_ln_1 += interval(t_ln_1);
-                c_ln1 += get_comm();
-                r_ln1 += get_round();
-                auto t_shift = high_resolution_clock::now();
-#endif
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray ln_output_row_pub = nl.to_public(ln_output_row, ln_size, NL_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(ln_output_row_pub.data, ln_size, 1,
-                                 replace_2("./ppnlp/ln_output_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-                memcpy(h4_cache_12, ln_wx, ln_size * sizeof(uint64_t));
-
-                nl.right_shift(NL_NTHREADS, ln_wx, NL_SCALE - 5, ln_output_row, ln_size, NL_ELL, NL_SCALE);
-
-#ifdef BERT_PERF
-                t_total_shift += interval(t_shift);
-                c_shift += get_comm();
-                r_shift += get_round();
-                auto t_repacking_2 = high_resolution_clock::now();
-#endif
-
-                // FixArray tmp = nl.to_public(ln_output_row, 128*768, 64, 5);
-                // save_to_file(tmp.data, 128, 768, "./inter_result/linear3_input.txt");
-
-                lin.plain_col_packing_preprocess(ln_output_row, ln_output_col, lin.he_8192_tiny->plain_mod,
-                                                 data.image_size, COMMON_DIM);
-
-#ifdef BERT_PERF
-                t_total_repacking += interval(t_repacking_2);
-
-                t_linear3 = high_resolution_clock::now();
-#endif
-
-                if (party == ALICE) {
-                    h4 = ss_to_he_server(lin.he_8192_tiny, ln_output_col, ln_size, NL_ELL);
-                } else {
-                    ss_to_he_client(lin.he_8192_tiny, ln_output_col, ln_size, NL_ELL);
-                }
-
-                delete[] ln_input_cross;
-                delete[] ln_input_row;
-                delete[] ln_output_row;
-                delete[] ln_output_col;
-                delete[] ln_weight;
-                delete[] ln_bias;
-            }
-
-            // -------------------- Linear #3 -------------------- //
-            {
-                FCMetadata data = lin.data_lin3;
-
-                int gelu_input_size = data.image_size * 3072;
-                int gelu_cts_size = gelu_input_size / lin.he_8192_tiny->poly_modulus_degree;
-                uint64_t *gelu_input_cross = new uint64_t[gelu_input_size];
-                uint64_t *gelu_input_col = new uint64_t[gelu_input_size];
-                uint64_t *gelu_output_col = new uint64_t[gelu_input_size];
-
-                if (party == ALICE) {
-                    cout << "-> Layer - " << layer_id << ": Linear #3 HE" << endl;
-                    vector<Ciphertext> h5 = lin.linear_2(lin.he_8192_tiny, h4, lin.pp_3[layer_id], data);
-
-                    cout << "-> Layer - " << layer_id << ": Linear #3 HE done " << endl;
-                    he_to_ss_server(lin.he_8192_tiny, h5, gelu_input_cross, true);
-                } else {
-                    he_to_ss_client(lin.he_8192_tiny, gelu_input_cross, gelu_cts_size, data);
-                }
-
-#ifdef BERT_PERF
-                t_total_linear3 += interval(t_linear3);
-
-                c_linear_3 += get_comm();
-                r_linear_3 += get_round();
-                auto t_repacking = high_resolution_clock::now();
-#endif
-
-                lin.plain_col_packing_postprocess(gelu_input_cross, gelu_input_col, true, data);
-
-#ifdef BERT_PERF
-                t_total_repacking += interval(t_repacking);
-                auto t_gt_sub = high_resolution_clock::now();
-#endif
-
-                // mod p
-                nl.gt_p_sub(NL_NTHREADS, gelu_input_col, lin.he_8192_tiny->plain_mod, gelu_input_col, gelu_input_size,
-                            GELU_ELL, 11, GELU_SCALE);
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray gelu_input_col_pub = nl.to_public(gelu_input_col, gelu_input_size, GELU_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(gelu_input_col_pub.data, gelu_input_size, 1,
-                                 replace_2("./ppnlp/gelu_input_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-                // nl.reduce(
-                //     NL_NTHREADS,
-                //     gelu_input_col,
-                //     gelu_input_col,
-                //     gelu_input_size,
-                //     NL_ELL,
-                //     GELU_ELL,
-                //     GELU_SCALE
-                // );
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray gelu_reduce_col_pub = nl.to_public(gelu_input_col, gelu_input_size, GELU_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(gelu_reduce_col_pub.data, gelu_input_size, 1,
-                                 replace_2("./ppnlp/gelu_reduce_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-#ifdef BERT_PERF
-                t_total_gt_sub += interval(t_gt_sub);
-                c_gt_sub += get_comm();
-                r_gt_sub += get_round();
-                auto t_gelu = high_resolution_clock::now();
-#endif
-
-                nl.gelu(NL_NTHREADS, gelu_input_col, gelu_output_col, gelu_input_size, GELU_ELL, GELU_SCALE);
-
-#ifdef BERT_PERF
-                t_total_gelu += interval(t_gelu);
-                c_gelu += get_comm();
-                r_gelu += get_round();
-                auto t_shift = high_resolution_clock::now();
-#endif
-
-                // nl.right_shift(
-                //     NL_NTHREADS,
-                //     gelu_output_col,
-                //     NL_SCALE - 4,
-                //     gelu_output_col,
-                //     gelu_input_size,
-                //     GELU_ELL,
-                //     NL_SCALE
-                // );
-
-                // // int tmp = get_comm();
-                // // int tmp_round = get_round();
-
-                // nl.cancel_wrap(
-                //     NL_NTHREADS,
-                //     gelu_output_col,
-                //     gelu_output_col,
-                //     gelu_input_size,
-                //     GELU_ELL,
-                //     NL_SCALE
-                // );
-
-                // cout << "Extension cost: " << get_comm() << " Bytes, " << get_round() << " rounds." << endl;
-
-                // nl.convert_l_to_p(
-                //     NL_NTHREADS,
-                //     gelu_output_col,
-                //     gelu_output_col,
-                //     1,
-                //     2,
-                //     gelu_input_size,
-                //     GELU_ELL,
-                //     NL_SCALE
-                // );
-
-                // cout << "Extension cost: " << get_comm() << " Bytes, " << get_round() << " rounds." << endl;
-
-                // return {};
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray gelu_output_col_pub = nl.to_public(gelu_output_col, gelu_input_size, GELU_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(gelu_output_col_pub.data, gelu_input_size, 1,
-                                 replace_2("./ppnlp/gelu_output_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray gelu_cancel_col_pub = nl.to_public(gelu_output_col, gelu_input_size, GELU_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(gelu_cancel_col_pub.data, gelu_input_size, 1,
-                                 replace_2("./ppnlp/gelu_cancel_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-#ifdef BERT_PERF
-                t_total_shift += interval(t_shift);
-                c_shift += get_comm();
-                r_shift += get_round();
-
-                t_linear4 = high_resolution_clock::now();
-#endif
-
-                // FixArray tmp = nl.to_public(gelu_output_col, 128*3072, 64, 4);
-                // save_to_file(tmp.data, 128, 3072, "./inter_result/linear4_input.txt");
-
-                // return 0;
-
-                if (party == ALICE) {
-                    h6 = ss_to_he_server(lin.he_8192_tiny, gelu_output_col, gelu_input_size, NL_ELL);
-                } else {
-                    ss_to_he_client(lin.he_8192_tiny, gelu_output_col, gelu_input_size, NL_ELL);
-                }
-
-                delete[] gelu_input_cross;
-                delete[] gelu_input_col;
-                delete[] gelu_output_col;
-            }
-
-            {
-                FCMetadata data = lin.data_lin4;
-
-                int ln_2_input_size = data.image_size * COMMON_DIM;
-                int ln_2_cts_size = ln_2_input_size / lin.he_8192_tiny->poly_modulus_degree;
-
-                uint64_t *ln_2_input_cross = new uint64_t[ln_2_input_size];
-                uint64_t *ln_2_input_row = new uint64_t[ln_2_input_size];
-                uint64_t *ln_2_output_row = new uint64_t[ln_2_input_size];
-                uint64_t *ln_2_output_col = new uint64_t[ln_2_input_size];
-
-                uint64_t *ln_2_wx = new uint64_t[ln_2_input_size];
-
-                uint64_t *ln_weight_2 = new uint64_t[ln_2_input_size];
-                uint64_t *ln_bias_2 = new uint64_t[ln_2_input_size];
-
-                if (party == ALICE) {
-                    cout << "-> Layer - " << layer_id << ": Linear #4 HE " << endl;
-
-                    vector<Ciphertext> h7 = lin.linear_2(lin.he_8192_tiny, h6, lin.pp_4[layer_id], data);
-
-                    cout << "-> Layer - " << layer_id << ": Linear #4 HE done" << endl;
-                    he_to_ss_server(lin.he_8192_tiny, h7, ln_2_input_cross, true);
-                    ln_share_server(layer_id, lin.w_ln_2[layer_id], lin.b_ln_2[layer_id], ln_weight_2, ln_bias_2, data);
-                } else {
-                    he_to_ss_client(lin.he_8192_tiny, ln_2_input_cross, ln_2_cts_size, data);
-                    ln_share_client(ln_weight_2, ln_bias_2, data);
-                }
-
-#ifdef BERT_PERF
-                t_total_linear4 += interval(t_linear4);
-
-                c_linear_4 += get_comm();
-                r_linear_4 += get_round();
-                auto t_repacking = high_resolution_clock::now();
-#endif
-                // Post Processing
-                lin.plain_col_packing_postprocess(ln_2_input_cross, ln_2_input_row, false, data);
-
-#ifdef BERT_PERF
-                t_total_repacking += interval(t_repacking);
-                auto t_gt_sub = high_resolution_clock::now();
-#endif
-
-                // mod p
-                if (layer_id == 9 || layer_id == 10) {
-                    nl.gt_p_sub(NL_NTHREADS, ln_2_input_row, lin.he_8192_tiny->plain_mod, ln_2_input_row,
-                                ln_2_input_size, NL_ELL, 8, NL_SCALE);
-                } else {
-                    nl.gt_p_sub(NL_NTHREADS, ln_2_input_row, lin.he_8192_tiny->plain_mod, ln_2_input_row,
-                                ln_2_input_size, NL_ELL, 9, NL_SCALE);
-                }
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray ln_2_input_row_pub = nl.to_public(ln_2_input_row, ln_2_input_size, NL_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(ln_2_input_row_pub.data, ln_2_input_size, 1,
-                                 replace_2("./ppnlp/ln_2_input_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-#ifdef BERT_PERF
-                t_total_gt_sub += interval(t_gt_sub);
-                c_gt_sub += get_comm();
-                r_gt_sub += get_round();
-                auto t_ln = high_resolution_clock::now();
-#endif
-
-                for (int i = 0; i < ln_2_input_size; i++) {
-                    ln_2_input_row[i] += h4_cache_12[i];
-                }
-
-                nl.layer_norm(NL_NTHREADS, ln_2_input_row, ln_2_output_row, ln_weight_2, ln_bias_2, data.image_size,
-                              COMMON_DIM, NL_ELL, NL_SCALE);
-
-                // wx
-                if (party == ALICE) {
-                    vector<Ciphertext> ln = ss_to_he_server(lin.he_8192_ln, ln_2_output_row, ln_2_input_size, NL_ELL);
-                    vector<Ciphertext> ln_w = lin.w_ln(lin.he_8192_ln, ln, lin.w_ln_2_pt[layer_id]);
-                    he_to_ss_server(lin.he_8192_ln, ln_w, ln_2_wx, true);
-                } else {
-                    ss_to_he_client(lin.he_8192_ln, ln_2_output_row, ln_2_input_size, NL_ELL);
-                    int cts_size = ln_2_input_size / lin.he_8192_ln->poly_modulus_degree;
-                    he_to_ss_client(lin.he_8192_ln, ln_2_wx, cts_size, data);
-                }
-
-                nl.gt_p_sub(NL_NTHREADS, ln_2_wx, lin.he_8192_ln->plain_mod, ln_2_wx, ln_2_input_size, NL_ELL,
-                            2 * NL_SCALE, NL_SCALE);
-
-                uint64_t ell_mask = (1ULL << (NL_ELL)) - 1;
-
-                for (int i = 0; i < ln_2_input_size; i++) {
-                    ln_2_wx[i] += ln_bias_2[i] & ell_mask;
-                }
-
-#ifdef BERT_SAVE_RESULTS
-                FixArray ln_2_output_row_pub = nl.to_public(ln_2_output_row, ln_2_input_size, NL_ELL, NL_SCALE);
-                if (party == ALICE) {
-                    save_to_file(ln_2_output_row_pub.data, ln_2_input_size, 1,
-                                 replace_2("./ppnlp/ln_2_output_X.txt", "X", to_string(layer_id)).c_str());
-                }
-#endif
-
-#ifdef BERT_PERF
-                t_total_ln_2 += interval(t_ln);
-                c_ln2 += get_comm();
-                r_ln2 += get_round();
-                auto t_shift = high_resolution_clock::now();
-#endif
-
-                // update H1
-                memcpy(h1_cache_12, ln_2_wx, ln_2_input_size * sizeof(uint64_t));
-
-                // Rescale
-                nl.right_shift(NL_NTHREADS, ln_2_wx, 12 - 5, ln_2_output_row, ln_2_input_size, NL_ELL, NL_SCALE);
-
-#ifdef BERT_PERF
-                t_total_shift += interval(t_shift);
-                c_shift += get_comm();
-                r_shift += get_round();
-                auto t_repacking_2 = high_resolution_clock::now();
-#endif
-
-                lin.plain_col_packing_preprocess(ln_2_output_row, ln_2_output_col, lin.he_8192_tiny->plain_mod,
-                                                 data.image_size, COMMON_DIM);
-
-#ifdef BERT_PERF
-                t_total_repacking += interval(t_repacking_2);
-
-                t_linear1 = high_resolution_clock::now();
-#endif
-
-                // if (layer_id == 11) {
-                //     // Using Scale of 12 as
-                //     memcpy(h98, h1_cache_12, COMMON_DIM * sizeof(uint64_t));
-                // } else {
-                //     if (party == ALICE) {
-                //         h1 = ss_to_he_server(lin.he_8192, ln_2_output_col, ln_2_input_size, NL_ELL);
-                //     } else {
-                //         ss_to_he_client(lin.he_8192, ln_2_output_col, ln_2_input_size, NL_ELL, true);
-                //     }
-                // }
-
-                delete[] ln_2_input_cross;
-                delete[] ln_2_input_row;
-                delete[] ln_2_output_row;
-                delete[] ln_2_output_col;
-                delete[] ln_weight_2;
-                delete[] ln_bias_2;
+            // }
+
+            // #pragma omp parallel for
+            //             for (int h = 0; h < n_heads; h++) {
+            //                 for (int i = 0; i < batch_size; i++) {
+            //                     for (int j = 0; j < d_k; j++) {
+            //                         tmp_output[i * d_module + h * d_k + j] = attn_output_h[h][i * d_k + j];
+            //                     }
+            //                 }
+            //             }
+            if (party == ALICE) {
+                h2 = ss_to_he_server(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
+            } else {
+                ss_to_he_client(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
             }
         }
-    }
-    delete[] inp_e;
 
-    // Secret share Pool and Classification model
-    uint64_t *wp = new uint64_t[COMMON_DIM * COMMON_DIM];
-    uint64_t *bp = new uint64_t[COMMON_DIM];
-    uint64_t *wc = new uint64_t[COMMON_DIM * NUM_CLASS];
-    uint64_t *bc = new uint64_t[NUM_CLASS];
+        // -------------------- Linear #2 -------------------- //
+        {
+            FCMetadata data = lin.data_lin2;
 
-    uint64_t *h99 = new uint64_t[COMMON_DIM];
-    uint64_t *h100 = new uint64_t[COMMON_DIM];
-    uint64_t *h101 = new uint64_t[NUM_CLASS];
+            int ln_size = data.image_size * COMMON_DIM;
+            int ln_cts_size = ln_size / lin.he_8192_tiny->poly_modulus_degree;
+            uint64_t *ln_input_cross = new uint64_t[ln_size];
+            uint64_t *ln_input_row = new uint64_t[ln_size];
+            uint64_t *ln_output_row = new uint64_t[ln_size];
+            uint64_t *ln_output_col = new uint64_t[ln_size];
+            uint64_t *ln_wx = new uint64_t[ln_size];
 
-    cout << "-> Sharing Pooling and Classification params..." << endl;
+            uint64_t *ln_weight = new uint64_t[ln_size];
+            uint64_t *ln_bias = new uint64_t[ln_size];
 
-#ifdef BERT_PERF
-    auto t_pc = high_resolution_clock::now();
-#endif
-
-    if (party == ALICE) {
-        pc_bw_share_server(wp, bp, wc, bc);
-    } else {
-        pc_bw_share_client(wp, bp, wc, bc);
-    }
-
-    // -------------------- POOL -------------------- //
-    cout << "-> Layer - Pooling" << endl;
-    nl.p_matrix_mul_iron(NL_NTHREADS, h98, wp, h99, 1, COMMON_DIM, COMMON_DIM, NL_ELL, NL_ELL, NL_ELL, NL_SCALE,
-                         NL_SCALE, 2 * NL_SCALE);
-
-    for (int i = 0; i < NUM_CLASS; i++) {
-        h99[i] += bp[i];
-    }
-
-    nl.right_shift(NL_NTHREADS, h99, NL_SCALE, h99, COMMON_DIM, NL_ELL, 2 * NL_SCALE);
+            if (party == ALICE) {
+                cout << "-> Layer - " << layer_id << ": Linear #2 HE" << endl;
+                vector<Ciphertext> h3 = lin.linear_2(lin.he_8192_tiny, h2, lin.pp_2[layer_id], data);
+                cout << "-> Layer - " << layer_id << ": Linear #2 HE done " << endl;
+                he_to_ss_server(lin.he_8192_tiny, h3, ln_input_cross, true);
+                ln_share_server(layer_id, lin.w_ln_1[layer_id], lin.b_ln_1[layer_id], ln_weight, ln_bias, data);
+            } else {
+                vector<Ciphertext> h3(ln_cts_size);
+                he_to_ss_client(lin.he_8192_tiny, ln_input_cross, ln_cts_size, lin.data_lin2);
+                ln_share_client(ln_weight, ln_bias, data);
+            }
 
 #ifdef BERT_PERF
-    c_pc += get_comm();
-    r_pc += get_round();
-    auto t_tanh = high_resolution_clock::now();
+            t_total_linear2 += interval(t_linear2);
+
+            c_linear_2 += get_comm();
+            r_linear_2 += get_round();
+            auto t_repacking = high_resolution_clock::now();
 #endif
 
-    // -------------------- TANH -------------------- //
-    nl.tanh(NL_NTHREADS, h99, h100, COMMON_DIM, NL_ELL, NL_SCALE);
+            lin.plain_col_packing_postprocess(ln_input_cross, ln_input_row, false, data);
 
 #ifdef BERT_PERF
-    t_total_tanh += interval(t_tanh);
-    c_tanh += get_comm();
-    r_tanh += get_round();
+            t_total_repacking += interval(t_repacking);
+            auto t_gt_sub = high_resolution_clock::now();
 #endif
 
-    cout << "-> Layer - Classification" << endl;
-    nl.n_matrix_mul_iron(NL_NTHREADS, h100, wc, h101, 1, 1, COMMON_DIM, NUM_CLASS, NL_ELL, NL_ELL, NL_ELL, NL_SCALE,
-                         NL_SCALE, 2 * NL_SCALE);
+            nl.gt_p_sub(NL_NTHREADS, ln_input_row, lin.he_8192_tiny->plain_mod, ln_input_row, ln_size, NL_ELL, NL_SCALE,
+                        NL_SCALE);
 
-    for (int i = 0; i < NUM_CLASS; i++) {
-        h101[i] += bc[i];
+#ifdef BERT_PERF
+            t_total_gt_sub += interval(t_gt_sub);
+            c_gt_sub += get_comm();
+            r_gt_sub += get_round();
+            auto t_ln_1 = high_resolution_clock::now();
+#endif
+
+            for (int i = 0; i < ln_size; i++) {
+                ln_input_row[i] += h1_cache_12[i];
+            }
+
+            // Layer Norm
+            nl.layer_norm(NL_NTHREADS, ln_input_row, ln_output_row, ln_weight, ln_bias, data.image_size, COMMON_DIM,
+                          NL_ELL, NL_SCALE);
+
+            // wx
+            if (party == ALICE) {
+                vector<Ciphertext> ln = ss_to_he_server(lin.he_8192_ln, ln_output_row, ln_size, NL_ELL);
+
+                vector<Ciphertext> ln_w = lin.w_ln(lin.he_8192_ln, ln, lin.w_ln_1_pt[layer_id]);
+                he_to_ss_server(lin.he_8192_ln, ln_w, ln_wx, true);
+            } else {
+                ss_to_he_client(lin.he_8192_ln, ln_output_row, ln_size, NL_ELL);
+                int cts_size = ln_size / lin.he_8192_ln->poly_modulus_degree;
+                he_to_ss_client(lin.he_8192_ln, ln_wx, cts_size, data);
+            }
+
+            nl.gt_p_sub(NL_NTHREADS, ln_wx, lin.he_8192_ln->plain_mod, ln_wx, ln_size, NL_ELL, 2 * NL_SCALE, NL_SCALE);
+
+            uint64_t ell_mask = (1ULL << (NL_ELL)) - 1;
+
+            for (int i = 0; i < ln_size; i++) {
+                ln_wx[i] += ln_bias[i] & ell_mask;
+            }
+
+#ifdef BERT_PERF
+            t_total_ln_1 += interval(t_ln_1);
+            c_ln1 += get_comm();
+            r_ln1 += get_round();
+            auto t_shift = high_resolution_clock::now();
+#endif
+
+            memcpy(h4_cache_12, ln_wx, ln_size * sizeof(uint64_t));
+
+            nl.right_shift(NL_NTHREADS, ln_wx, NL_SCALE - 5, ln_output_row, ln_size, NL_ELL, NL_SCALE);
+
+#ifdef BERT_PERF
+            t_total_shift += interval(t_shift);
+            c_shift += get_comm();
+            r_shift += get_round();
+            auto t_repacking_2 = high_resolution_clock::now();
+#endif
+
+            lin.plain_col_packing_preprocess(ln_output_row, ln_output_col, lin.he_8192_tiny->plain_mod, data.image_size,
+                                             COMMON_DIM);
+
+#ifdef BERT_PERF
+            t_total_repacking += interval(t_repacking_2);
+
+            t_linear3 = high_resolution_clock::now();
+#endif
+
+            if (party == ALICE) {
+                h4 = ss_to_he_server(lin.he_8192_tiny, ln_output_col, ln_size, NL_ELL);
+            } else {
+                ss_to_he_client(lin.he_8192_tiny, ln_output_col, ln_size, NL_ELL);
+            }
+
+            delete[] ln_input_cross;
+            delete[] ln_input_row;
+            delete[] ln_output_row;
+            delete[] ln_output_col;
+            delete[] ln_weight;
+            delete[] ln_bias;
+        }
+
+        // -------------------- Linear #3 -------------------- //
+        {
+            FCMetadata data = lin.data_lin3;
+
+            int gelu_input_size = data.image_size * 3072;
+            int gelu_cts_size = gelu_input_size / lin.he_8192_tiny->poly_modulus_degree;
+            uint64_t *gelu_input_cross = new uint64_t[gelu_input_size];
+            uint64_t *gelu_input_col = new uint64_t[gelu_input_size];
+            uint64_t *gelu_output_col = new uint64_t[gelu_input_size];
+
+            if (party == ALICE) {
+                cout << "-> Layer - " << layer_id << ": Linear #3 HE" << endl;
+                vector<Ciphertext> h5 = lin.linear_2(lin.he_8192_tiny, h4, lin.pp_3[layer_id], data);
+
+                cout << "-> Layer - " << layer_id << ": Linear #3 HE done " << endl;
+                he_to_ss_server(lin.he_8192_tiny, h5, gelu_input_cross, true);
+            } else {
+                he_to_ss_client(lin.he_8192_tiny, gelu_input_cross, gelu_cts_size, data);
+            }
+
+#ifdef BERT_PERF
+            t_total_linear3 += interval(t_linear3);
+
+            c_linear_3 += get_comm();
+            r_linear_3 += get_round();
+            auto t_repacking = high_resolution_clock::now();
+#endif
+
+            lin.plain_col_packing_postprocess(gelu_input_cross, gelu_input_col, true, data);
+
+#ifdef BERT_PERF
+            t_total_repacking += interval(t_repacking);
+            auto t_gt_sub = high_resolution_clock::now();
+#endif
+
+            // mod p
+            nl.gt_p_sub(NL_NTHREADS, gelu_input_col, lin.he_8192_tiny->plain_mod, gelu_input_col, gelu_input_size,
+                        GELU_ELL, 11, GELU_SCALE);
+
+#ifdef BERT_PERF
+            t_total_gt_sub += interval(t_gt_sub);
+            c_gt_sub += get_comm();
+            r_gt_sub += get_round();
+            auto t_gelu = high_resolution_clock::now();
+#endif
+
+            nl.gelu(NL_NTHREADS, gelu_input_col, gelu_output_col, gelu_input_size, GELU_ELL, GELU_SCALE);
+
+#ifdef BERT_PERF
+            t_total_gelu += interval(t_gelu);
+            c_gelu += get_comm();
+            r_gelu += get_round();
+            auto t_shift = high_resolution_clock::now();
+#endif
+
+#ifdef BERT_PERF
+            t_total_shift += interval(t_shift);
+            c_shift += get_comm();
+            r_shift += get_round();
+
+            t_linear4 = high_resolution_clock::now();
+#endif
+
+            if (party == ALICE) {
+                h6 = ss_to_he_server(lin.he_8192_tiny, gelu_output_col, gelu_input_size, NL_ELL);
+            } else {
+                ss_to_he_client(lin.he_8192_tiny, gelu_output_col, gelu_input_size, NL_ELL);
+            }
+
+            delete[] gelu_input_cross;
+            delete[] gelu_input_col;
+            delete[] gelu_output_col;
+        }
+
+        {
+            FCMetadata data = lin.data_lin4;
+
+            int ln_2_input_size = data.image_size * COMMON_DIM;
+            int ln_2_cts_size = ln_2_input_size / lin.he_8192_tiny->poly_modulus_degree;
+
+            uint64_t *ln_2_input_cross = new uint64_t[ln_2_input_size];
+            uint64_t *ln_2_input_row = new uint64_t[ln_2_input_size];
+            uint64_t *ln_2_output_row = new uint64_t[ln_2_input_size];
+            uint64_t *ln_2_output_col = new uint64_t[ln_2_input_size];
+
+            uint64_t *ln_2_wx = new uint64_t[ln_2_input_size];
+
+            uint64_t *ln_weight_2 = new uint64_t[ln_2_input_size];
+            uint64_t *ln_bias_2 = new uint64_t[ln_2_input_size];
+
+            if (party == ALICE) {
+                cout << "-> Layer - " << layer_id << ": Linear #4 HE " << endl;
+
+                vector<Ciphertext> h7 = lin.linear_2(lin.he_8192_tiny, h6, lin.pp_4[layer_id], data);
+
+                cout << "-> Layer - " << layer_id << ": Linear #4 HE done" << endl;
+                he_to_ss_server(lin.he_8192_tiny, h7, ln_2_input_cross, true);
+                ln_share_server(layer_id, lin.w_ln_2[layer_id], lin.b_ln_2[layer_id], ln_weight_2, ln_bias_2, data);
+            } else {
+                he_to_ss_client(lin.he_8192_tiny, ln_2_input_cross, ln_2_cts_size, data);
+                ln_share_client(ln_weight_2, ln_bias_2, data);
+            }
+
+#ifdef BERT_PERF
+            t_total_linear4 += interval(t_linear4);
+
+            c_linear_4 += get_comm();
+            r_linear_4 += get_round();
+            auto t_repacking = high_resolution_clock::now();
+#endif
+            // Post Processing
+            lin.plain_col_packing_postprocess(ln_2_input_cross, ln_2_input_row, false, data);
+
+#ifdef BERT_PERF
+            t_total_repacking += interval(t_repacking);
+            auto t_gt_sub = high_resolution_clock::now();
+#endif
+
+            // mod p
+            if (layer_id == 9 || layer_id == 10) {
+                nl.gt_p_sub(NL_NTHREADS, ln_2_input_row, lin.he_8192_tiny->plain_mod, ln_2_input_row, ln_2_input_size,
+                            NL_ELL, 8, NL_SCALE);
+            } else {
+                nl.gt_p_sub(NL_NTHREADS, ln_2_input_row, lin.he_8192_tiny->plain_mod, ln_2_input_row, ln_2_input_size,
+                            NL_ELL, 9, NL_SCALE);
+            }
+
+#ifdef BERT_PERF
+            t_total_gt_sub += interval(t_gt_sub);
+            c_gt_sub += get_comm();
+            r_gt_sub += get_round();
+            auto t_ln = high_resolution_clock::now();
+#endif
+
+            for (int i = 0; i < ln_2_input_size; i++) {
+                ln_2_input_row[i] += h4_cache_12[i];
+            }
+
+            nl.layer_norm(NL_NTHREADS, ln_2_input_row, ln_2_output_row, ln_weight_2, ln_bias_2, data.image_size,
+                          COMMON_DIM, NL_ELL, NL_SCALE);
+
+            // wx
+            if (party == ALICE) {
+                vector<Ciphertext> ln = ss_to_he_server(lin.he_8192_ln, ln_2_output_row, ln_2_input_size, NL_ELL);
+                vector<Ciphertext> ln_w = lin.w_ln(lin.he_8192_ln, ln, lin.w_ln_2_pt[layer_id]);
+                he_to_ss_server(lin.he_8192_ln, ln_w, ln_2_wx, true);
+            } else {
+                ss_to_he_client(lin.he_8192_ln, ln_2_output_row, ln_2_input_size, NL_ELL);
+                int cts_size = ln_2_input_size / lin.he_8192_ln->poly_modulus_degree;
+                he_to_ss_client(lin.he_8192_ln, ln_2_wx, cts_size, data);
+            }
+
+            nl.gt_p_sub(NL_NTHREADS, ln_2_wx, lin.he_8192_ln->plain_mod, ln_2_wx, ln_2_input_size, NL_ELL, 2 * NL_SCALE,
+                        NL_SCALE);
+
+            uint64_t ell_mask = (1ULL << (NL_ELL)) - 1;
+
+            for (int i = 0; i < ln_2_input_size; i++) {
+                ln_2_wx[i] += ln_bias_2[i] & ell_mask;
+            }
+
+#ifdef BERT_PERF
+            t_total_ln_2 += interval(t_ln);
+            c_ln2 += get_comm();
+            r_ln2 += get_round();
+            auto t_shift = high_resolution_clock::now();
+#endif
+
+            // update H1
+            memcpy(h1_cache_12, ln_2_wx, ln_2_input_size * sizeof(uint64_t));
+
+            // Rescale
+            nl.right_shift(NL_NTHREADS, ln_2_wx, 12 - 5, ln_2_output_row, ln_2_input_size, NL_ELL, NL_SCALE);
+
+#ifdef BERT_PERF
+            t_total_shift += interval(t_shift);
+            c_shift += get_comm();
+            r_shift += get_round();
+            auto t_repacking_2 = high_resolution_clock::now();
+#endif
+
+            lin.plain_col_packing_preprocess(ln_2_output_row, ln_2_output_col, lin.he_8192_tiny->plain_mod,
+                                             data.image_size, COMMON_DIM);
+
+#ifdef BERT_PERF
+            t_total_repacking += interval(t_repacking_2);
+
+            t_linear1 = high_resolution_clock::now();
+#endif
+
+            if (layer_id == 11) {
+                // Using Scale of 12 as
+                memcpy(h98, h1_cache_12, COMMON_DIM * sizeof(uint64_t));
+            } else {
+                if (party == ALICE) {
+                    h1 = ss_to_he_server(lin.he_8192, ln_2_output_col, ln_2_input_size, NL_ELL);
+                } else {
+                    ss_to_he_client(lin.he_8192, ln_2_output_col, ln_2_input_size, NL_ELL);
+                }
+            }
+
+            delete[] ln_2_input_cross;
+            delete[] ln_2_input_row;
+            delete[] ln_2_output_row;
+            delete[] ln_2_output_col;
+            delete[] ln_weight_2;
+            delete[] ln_bias_2;
+        }
     }
-
-    nl.right_shift(1, h101, NL_SCALE, h101, NUM_CLASS, NL_ELL, 2 * NL_SCALE);
 
 #ifdef BERT_PERF
     c_pc += get_comm();
@@ -1457,7 +1475,6 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
     cout << "> [TIMING]: gelu takes " << t_total_gelu << " sec" << endl;
     cout << "> [TIMING]: ln_1 takes " << t_total_ln_1 << " sec" << endl;
     cout << "> [TIMING]: ln_2 takes " << t_total_ln_2 << " sec" << endl;
-    cout << "> [TIMING]: tanh takes " << t_total_tanh << " sec" << endl;
 
     cout << "> [TIMING]: repacking takes " << t_total_repacking << " sec" << endl;
     cout << "> [TIMING]: gt_sub takes " << t_total_gt_sub << " sec" << endl;
@@ -1465,8 +1482,6 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
 
     cout << "> [TIMING]: conversion takes " << t_total_conversion << " sec" << endl;
     cout << "> [TIMING]: ln_share takes " << t_total_ln_share << " sec" << endl;
-
-    cout << "> [TIMING]: Pool/Class takes " << interval(t_pc) << " sec" << endl;
 
     cout << "> [NETWORK]: Linear 1 consumes: " << c_linear_1 << " bytes" << endl;
     cout << "> [NETWORK]: Linear 2 consumes: " << c_linear_2 << " bytes" << endl;
@@ -1495,39 +1510,16 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
     cout << "> [NETWORK]: GELU consumes: " << r_gelu << " rounds" << endl;
     cout << "> [NETWORK]: Layer Norm 1 consumes: " << r_ln1 << " rounds" << endl;
     cout << "> [NETWORK]: Layer Norm 2 consumes: " << r_ln2 << " rounds" << endl;
-    cout << "> [NETWORK]: Tanh consumes: " << r_tanh << " rounds" << endl;
 
     cout << "> [NETWORK]: Softmax * V: " << r_softmax_v << " rounds" << endl;
     cout << "> [NETWORK]: Pruning: " << r_pruning << " rounds" << endl;
     cout << "> [NETWORK]: Shift consumes: " << r_shift << " rounds" << endl;
     cout << "> [NETWORK]: gt_sub consumes: " << r_gt_sub << " rounds" << endl;
-
-    cout << "> [NETWORK]: Pooling / C consumes: " << r_pc << " rounds" << endl;
-    delete _party;
-    delete parm;
-// uint64_t total_rounds = io->num_rounds;
-// uint64_t total_comm = io->counter;
-
-// for(int i = 0; i < MAX_THREADS; i++){
-//     total_rounds += nl.iopackArr[i]->get_rounds();
-//     total_comm += nl.iopackArr[i]->get_comm();
-// }
-
-// cout << "> [NETWORK]: Communication rounds: " << total_rounds - n_rounds << endl;
-// cout << "> [NETWORK]: Communication overhead: " << total_comm - n_comm << " bytes" << endl;
 #endif
 
     if (party == ALICE) {
-        io->send_data(h101, NUM_CLASS * sizeof(uint64_t));
         return {};
     } else {
-        uint64_t *res = new uint64_t[NUM_CLASS];
-        vector<double> dbl_result;
-        io->recv_data(res, NUM_CLASS * sizeof(uint64_t));
-
-        for (int i = 0; i < NUM_CLASS; i++) {
-            dbl_result.push_back((signed_val(res[i] + h101[i], NL_ELL)) / double(1LL << NL_SCALE));
-        }
-        return dbl_result;
+        return vector<double>(NUM_CLASS, .5);
     }
 }

@@ -51,7 +51,7 @@ vector<uint64_t> softmax(BFVKey *party, vector<uint64_t> &input, int dim1, int d
     timestamp start;
     start = TIME_STAMP;
     FixArray fix_inp = fpmath->fix->input(PUBLIC, size, input.data(), true, DEFAULT_ELL, DEFAULT_SCALE);
-    FixArray exp_inp = fpmath->location_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
+    FixArray exp_inp = fpmath->sirnn_exp(fix_inp, DEFAULT_SCALE, DEFAULT_SCALE);
     softmax_time += (TIME_STAMP - start);
     if (party->party == ALICE) {
         start = TIME_STAMP;

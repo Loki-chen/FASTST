@@ -46,7 +46,7 @@ public:
     vector<Ciphertext> ss_to_he_server(HE* he, uint64_t* input, int length, int bw);
 
     void he_to_ss_client(HE* he, uint64_t* output, int length, const FCMetadata &data);
-    void ss_to_he_client(HE* he, uint64_t* input, int length, int bw, bool log = false);
+    void ss_to_he_client(HE* he, uint64_t* input, int length, int bw);
 
     void pc_bw_share_server(
         uint64_t* wp,

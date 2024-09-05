@@ -441,7 +441,7 @@ BFVLongCiphertext::BFVLongCiphertext(const BFVLongPlaintext &lpt, BFVKey *party)
     len = lpt.len;
     size_t size = lpt.plain_data.size();
     cipher_data.resize(size);
-#pragma omp parallel for if (size > 1)
+// #pragma omp parallel for if (size > 1)
     for (size_t i = 0; i < size; i++)
     {
         party->encryptor->encrypt(lpt.plain_data[i], cipher_data[i]);
@@ -454,7 +454,7 @@ BFVLongPlaintext BFVLongCiphertext::decrypt(BFVKey *party) const
     lpt.len = len;
     size_t size = cipher_data.size();
     lpt.plain_data.resize(size);
-#pragma omp parallel for if (size > 1)
+// #pragma omp parallel for if (size > 1)
     for (size_t i = 0; i < size; i++)
     {
         party->decryptor->decrypt(cipher_data[i], lpt.plain_data[i]);
@@ -779,7 +779,7 @@ void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator 
         size = lpt.plain_data.size();
         Ciphertext ct(cipher_data[0]);
         cipher_data.resize(size);
-#pragma omp parallel for if (size > MAX_SZ)
+// #pragma omp parallel for if (size > MAX_SZ)
         for (size_t i = 0; i < size; i++)
         {
             Ciphertext ctemp;
@@ -789,7 +789,7 @@ void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator 
     }
     else if (lpt.len == 1)
     {
-#pragma omp parallel for if (size > MAX_SZ)
+// #pragma omp parallel for if (size > MAX_SZ)
         for (size_t i = 0; i < size; i++)
         {
             evaluator->multiply_plain_inplace(cipher_data[i], lpt.plain_data[0]);
@@ -797,7 +797,7 @@ void BFVLongCiphertext::multiply_plain_inplace(BFVLongPlaintext &lpt, Evaluator 
     }
     else if (len == lpt.len)
     {
-#pragma omp parallel for if (size > MAX_SZ)
+// #pragma omp parallel for if (size > MAX_SZ)
         for (size_t i = 0; i < size; i++)
         {
             evaluator->multiply_plain_inplace(cipher_data[i], lpt.plain_data[i]);

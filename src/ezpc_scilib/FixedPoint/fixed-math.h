@@ -42,7 +42,6 @@ public:
     FixArray tanh_inner_preprocess(const FixArray &x);
     FixArray tanh_approx(const FixArray &x);
     FixArray gt_p_sub(const FixArray &x, const FixArray &p);
-    FixArray location_gt_p_sub(const FixArray &x, const FixArray &p);
     FixArray sqrt_(const FixArray &x, bool recp_sqrt);
     std::tuple<FixArray, FixArray, FixArray> bitonic_sort_and_swap(const FixArray &x, FixArray softmax_v_, FixArray h1_,
                                                                    bool swap);
@@ -51,7 +50,7 @@ public:
     vector<FixArray> standard_deviation(const vector<FixArray> &x, const vector<FixArray> mean);
     double sqrt_(float x);
     int64_t LUT_neg_exp(int64_t val_in, int32_t s_in, int32_t s_out);
-    FixArray location_exp(const FixArray &x, int scale_in, int scale_out);
+    FixArray sirnn_exp(const FixArray &x, int scale_in, int scale_out);
     inline int64_t fpSaturate(int32_t inp) { return (int64_t)inp; }
     FixArray dot(const FixArray &x, const FixArray &y, size_t dim1, size_t dim2, size_t dim3, int ell,
                  bool trans = false, uint8_t *msb_x = nullptr, uint8_t *msb_y = nullptr);
