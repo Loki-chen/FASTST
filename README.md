@@ -1,11 +1,10 @@
 #  Secure Bert
 
-FaST is Fast and Secure Transformer model implement with C++, based on bert.
+FASTLMPI is Fast And Secure Transformer model implement with C++, based on bert.
 
 # Build
 ```bash
 mkdir build & cd build
-
 cmake -DCMAKE_INSTALL_PREFIX=./install ../
 ```
 
@@ -34,3 +33,8 @@ This repository includes code from the following external repositories:
 [emp-toolkit/emp-tool](https://github.com/emp-toolkit/emp-tool) for Network IO,
 
 [Microsoft/EzPC/SCI](https://github.com/Loki-chen/EzPC/tree/master/SCI) for fixed-point basic operation.
+
+
+# Other
+
+end-to-end code is coming soon....

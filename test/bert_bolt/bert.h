@@ -23,6 +23,9 @@
 
 using namespace std;
 
+void send_encrypted_vector(sci::NetIO *io, vector<Ciphertext> &cipher);
+void recv_encrypted_vector(SEALContext *context, sci::NetIO *io, vector<Ciphertext> &cipher);
+
 class Bert
 {
 public:

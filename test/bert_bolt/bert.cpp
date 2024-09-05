@@ -1,276 +1,3 @@
-
-
-// vector<double> Bert::run(string input_fname, string mask_fname) {
-//     // Server: Alice
-//     // Client: Bob
-
-//     // int input_dim = INPUT_DIM;
-//     // if (prune) {
-//     //     input_dim /= 2;
-//     // }
-
-//     // vector<uint64_t> softmax_mask;
-//     // uint64_t h1_cache_12_original[INPUT_DIM * COMMON_DIM] = {0};
-//     uint64_t h1_cache_12[INPUT_DIM * COMMON_DIM] = {0};
-//     uint64_t h4_cache_12[INPUT_DIM * COMMON_DIM] = {0};
-//     uint64_t h98[COMMON_DIM] = {0};
-
-//     vector<Ciphertext> h1;
-//     vector<Ciphertext> h2;
-//     vector<Ciphertext> h4;
-//     vector<Ciphertext> h6;
-
-// #ifdef BERT_PERF
-//     n_rounds += io->num_rounds;
-//     n_comm += io->counter;
-
-//     for (int i = 0; i < MAX_THREADS; i++) {
-//         n_rounds += nl.iopackArr[i]->get_rounds();
-//         n_comm += nl.iopackArr[i]->get_comm();
-//     }
-
-//     auto t_linear1 = high_resolution_clock::now();
-//     auto t_linear2 = high_resolution_clock::now();
-//     auto t_linear3 = high_resolution_clock::now();
-//     auto t_linear4 = high_resolution_clock::now();
-// #endif
-
-//     if (party == ALICE) {
-//         //         // -------------------- Preparing -------------------- //
-//         //         // Receive cipher text input
-//         // int cts_size = INPUT_DIM * COMMON_DIM / lin.data_lin1_0.slot_count;
-//         // h1.resize(cts_size);
-
-//         // #ifdef BERT_PERF
-//         //         t_linear1 = high_resolution_clock::now();
-//         // #endif
-
-//         // recv_encrypted_vector(lin.he_8192->context, io, h1);
-//         // cout << "> Receive input cts from client " << endl;
-//     } else {
-//         //         cout << "> Loading inputs" << endl;
-
-//         vector<vector<uint64_t>> input_plain = read_data(input_fname);
-//         //         softmax_mask = read_bias(mask_fname, 128);
-
-//         //         cout << "> Repacking to column" << endl;
-
-//         //         // Column Packing
-//         vector<uint64_t> input_col(COMMON_DIM * INPUT_DIM);
-//         for (int j = 0; j < COMMON_DIM; j++) {
-//             for (int i = 0; i < INPUT_DIM; i++) {
-//                 // input_col[j * INPUT_DIM + i] =
-//                 //     neg_mod(((int64_t)input_plain[i][j]) >> 7, (int64_t)lin.he_8192->plain_mod);
-//                 // if (prune) {
-//                 //     h1_cache_12_original[i * COMMON_DIM + j] = input_plain[i][j];
-//                 // } else {
-//                 h1_cache_12[i * COMMON_DIM + j] = input_plain[i][j];
-//                 // }
-//             }
-//         }
-
-//         // cout << "> Send to client" << endl;
-
-//         // Send cipher text input
-//         // vector<Ciphertext> h1_cts = lin.bert_efficient_preprocess_vec(lin.he_8192, input_col, lin.data_lin1_0);
-
-//         // #ifdef BERT_PERF
-//         //         t_linear1 = high_resolution_clock::now();
-//         // #endif
-
-//         // send_encrypted_vector(io, h1_cts);
-//     }
-//     vector<uint64_t> input(batch_size * d_module);
-//     if (party == BOB) {
-//         memcpy(input.data(), h1_cache_12, batch_size * d_module * sizeof(uint64_t));
-//     }
-//     BFVParm *parm = new BFVParm();
-//     BFVKey *_party = new BFVKey();
-//     FPMath **fpmath = nl.fpmath;
-//     _party->parm = parm;
-//     _party->party = party;
-//     _party->encryptor = lin.he_8192->encryptor;
-//     _party->decryptor = lin.he_8192->decryptor;
-//     _party->parm->poly_modulus_degree = lin.he_8192->poly_modulus_degree;
-//     _party->parm->plain_mod = lin.he_8192->plain_mod;
-//     _party->parm->context = lin.he_8192->context;
-//     _party->parm->evaluator = lin.he_8192->evaluator;
-//     _party->parm->encoder = lin.he_8192->encoder;
-//     BFVLongCiphertext *inp_e = nullptr;
-//     vector<vector<uint64_t>> attn_output_h(n_heads);
-//     vector<uint64_t> tmp_output(batch_size * d_module, 100000);
-//     // if (party == BOB) {
-//     //     inp_e = RFCP_bfv_encodeA(input, _party, batch_size, d_module, d_k);
-//     //     send_encoded_ciper(inp_e, fpmath, d_module);
-//     // } else {
-//     //     inp_e = new BFVLongCiphertext[d_module];
-//     //     recv_encoded_ciper(inp_e, fpmath, d_module, _party->parm->context);
-//     // }
-//     // Conversion *conv = new Conversion();
-//     // std::cout << inp_e[0].len << "\n";
-
-//     cout << "> --- Entering Attention Layers ---" << endl;
-//     for (int layer_id = 0; layer_id < ATTENTION_LAYERS; ++layer_id) {
-//         {
-//             // -------------------- Linear #1 -------------------- //
-//             // w/ input pruning
-
-//             // Layer 0:
-//             // softmax input: 12*128*128
-//             // softmax output: 12*128*128
-//             // v: 12*128*64
-//             // softmax_v: 12*128*64
-
-//             // softmax_v(pruned): 12*64*64
-
-//             // Layer 1-11:
-//             // softmax input: 12*64*64
-//             // softmax output: 12*64*64
-//             // v: 12*64*64
-//             // softmax_v: 12*64*64
-
-//             // w/o input pruning
-
-//             // Layer 0-11:
-//             // softmax input: 12*128*128
-//             // softmax output(pruned): 128*128*128
-//             // v: 12*128*64
-//             // softmax_v: 12*128*64
-
-//             // this can be multi thread
-//             // for (int head = 0; head < n_heads; head++) {
-//             // auto head = layer_id;
-//             // vector<uint64_t> Q, K, V, wq(d_module * d_k), wk(d_module * d_k), wv(d_module * d_k), bq(batch_size *
-//             d_k),
-//             //     bk(batch_size * d_k), bv(batch_size * d_k);
-//             // for (int j = 0; j < d_k; j++) {
-//             //     for (int i = 0; i < d_module; i++) {
-//             //         // wq[i * d_k + j] = bm.w_q[layer_id][head][i][j];
-//             //         // wk[i * d_k + j] = bm.w_k[layer_id][head][i][j];
-//             //         // wv[i * d_k + j] = bm.w_v[layer_id][head][i][j];
-//             //         wq[i * d_k + j] = 1000;
-//             //         wk[i * d_k + j] = 1000;
-//             //         wv[i * d_k + j] = 1000;
-//             //     }
-//             //     for (int i = 0; i < batch_size; i++) {
-//             //         bq[i * d_k + j] = 1000;
-//             //         bk[i * d_k + j] = 1000;
-//             //         bv[i * d_k + j] = 1000;
-//             //     }
-//             // }
-//             // BFVLongCiphertext *Q_encode, *Q_encode_remote = new BFVLongCiphertext[d_k], *softmax_encode,
-//             //                              *softmax_encode_remote = new BFVLongCiphertext[batch_size];
-//             // if (party == ALICE) {
-//                 // Q = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
-//                 // K = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
-//                 // V = conv->he_to_ss_client(fpmath[head]->iopack->io, _party);
-//             // } else {
-
-//                 // BFVLongCiphertext Q_sec_a = RFCP_bfv_matmul(inp_e, wq, batch_size, d_module, d_k, _party->parm),
-//                 //                   K_sec_a = RFCP_bfv_matmul(inp_e, wk, batch_size, d_module, d_k, _party->parm),
-//                 //                   V_sec_a = RFCP_bfv_matmul(inp_e, wv, batch_size, d_module, d_k, _party->parm);
-//                 // BFVLongPlaintext bQ_plain(_party->parm, wk), bK_plain(_party->parm, wk), bV_plain(_party->parm,
-//                 wk);
-//                 // Q_sec_a.add_plain_inplace(bQ_plain, _party->parm->evaluator);
-//                 // K_sec_a.add_plain_inplace(bK_plain, _party->parm->evaluator);
-//                 // V_sec_a.add_plain_inplace(bV_plain, _party->parm->evaluator);
-
-//                 // Q = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, Q_sec_a);
-//                 // K = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
-//                 // V = conv->he_to_ss_server(fpmath[head]->iopack->io, _party->parm, K_sec_a);
-//             // }
-//             // conv->Prime_to_Ring(_party->party, V.data(), V.data(), batch_size * d_k, DEFAULT_ELL,
-//             //                     _party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE, fpmath[head]);
-//             // vector<uint64_t> K_T(batch_size * d_k);
-//             // for (int i = 0; i < batch_size; i++) {
-//             //     for (int j = 0; j < d_k; j++) {
-//             //         K_T[j * batch_size + i] = K[i * d_k + j];
-//             //     }
-//             // }
-//             // vector<uint64_t> QK_local = matmul(Q, K, batch_size, d_k, batch_size, true);
-//             // Q_encode = RFCP_bfv_encodeA(Q, party, batch_size, d_k, batch_size);
-//             // times[head] += (get_timestamp() - start_QKV);
-//             //         if (party->party == ALICE) {
-//             //             times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
-//             //             recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
-//             //         } else {
-//             //             recv_encoded_ciper(Q_encode_remote, fpmath, d_k);
-//             //             times[head] += send_encoded_ciper(Q_encode, fpmath, d_k);
-//             //         }
-
-//             //         timestamp start_QK = get_timestamp();
-//             //         BFVLongCiphertext QK_enc =
-//             //             RFCP_bfv_matmul(Q_encode_remote, K_T, batch_size, d_k, batch_size, party->parm);
-//             //         vector<uint64_t> ret1, ret2;
-//             //         if (party->party == ALICE) {
-//             //             ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm, QK_enc);
-//             //             ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
-//             //         } else {
-//             //             ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
-//             //             ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm, QK_enc);
-//             //         }
-//             //         for (int i = 0; i < batch_size * batch_size; i++) {
-//             //             QK_local[i] = (QK_local[i] + ret1[i] + ret2[i]) & (1ULL << DEFAULT_ELL);
-//             //         }
-//             //         conv->Prime_to_Ring(party->party, QK_local.data(), QK_local.data(), batch_size * batch_size,
-//             //                             DEFAULT_ELL, party->parm->plain_mod, DEFAULT_SCALE * 2, DEFAULT_SCALE,
-//             //                             fpmath[head]);
-//             //         vector<uint64_t> softmax_output;
-//             //         times[head] += get_timestamp() - start_QK;
-//             //         times[head] += softmax(QK_local, softmax_output, fpmath[head], conv);
-
-//             //         timestamp start_SV_local = get_timestamp();
-//             //         attn_output_h[head] = matmul(softmax_output, V, batch_size, batch_size, d_k);
-//             //         softmax_encode = RFCP_bfv_encodeA(softmax_output, party, batch_size, batch_size, d_k);
-//             //         times[head] += get_timestamp() - start_SV_local;
-//             //         if (party->party == ALICE) {
-//             //             recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
-//             //             times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
-//             //         } else {
-//             //             times[head] += send_encoded_ciper(softmax_encode, fpmath, batch_size);
-//             //             recv_encoded_ciper(softmax_encode_remote, fpmath, batch_size);
-//             //         }
-
-//             //         timestamp start_SV = get_timestamp();
-//             //         BFVLongCiphertext attn_out_enc =
-//             //             RFCP_bfv_matmul(softmax_encode_remote, V, batch_size, batch_size, d_k, party->parm);
-//             //         vector<uint64_t> attn_out_ret1, attn_out_ret2;
-//             //         if (party->party == ALICE) {
-//             //             attn_out_ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm,
-//             //             attn_out_enc); attn_out_ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
-//             //         } else {
-//             //             attn_out_ret2 = conv->he_to_ss_client(fpmath[head]->iopack->io, party);
-//             //             attn_out_ret1 = conv->he_to_ss_server(fpmath[head]->iopack->io, party->parm,
-//             //             attn_out_enc);
-//             //         }
-//             //         for (int i = 0; i < batch_size * d_k; i++) {
-//             //             attn_output_h[head][i] =
-//             //                 (attn_output_h[head][i] + attn_out_ret1[i] + attn_out_ret2[i]) & (1ULL <<
-//             //                 DEFAULT_ELL);
-//             //         }
-//             //         times[head] += get_timestamp() - start_SV;
-
-//             //         delete[] softmax_encode_remote;
-//             //         delete[] softmax_encode;
-//             //         delete[] Q_encode_remote;
-//             //         delete[] Q_encode;
-//             // }
-
-//             // #pragma omp parallel for
-//             //             for (int h = 0; h < n_heads; h++) {
-//             //                 for (int i = 0; i < batch_size; i++) {
-//             //                     for (int j = 0; j < d_k; j++) {
-//             //                         tmp_output[i * d_module + h * d_k + j] = attn_output_h[h][i * d_k + j];
-//             //                     }
-//             //                 }
-//             //             }
-//             if (party == ALICE) {
-//                 h2 = ss_to_he_server(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
-//             } else {
-//                 ss_to_he_client(lin.he_8192_tiny, tmp_output.data(), tmp_output.size(), DEFAULT_SCALE);
-//             }
-//         }
-
 #include "bert.h"
 #include "FixedPoint/fixed-math.h"
 #include "linear.h"
@@ -1464,57 +1191,57 @@ vector<double> Bert::run(string input_fname, string mask_fname) {
 #ifdef BERT_PERF
     c_pc += get_comm();
     r_pc += get_round();
-    cout << "> [TIMING]: linear1 takes " << t_total_linear1 << " sec" << endl;
+    // cout << "> [TIMING]: linear1 takes " << t_total_linear1 << " sec" << endl;
     cout << "> [TIMING]: linear2 takes " << t_total_linear2 << " sec" << endl;
     cout << "> [TIMING]: linear3 takes " << t_total_linear3 << " sec" << endl;
     cout << "> [TIMING]: linear4 takes " << t_total_linear4 << " sec" << endl;
 
-    cout << "> [TIMING]: softmax takes " << t_total_softmax << " sec" << endl;
-    cout << "> [TIMING]: pruning takes " << t_total_pruning << " sec" << endl;
-    cout << "> [TIMING]: mul v takes " << t_total_mul_v << " sec" << endl;
-    cout << "> [TIMING]: gelu takes " << t_total_gelu << " sec" << endl;
-    cout << "> [TIMING]: ln_1 takes " << t_total_ln_1 << " sec" << endl;
-    cout << "> [TIMING]: ln_2 takes " << t_total_ln_2 << " sec" << endl;
+    // cout << "> [TIMING]: softmax takes " << t_total_softmax << " sec" << endl;
+    // cout << "> [TIMING]: pruning takes " << t_total_pruning << " sec" << endl;
+    // cout << "> [TIMING]: mul v takes " << t_total_mul_v << " sec" << endl;
+    // cout << "> [TIMING]: gelu takes " << t_total_gelu << " sec" << endl;
+    // cout << "> [TIMING]: ln_1 takes " << t_total_ln_1 << " sec" << endl;
+    // cout << "> [TIMING]: ln_2 takes " << t_total_ln_2 << " sec" << endl;
 
-    cout << "> [TIMING]: repacking takes " << t_total_repacking << " sec" << endl;
-    cout << "> [TIMING]: gt_sub takes " << t_total_gt_sub << " sec" << endl;
-    cout << "> [TIMING]: shift takes " << t_total_shift << " sec" << endl;
+    // cout << "> [TIMING]: repacking takes " << t_total_repacking << " sec" << endl;
+    // cout << "> [TIMING]: gt_sub takes " << t_total_gt_sub << " sec" << endl;
+    // cout << "> [TIMING]: shift takes " << t_total_shift << " sec" << endl;
 
-    cout << "> [TIMING]: conversion takes " << t_total_conversion << " sec" << endl;
-    cout << "> [TIMING]: ln_share takes " << t_total_ln_share << " sec" << endl;
+    // cout << "> [TIMING]: conversion takes " << t_total_conversion << " sec" << endl;
+    // cout << "> [TIMING]: ln_share takes " << t_total_ln_share << " sec" << endl;
 
-    cout << "> [NETWORK]: Linear 1 consumes: " << c_linear_1 << " bytes" << endl;
+    // cout << "> [NETWORK]: Linear 1 consumes: " << c_linear_1 << " bytes" << endl;
     cout << "> [NETWORK]: Linear 2 consumes: " << c_linear_2 << " bytes" << endl;
     cout << "> [NETWORK]: Linear 3 consumes: " << c_linear_3 << " bytes" << endl;
     cout << "> [NETWORK]: Linear 4 consumes: " << c_linear_4 << " bytes" << endl;
 
-    cout << "> [NETWORK]: Softmax consumes: " << c_softmax << " bytes" << endl;
-    cout << "> [NETWORK]: GELU consumes: " << c_gelu << " bytes" << endl;
-    cout << "> [NETWORK]: Layer Norm 1 consumes: " << c_ln1 << " bytes" << endl;
-    cout << "> [NETWORK]: Layer Norm 2 consumes: " << c_ln2 << " bytes" << endl;
-    cout << "> [NETWORK]: Tanh consumes: " << c_tanh << " bytes" << endl;
+    // cout << "> [NETWORK]: Softmax consumes: " << c_softmax << " bytes" << endl;
+    // cout << "> [NETWORK]: GELU consumes: " << c_gelu << " bytes" << endl;
+    // cout << "> [NETWORK]: Layer Norm 1 consumes: " << c_ln1 << " bytes" << endl;
+    // cout << "> [NETWORK]: Layer Norm 2 consumes: " << c_ln2 << " bytes" << endl;
+    // // cout << "> [NETWORK]: Tanh consumes: " << c_tanh << " bytes" << endl;
 
-    cout << "> [NETWORK]: Softmax * V: " << c_softmax_v << " bytes" << endl;
-    cout << "> [NETWORK]: Pruning: " << c_pruning << " bytes" << endl;
-    cout << "> [NETWORK]: Shift consumes: " << c_shift << " bytes" << endl;
-    cout << "> [NETWORK]: gt_sub consumes: " << c_gt_sub << " bytes" << endl;
+    // cout << "> [NETWORK]: Softmax * V: " << c_softmax_v << " bytes" << endl;
+    // cout << "> [NETWORK]: Pruning: " << c_pruning << " bytes" << endl;
+    // cout << "> [NETWORK]: Shift consumes: " << c_shift << " bytes" << endl;
+    // cout << "> [NETWORK]: gt_sub consumes: " << c_gt_sub << " bytes" << endl;
 
-    cout << "> [NETWORK]: Pooling / C consumes: " << c_pc << " bytes" << endl;
+    // cout << "> [NETWORK]: Pooling / C consumes: " << c_pc << " bytes" << endl;
 
-    cout << "> [NETWORK]: Linear 1 consumes: " << r_linear_1 << " rounds" << endl;
+    // cout << "> [NETWORK]: Linear 1 consumes: " << r_linear_1 << " rounds" << endl;
     cout << "> [NETWORK]: Linear 2 consumes: " << r_linear_2 << " rounds" << endl;
     cout << "> [NETWORK]: Linear 3 consumes: " << r_linear_3 << " rounds" << endl;
     cout << "> [NETWORK]: Linear 4 consumes: " << r_linear_4 << " rounds" << endl;
 
-    cout << "> [NETWORK]: Softmax consumes: " << r_softmax << " rounds" << endl;
-    cout << "> [NETWORK]: GELU consumes: " << r_gelu << " rounds" << endl;
-    cout << "> [NETWORK]: Layer Norm 1 consumes: " << r_ln1 << " rounds" << endl;
-    cout << "> [NETWORK]: Layer Norm 2 consumes: " << r_ln2 << " rounds" << endl;
+    // cout << "> [NETWORK]: Softmax consumes: " << r_softmax << " rounds" << endl;
+    // cout << "> [NETWORK]: GELU consumes: " << r_gelu << " rounds" << endl;
+    // cout << "> [NETWORK]: Layer Norm 1 consumes: " << r_ln1 << " rounds" << endl;
+    // cout << "> [NETWORK]: Layer Norm 2 consumes: " << r_ln2 << " rounds" << endl;
 
-    cout << "> [NETWORK]: Softmax * V: " << r_softmax_v << " rounds" << endl;
-    cout << "> [NETWORK]: Pruning: " << r_pruning << " rounds" << endl;
-    cout << "> [NETWORK]: Shift consumes: " << r_shift << " rounds" << endl;
-    cout << "> [NETWORK]: gt_sub consumes: " << r_gt_sub << " rounds" << endl;
+    // cout << "> [NETWORK]: Softmax * V: " << r_softmax_v << " rounds" << endl;
+    // cout << "> [NETWORK]: Pruning: " << r_pruning << " rounds" << endl;
+    // cout << "> [NETWORK]: Shift consumes: " << r_shift << " rounds" << endl;
+    // cout << "> [NETWORK]: gt_sub consumes: " << r_gt_sub << " rounds" << endl;
 #endif
 
     if (party == ALICE) {
